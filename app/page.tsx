@@ -179,7 +179,7 @@ function PageContent() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: 'url(/BG.PNG)',
+          backgroundImage: 'url(/BG.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
         }}
