@@ -225,15 +225,15 @@ function PageContent() {
         onClick={() => goToBg(-1)}
         style={{
           position: 'absolute',
-          left: 14,
-          top: '50%',
+          left: 12,
+          top: '42%',
           transform: 'translateY(-50%)',
           zIndex: 10,
-          width: 40,
-          height: 40,
+          width: 28,
+          height: 28,
           borderRadius: '50%',
           background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.18)',
+          border: '1px solid rgba(255,255,255,0.15)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -242,23 +242,23 @@ function PageContent() {
           cursor: 'pointer',
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       <button
         onClick={() => goToBg(1)}
         style={{
           position: 'absolute',
-          right: 14,
-          top: '50%',
+          right: 12,
+          top: '42%',
           transform: 'translateY(-50%)',
           zIndex: 10,
-          width: 40,
-          height: 40,
+          width: 28,
+          height: 28,
           borderRadius: '50%',
           background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.18)',
+          border: '1px solid rgba(255,255,255,0.15)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -267,8 +267,8 @@ function PageContent() {
           cursor: 'pointer',
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
@@ -277,7 +277,7 @@ function PageContent() {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.6) 62%, #000 72%)',
+          background: 'linear-gradient(to bottom, transparent 42%, rgba(0,0,0,0.6) 52%, #000 62%)',
         }}
       />
 
