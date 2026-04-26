@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Heebo, Inter } from 'next/font/google'
 import './globals.css'
 
@@ -18,7 +18,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Bavarian Motors Club',
-  description: 'מלאי נחרב של רכבי יוקרה וספורט — בוואריאן מוטורס',
+  description: 'מלאי נרחב של רכבי יוקרה וספורט — בוואריאן מוטורס',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
