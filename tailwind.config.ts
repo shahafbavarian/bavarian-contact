@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        frank: ['var(--font-frank)', 'serif'],
+        heebo: ['var(--font-heebo)', 'sans-serif'],
         inter: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
     },

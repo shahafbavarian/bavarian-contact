@@ -112,12 +112,12 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
               <circle cx="26" cy="26" r="24" stroke="#111" strokeWidth="1.5" />
               <path d="M15 26l9 9 13-16" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <p className="font-frank text-2xl text-gray-900 mb-1">תודה!</p>
+            <p className="font-heebo text-2xl text-gray-900 mb-1">תודה!</p>
             <p className="font-inter text-sm text-gray-400">נציג יחזור אליך בהקדם האפשרי</p>
           </div>
         ) : (
           <>
-            <h2 className="font-frank font-bold text-2xl text-gray-900 mb-1">השאירו פרטים</h2>
+            <h2 className="font-heebo font-bold text-2xl text-gray-900 mb-1">השאירו פרטים</h2>
             <p className="font-inter text-sm text-gray-400 mb-6">ונציג יחזור אליכם בהקדם</p>
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -254,7 +254,7 @@ function PageContent() {
           />
         </div>
 
-        <h1 className="font-frank font-bold text-[22px] leading-snug text-white max-w-[280px]">
+        <h1 className="font-heebo font-bold text-[22px] leading-snug text-white max-w-[280px]">
           מלאי נרחב של רכבי יוקרה וספורט
           <br />
           מחכה לכם בבוואריאן מוטורס!
@@ -290,7 +290,7 @@ function PageContent() {
           <p className="font-inter text-[10px] tracking-[0.35em] text-white/25 uppercase mb-1">
             {car.tagline}
           </p>
-          <h2 className="font-frank font-bold text-3xl text-white tracking-wide">
+          <h2 className="font-heebo font-bold text-3xl text-white tracking-wide">
             {car.name}
           </h2>
           <p className="font-inter text-[13px] text-white/35 mt-1.5 max-w-[240px] mx-auto leading-relaxed">

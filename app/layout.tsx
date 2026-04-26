@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import { Frank_Ruhl_Libre, Inter } from 'next/font/google'
+import { Heebo, Inter } from 'next/font/google'
 import './globals.css'
 
-const frankRuhl = Frank_Ruhl_Libre({
+const heebo = Heebo({
   subsets: ['hebrew', 'latin'],
   weight: ['300', '400', '700', '900'],
-  variable: '--font-frank',
+  variable: '--font-heebo',
   display: 'swap',
 })
 
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={`${frankRuhl.variable} ${inter.variable}`}>
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   )
