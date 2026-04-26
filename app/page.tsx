@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
 
-const BACKGROUNDS = ['/BG1.png', '/BG2.png', '/BG3.png', '/BG4.png']
+const BACKGROUNDS = ['/BG1.PNG', '/BG2.PNG', '/BG3.PNG', '/BG4.PNG']
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
