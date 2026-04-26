@@ -8,7 +8,7 @@ const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
 
 const BACKGROUNDS = ['/BG1.png', '/BG2.png', '/BG3.png', '/BG4.png']
 
-
+const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
   'היי, אני מתעניין ברכב מסוים, תחזרו אליי בבקשה!',
 ]
