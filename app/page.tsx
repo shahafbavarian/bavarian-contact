@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
-const WHATSAPP_NUMBER = 'WHATSAPP_PLACEHOLDER'
+const WHATSAPP_NUMBER = '99561906'
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
