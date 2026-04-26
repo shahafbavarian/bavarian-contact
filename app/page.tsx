@@ -175,7 +175,10 @@ function PageContent() {
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: '-12%',
+          left: 0,
+          right: 0,
+          bottom: 0,
           backgroundImage: 'url(/BG.PNG)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
