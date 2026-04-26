@@ -277,7 +277,7 @@ function PageContent() {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(to bottom, transparent 42%, rgba(0,0,0,0.6) 52%, #000 62%)',
+          background: 'linear-gradient(to bottom, transparent 58%, rgba(0,0,0,0.7) 65%, #000 72%)',
         }}
       />
 
