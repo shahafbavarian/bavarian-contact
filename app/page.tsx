@@ -198,7 +198,7 @@ function PageContent() {
           bottom: 0,
           left: 0,
           right: 0,
-          padding: '0 20px 38px',
+          padding: '0 20px 64px',
         }}
       >
         {/* Headlines */}
