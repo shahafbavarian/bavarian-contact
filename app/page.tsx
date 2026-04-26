@@ -176,7 +176,7 @@ function PageContent() {
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundImage: 'url(/bg.jpg)',
+          backgroundImage: 'url(/BG.PNG)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
         }}
