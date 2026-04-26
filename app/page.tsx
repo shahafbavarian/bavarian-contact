@@ -157,8 +157,8 @@ function PageContent() {
   const [showModal, setShowModal] = useState(false)
   const [utmSource, setUtmSource] = useState('')
   const [utmCampaign, setUtmCampaign] = useState('')
-  const [bgIndex, setBgIndex] = useState(0)
-  const [fading, setFading] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [nextIndex, setNextIndex] = useState<number | null>(null)
 
   useEffect(() => {
     setUtmSource(searchParams.get('utm_source') ?? '')
@@ -166,12 +166,29 @@ function PageContent() {
   }, [searchParams])
 
   function goToBg(dir: 1 | -1) {
-    if (fading) return
-    setFading(true)
+    if (nextIndex !== null) return
+    const next = (currentIndex + dir + BACKGROUNDS.length) % BACKGROUNDS.length
+    setNextIndex(next)
     setTimeout(() => {
-      setBgIndex(i => (i + dir + BACKGROUNDS.length) % BACKGROUNDS.length)
-      setFading(false)
-    }, 400)
+      setCurrentIndex(next)
+      setNextIndex(null)
+    }, 600)
+  }
+
+  function jumpToBg(i: number) {
+    if (nextIndex !== null || i === currentIndex) return
+    setNextIndex(i)
+    setTimeout(() => {
+      setCurrentIndex(i)
+      setNextIndex(null)
+    }, 600)
+  }
+
+  function getBgOpacity(i: number) {
+    if (nextIndex === null) return i === currentIndex ? 1 : 0
+    if (i === nextIndex) return 1
+    if (i === currentIndex) return 0
+    return 0
   }
 
   return (
@@ -197,8 +214,8 @@ function PageContent() {
             backgroundImage: `url(${src})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center top',
-            opacity: i === bgIndex ? (fading ? 0 : 1) : 0,
-            transition: 'opacity 0.4s ease-in-out',
+            opacity: getBgOpacity(i),
+            transition: 'opacity 0.6s ease-in-out',
           }}
         />
       ))}
@@ -279,12 +296,12 @@ function PageContent() {
           {BACKGROUNDS.map((_, i) => (
             <button
               key={i}
-              onClick={() => { if (!fading && i !== bgIndex) { setFading(true); setTimeout(() => { setBgIndex(i); setFading(false) }, 400) } }}
+              onClick={() => jumpToBg(i)}
               style={{
-                width: i === bgIndex ? 20 : 6,
+                width: i === currentIndex ? 20 : 6,
                 height: 6,
                 borderRadius: 3,
-                background: i === bgIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+                background: i === currentIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
                 border: 'none',
                 cursor: 'pointer',
                 padding: 0,
