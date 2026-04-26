@@ -212,7 +212,7 @@ function PageContent() {
             right: 0,
             bottom: 0,
             backgroundImage: `url(${src})`,
-            backgroundSize: 'cover',
+            backgroundSize: '100% auto',
             backgroundPosition: 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
