@@ -7,18 +7,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        gold: '#C8A96E',
-        'gold-light': '#E8C98A',
-        'gold-dark': '#8B6914',
-        surface: '#101010',
-        'surface-2': '#181818',
-        border: '#2A2A2A',
-        muted: '#9A9390',
-      },
       fontFamily: {
-        cormorant: ['var(--font-cormorant)', 'Georgia', 'serif'],
-        montserrat: ['var(--font-montserrat)', 'system-ui', 'sans-serif'],
+        frank: ['var(--font-frank)', 'serif'],
+        inter: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
     },
   },

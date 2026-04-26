@@ -2,51 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --gold: #C8A96E;
-  --gold-light: #E8C98A;
-  --bg: #080808;
-  --surface: #101010;
-  --surface-2: #181818;
-  --text: #F0EBE3;
-  --text-muted: #9A9390;
-  --border: #2A2A2A;
-}
-
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  color: #fff;
   direction: rtl;
-  font-family: var(--font-montserrat), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-::selection {
-  background: rgba(200, 169, 110, 0.3);
-  color: var(--gold-light);
-}
-
-input, textarea {
-  font-family: var(--font-montserrat), system-ui, sans-serif;
-}
-
-@layer utilities {
-  .gold-line {
-    height: 1px;
-    background: linear-gradient(to left, transparent, var(--gold), transparent);
-  }
-
-  .gold-line-solid {
-    height: 1px;
-    background: var(--gold);
-    opacity: 0.4;
-  }
+  -moz-osx-font-smoothing: grayscale;
 }

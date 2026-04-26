@@ -1,29 +1,29 @@
 import type { Metadata } from 'next'
-import { Cormorant_Garamond, Montserrat } from 'next/font/google'
+import { Frank_Ruhl_Libre, Inter } from 'next/font/google'
 import './globals.css'
 
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['300', '400', '600'],
-  variable: '--font-cormorant',
+const frankRuhl = Frank_Ruhl_Libre({
+  subsets: ['hebrew', 'latin'],
+  weight: ['300', '400', '700', '900'],
+  variable: '--font-frank',
   display: 'swap',
 })
 
-const montserrat = Montserrat({
+const inter = Inter({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
-  variable: '--font-montserrat',
+  variable: '--font-inter',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'Bavarian Motors Club | רכבי יוקרה',
-  description: 'יבואן רכבי יוקרה מהשורה הראשונה. צרו קשר עוד היום.',
+  title: 'Bavarian Motors Club',
+  description: 'מלאי נחרב של רכבי יוקרה וספורט — בוואריאן מוטורס',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={`${cormorant.variable} ${montserrat.variable}`}>
+    <html lang="he" dir="rtl" className={`${frankRuhl.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   )
