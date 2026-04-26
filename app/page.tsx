@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
@@ -231,7 +230,7 @@ function PageContent() {
   return (
     <main
       className="bg-black text-white flex flex-col select-none"
-      style={{ height: '100dvh', overflow: 'hidden' }}
+      style={{ height: '100vh', overflow: 'hidden' }}
       onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
       onTouchEnd={e => {
         if (touchStartX.current === null) return
@@ -243,27 +242,19 @@ function PageContent() {
 
       {/* ─── Header: Logo + Text ─── */}
       <div className="flex flex-col items-center text-center px-6 pt-10 flex-shrink-0">
-        <div className="relative w-[72px] h-[72px] mb-5">
-          <Image
-            src="/logo.png"
-            alt="Bavarian Motors Club"
-            fill
-            className="object-contain"
-            priority
-            onError={() => {}}
-          />
+        {/* Logo placeholder — יוחלף בתמונה אמיתית */}
+        <div className="mb-5 h-16 flex items-center justify-center">
+          <span className="font-inter font-light text-[11px] tracking-[0.4em] text-white/30 uppercase">
+            Bavarian Motors Club
+          </span>
         </div>
 
-        <h1 className="font-heebo font-bold text-[22px] leading-snug text-white max-w-[280px]">
-          מלאי נרחב של רכבי יוקרה וספורט
-          <br />
-          מחכה לכם בבוואריאן מוטורס!
+        <h1 className="font-heebo font-black text-[21px] leading-tight text-white">
+          מלאי נרחב של רכבי יוקרה וספורט מחכה לכם בבוואריאן מוטורס!
         </h1>
 
-        <p className="font-inter text-[13px] text-white/45 mt-2.5 leading-relaxed max-w-[260px]">
-          בואו להנות מאבזור עשיר, שירות אישי ומהיר
-          <br />
-          ויתרון במחיר!
+        <p className="font-heebo font-light text-[21px] leading-tight text-white/50 mt-1">
+          בואו להנות מאבזור עשיר, שירות אישי ומהיר ויתרון במחיר!
         </p>
       </div>
 
@@ -275,8 +266,9 @@ function PageContent() {
         {/* Visual */}
         <div className="w-full max-w-[320px]">
           {car.image ? (
-            <div className="relative w-full h-44">
-              <Image src={car.image} alt={car.name} fill className="object-contain" />
+            <div className="w-full h-44">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={car.image} alt={car.name} className="w-full h-full object-contain" />
             </div>
           ) : (
             <div className="w-full py-2">
