@@ -6,7 +6,9 @@ import { useSearchParams } from 'next/navigation'
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
 
-const PRESET_MESSAGES = [
+const BACKGROUNDS = ['/BG1.png', '/BG2.png', '/BG3.png', '/BG4.png']
+
+
   'היי, אשמח לדבר עם נציג מכירות!',
   'היי, אני מתעניין ברכב מסוים, תחזרו אליי בבקשה!',
 ]
@@ -155,11 +157,22 @@ function PageContent() {
   const [showModal, setShowModal] = useState(false)
   const [utmSource, setUtmSource] = useState('')
   const [utmCampaign, setUtmCampaign] = useState('')
+  const [bgIndex, setBgIndex] = useState(0)
+  const [fading, setFading] = useState(false)
 
   useEffect(() => {
     setUtmSource(searchParams.get('utm_source') ?? '')
     setUtmCampaign(searchParams.get('utm_campaign') ?? '')
   }, [searchParams])
+
+  function goToBg(dir: 1 | -1) {
+    if (fading) return
+    setFading(true)
+    setTimeout(() => {
+      setBgIndex(i => (i + dir + BACKGROUNDS.length) % BACKGROUNDS.length)
+      setFading(false)
+    }, 400)
+  }
 
   return (
     <main
@@ -171,19 +184,76 @@ function PageContent() {
         background: '#000',
       }}
     >
-      {/* ─── Background Image ─── */}
-      <div
+      {/* ─── Background Images (fade) ─── */}
+      {BACKGROUNDS.map((src, i) => (
+        <div
+          key={src}
+          style={{
+            position: 'absolute',
+            top: '-12%',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: `url(${src})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            opacity: i === bgIndex ? (fading ? 0 : 1) : 0,
+            transition: 'opacity 0.4s ease-in-out',
+          }}
+        />
+      ))}
+
+      {/* ─── Side Arrows ─── */}
+      <button
+        onClick={() => goToBg(-1)}
         style={{
           position: 'absolute',
-          top: '-12%',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: 'url(/BG.PNG)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center top',
+          left: 14,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10,
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          cursor: 'pointer',
         }}
-      />
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        onClick={() => goToBg(1)}
+        style={{
+          position: 'absolute',
+          right: 14,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10,
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          cursor: 'pointer',
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
 
       {/* ─── Gradient Overlay ─── */}
       <div
@@ -204,6 +274,26 @@ function PageContent() {
           padding: '0 20px 64px',
         }}
       >
+        {/* Dots */}
+        <div className="flex justify-center gap-1.5 mb-4">
+          {BACKGROUNDS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { if (!fading && i !== bgIndex) { setFading(true); setTimeout(() => { setBgIndex(i); setFading(false) }, 400) } }}
+              style={{
+                width: i === bgIndex ? 20 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: i === bgIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'all 0.3s',
+              }}
+            />
+          ))}
+        </div>
+
         {/* Headlines */}
         <div className="mb-5">
           <h1 className="font-heebo font-black text-[22px] text-white leading-tight">
