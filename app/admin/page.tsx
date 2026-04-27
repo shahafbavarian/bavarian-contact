@@ -1,3 +1,4 @@
+import React from 'react'
 import { supabase, type Lead } from '@/lib/supabase'
 
 function formatDate(iso: string) {
