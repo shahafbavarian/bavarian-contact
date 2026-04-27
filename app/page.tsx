@@ -6,8 +6,8 @@ import { useSearchParams } from 'next/navigation'
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
 
-const BACKGROUNDS = ['/BG1.PNG', '/BG2.PNG', '/BG3.PNG', '/BG4.PNG']
-const BACKGROUNDS_DESKTOP = ['/BG01.PNG', '/BG02.PNG', '/BG03.PNG', '/BG04.PNG']
+const BG_FIXED = '/BG0.PNG'
+const CAR_IMAGES = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
@@ -258,7 +258,7 @@ function PageContent() {
 
   function goToBg(dir: 1 | -1) {
     if (nextIndex !== null) return
-    const len = (isDesktop ? BACKGROUNDS_DESKTOP : BACKGROUNDS).length
+    const len = CAR_IMAGES.length
     const next = (currentIndex + dir + len) % len
     setNextIndex(next)
     setTimeout(() => {
@@ -307,17 +307,26 @@ function PageContent() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ─── Background Images (fade) ─── */}
-      {(isDesktop ? BACKGROUNDS_DESKTOP : BACKGROUNDS).map((src, i) => (
+      {/* ─── Fixed Background ─── */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={BG_FIXED}
+          alt=""
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+        />
+      </div>
+
+      {/* ─── Rotating Car Images ─── */}
+      {CAR_IMAGES.map((src, i) => (
         <div
           key={src}
           style={{
             position: 'absolute',
-            top: isDesktop ? '-18%' : '-5%',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            overflow: 'hidden',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
@@ -326,14 +335,7 @@ function PageContent() {
           <img
             src={src}
             alt=""
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center top',
-            }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }}
           />
         </div>
       ))}
@@ -541,7 +543,7 @@ function PageContent() {
         {/* Dots — mobile only: above headlines */}
         {!isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
-            {BACKGROUNDS.map((_, i) => (
+            {CAR_IMAGES.map((_, i) => (
               <button
                 key={i}
                 onClick={() => jumpToBg(i)}
@@ -577,7 +579,7 @@ function PageContent() {
         {/* Dots — desktop only: above buttons */}
         {isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
-            {BACKGROUNDS_DESKTOP.map((_, i) => (
+            {CAR_IMAGES.map((_, i) => (
             <button
               key={i}
               onClick={() => jumpToBg(i)}
