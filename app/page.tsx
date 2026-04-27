@@ -299,8 +299,8 @@ function PageContent() {
             right: 0,
             bottom: 0,
             backgroundImage: `url(${src})`,
-            backgroundSize: isDesktop ? 'cover' : '100% auto',
-            backgroundPosition: isDesktop ? 'center 15%' : 'center top',
+            backgroundSize: isDesktop ? '120% auto' : '100% auto',
+            backgroundPosition: isDesktop ? 'center 0%' : 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
@@ -436,18 +436,20 @@ function PageContent() {
         }}
       />
 
-      {/* ─── Solid black bar at very bottom ─── */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
-          background: '#000',
-          zIndex: 3,
-        }}
-      />
+      {/* ─── Solid black bar at very bottom (mobile only) ─── */}
+      {!isDesktop && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
+            background: '#000',
+            zIndex: 3,
+          }}
+        />
+      )}
 
       {/* ─── Bottom Content ─── */}
       <div
