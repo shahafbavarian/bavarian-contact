@@ -69,6 +69,11 @@ export default async function AdminPage() {
       {/* ─── Content ─── */}
       <div style={{ padding: '32px 40px' }}>
 
+        {/* Debug — remove after fix */}
+        <pre style={{ background: '#111', color: '#0f0', fontSize: 11, padding: 16, borderRadius: 4, overflowX: 'auto', marginBottom: 24, direction: 'ltr' }}>
+          {JSON.stringify(leads, null, 2)}
+        </pre>
+
         {/* Error */}
         {error && (
           <div style={{ border: '1px solid rgba(220,50,50,0.3)', background: 'rgba(220,50,50,0.05)', padding: '20px 28px', borderRadius: 4, marginBottom: 16 }}>
