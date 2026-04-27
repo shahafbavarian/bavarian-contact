@@ -450,7 +450,7 @@ function PageContent() {
       {/* ─── Logo ─── */}
       <div style={{
         position: 'absolute',
-        top: isDesktop ? 4 : 24,
+        top: isDesktop ? 0 : '10%',
         left: 0,
         right: 0,
         display: 'flex',
