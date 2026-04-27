@@ -299,8 +299,8 @@ function PageContent() {
             right: 0,
             bottom: 0,
             backgroundImage: `url(${src})`,
-            backgroundSize: isDesktop ? '120% auto' : '100% auto',
-            backgroundPosition: isDesktop ? 'center 0%' : 'center top',
+            backgroundSize: '100% auto',
+            backgroundPosition: isDesktop ? 'center 50%' : 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
