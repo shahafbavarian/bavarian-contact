@@ -351,10 +351,6 @@ function PageContent() {
           style={{
             position: 'absolute',
             inset: 0,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            paddingBottom: '26%',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
@@ -363,7 +359,16 @@ function PageContent() {
           <img
             src={src}
             alt=""
-            style={{ width: '75%', height: '75%', objectFit: 'contain', objectPosition: 'center bottom' }}
+            style={{
+              position: 'absolute',
+              bottom: '26%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '72%',
+              height: '58%',
+              objectFit: 'contain',
+              objectPosition: 'center bottom',
+            }}
           />
         </div>
       ))}
@@ -503,7 +508,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: `linear-gradient(to bottom, transparent ${fadeStart}%, rgba(0,0,0,0.12) ${fadeStart + 9}%, rgba(0,0,0,0.55) ${fadeStart + 22}%, rgba(0,0,0,0.65) ${fadeStart + 28}%)`,
+          background: `linear-gradient(to bottom, transparent ${fadeStart}%, rgba(0,0,0,0.45) 90%, rgba(0,0,0,0.7) 97%)`,
           pointerEvents: 'none',
         }}
       />
@@ -533,7 +538,7 @@ function PageContent() {
             position: 'absolute',
             inset: 0,
             zIndex: 2,
-            background: `linear-gradient(to bottom, transparent ${blackoutStart}%, rgba(0,0,0,0.6) ${blackoutStart + 8}%, #000 ${blackoutStart + 20}%)`,
+            background: `linear-gradient(to bottom, transparent ${blackoutStart}%, #000 100%)`,
             pointerEvents: 'none',
           }}
         />
