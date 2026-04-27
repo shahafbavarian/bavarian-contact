@@ -440,16 +440,18 @@ function PageContent() {
         }}
       />
 
-      {/* ─── Strong bottom blackout ─── */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 80%, rgba(0,0,0,0.6) 86%, #000 95%)',
-          pointerEvents: 'none',
-        }}
-      />
+      {/* ─── Strong bottom blackout (desktop only) ─── */}
+      {isDesktop && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2,
+            background: 'linear-gradient(to bottom, transparent 80%, rgba(0,0,0,0.6) 86%, #000 95%)',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
 
       {/* ─── Solid black bar at very bottom (mobile only) ─── */}
       {!isDesktop && (
