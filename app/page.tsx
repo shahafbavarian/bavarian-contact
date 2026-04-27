@@ -370,7 +370,7 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: '14%',
+              bottom: '6%',
               left: '50%',
               transform: 'translateX(-50%)',
               width: '96%',
@@ -518,7 +518,7 @@ function PageContent() {
           inset: 0,
           zIndex: 2,
           background: isDesktop
-            ? 'linear-gradient(to bottom, transparent 68%, rgba(0,0,0,0.75) 86%, #000 100%)'
+            ? 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.75) 76%, #000 100%)'
             : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
           pointerEvents: 'none',
         }}
