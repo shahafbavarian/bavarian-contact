@@ -221,8 +221,8 @@ function PageContent() {
   const [showDesktop, setShowDesktop] = useState(false)
   const [desktopScale, setDesktopScale] = useState(1)
   const [isDesktop, setIsDesktop] = useState(false)
-  const [fadeStart, setFadeStart] = useState(61)
-  const [blackoutStart, setBlackoutStart] = useState(67)
+  const [fadeStart, setFadeStart] = useState(82)
+  const [blackoutStart, setBlackoutStart] = useState(88)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -244,8 +244,8 @@ function PageContent() {
       // On screens taller than 16:9, expand the fade zone proportionally.
       const t = Math.max(0, Math.min(1, (ratio169 - ratio) / (ratio169 - 4 / 3)))
       const delta = Math.round(t * 8)
-      setFadeStart(76 - delta)
-      setBlackoutStart(82 - delta)
+      setFadeStart(82 - delta)
+      setBlackoutStart(88 - delta)
     }
     computeFade()
     window.addEventListener('resize', computeFade)
