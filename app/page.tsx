@@ -7,6 +7,7 @@ const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
 
 const BACKGROUNDS = ['/BG1.PNG', '/BG2.PNG', '/BG3.PNG', '/BG4.PNG']
+const BACKGROUNDS_DESKTOP = ['/BG01.PNG', '/BG02.PNG', '/BG03.PNG', '/BG04.PNG']
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
@@ -218,11 +219,17 @@ function PageContent() {
   const [nextIndex, setNextIndex] = useState<number | null>(null)
   const [showDesktop, setShowDesktop] = useState(false)
   const [desktopScale, setDesktopScale] = useState(1)
+  const [isDesktop, setIsDesktop] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setDesktopScale(Math.min(window.innerWidth / 1280, (window.innerHeight - 40) / 720))
+    const mq = window.matchMedia('(min-aspect-ratio: 4/3)')
+    setIsDesktop(mq.matches)
+    const handler = (e: MediaQueryListEvent) => { setIsDesktop(e.matches); setCurrentIndex(0); setNextIndex(null) }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
 
   useEffect(() => {
@@ -232,7 +239,8 @@ function PageContent() {
 
   function goToBg(dir: 1 | -1) {
     if (nextIndex !== null) return
-    const next = (currentIndex + dir + BACKGROUNDS.length) % BACKGROUNDS.length
+    const len = (isDesktop ? BACKGROUNDS_DESKTOP : BACKGROUNDS).length
+    const next = (currentIndex + dir + len) % len
     setNextIndex(next)
     setTimeout(() => {
       setCurrentIndex(next)
@@ -281,17 +289,18 @@ function PageContent() {
       onTouchEnd={handleTouchEnd}
     >
       {/* ─── Background Images (fade) ─── */}
-      {BACKGROUNDS.map((src, i) => (
+      {(isDesktop ? BACKGROUNDS_DESKTOP : BACKGROUNDS).map((src, i) => (
         <div
           key={src}
-          className="bg-slide"
           style={{
             position: 'absolute',
+            top: isDesktop ? 0 : '-5%',
             left: 0,
             right: 0,
             bottom: 0,
             backgroundImage: `url(${src})`,
-            backgroundSize: '100% auto',
+            backgroundSize: isDesktop ? 'cover' : '100% auto',
+            backgroundPosition: isDesktop ? 'center center' : 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}

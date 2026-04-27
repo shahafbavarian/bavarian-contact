@@ -15,18 +15,6 @@ html {
   touch-action: none;
 }
 
-.bg-slide {
-  top: -5%;
-  background-position: center top;
-}
-
-@media (min-aspect-ratio: 4/3) {
-  .bg-slide {
-    top: 0%;
-    background-position: center 68%;
-  }
-}
-
 body {
   margin: 0;
   padding: 0;
