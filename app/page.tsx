@@ -319,7 +319,7 @@ function PageContent() {
           <img
             src={src}
             alt=""
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 'auto' }}
+            style={{ position: 'absolute', top: '-12%', left: 0, width: '100%', height: 'auto' }}
           />
         </div>
       ))}
@@ -357,8 +357,8 @@ function PageContent() {
               bottom: '14%',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: '85%',
-              height: '70%',
+              width: '96%',
+              height: '80%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
@@ -502,7 +502,7 @@ function PageContent() {
           inset: 0,
           zIndex: 2,
           background: isDesktop
-            ? 'linear-gradient(to bottom, transparent 76%, rgba(0,0,0,0.75) 90%, #000 100%)'
+            ? 'linear-gradient(to bottom, transparent 68%, rgba(0,0,0,0.75) 86%, #000 100%)'
             : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
           pointerEvents: 'none',
         }}
