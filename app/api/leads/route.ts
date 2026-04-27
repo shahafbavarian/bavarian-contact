@@ -18,10 +18,14 @@ export async function POST(req: NextRequest) {
       utm_campaign: utm_campaign || null,
     })
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase insert error:', error)
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
+  } catch (err) {
+    console.error('API error:', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
