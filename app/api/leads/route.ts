@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { error } = await getSupabaseAdmin().from('leads').insert({
-      name: name.trim(),
+      name: name?.trim() || null,
       phone: phone.trim(),
       message: message?.trim() || null,
       utm_source: utm_source || null,
