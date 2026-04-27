@@ -292,15 +292,15 @@ function PageContent() {
         }}
       >
         {/* Dots */}
-        <div className="flex justify-center gap-1.5 mb-4">
+        <div className="flex justify-center gap-1 mb-2">
           {BACKGROUNDS.map((_, i) => (
             <button
               key={i}
               onClick={() => jumpToBg(i)}
               style={{
-                width: i === currentIndex ? 20 : 6,
-                height: 6,
-                borderRadius: 3,
+                width: i === currentIndex ? 14 : 4,
+                height: 4,
+                borderRadius: 2,
                 background: i === currentIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
                 border: 'none',
                 cursor: 'pointer',
