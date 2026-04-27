@@ -459,19 +459,7 @@ function PageContent() {
           zIndex: 5,
           pointerEvents: 'none',
         }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 90, width: 'auto', display: 'block' }} />
-            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-              <div style={{
-                position: 'absolute',
-                top: '-20%',
-                width: '35%',
-                height: '140%',
-                background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.55), transparent)',
-                animation: 'logoShimmer 5s ease-in-out 1s infinite',
-              }} />
-            </div>
-          </div>
+          <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 110, width: 'auto', display: 'block' }} />
         </div>
       )}
 
