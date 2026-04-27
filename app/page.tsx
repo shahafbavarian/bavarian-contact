@@ -309,6 +309,13 @@ function PageContent() {
 
       {/* ─── Spotlight Effects ─── */}
       <style>{`
+        @keyframes logoShimmer {
+          0%   { transform: translateX(-180%) skewX(-18deg); opacity: 0; }
+          4%   { opacity: 1; }
+          38%  { transform: translateX(280%) skewX(-18deg); opacity: 1; }
+          43%  { opacity: 0; }
+          44%, 100% { transform: translateX(-180%) skewX(-18deg); opacity: 0; }
+        }
         @keyframes spotlightA {
           0%, 100% { transform: rotate(-9deg); opacity: 0.85; }
           50% { transform: rotate(7deg); opacity: 0.45; }
@@ -452,7 +459,19 @@ function PageContent() {
           zIndex: 5,
           pointerEvents: 'none',
         }}>
-          <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 64, width: 'auto' }} />
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 90, width: 'auto', display: 'block' }} />
+            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+              <div style={{
+                position: 'absolute',
+                top: '-20%',
+                width: '35%',
+                height: '140%',
+                background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.55), transparent)',
+                animation: 'logoShimmer 5s ease-in-out 1s infinite',
+              }} />
+            </div>
+          </div>
         </div>
       )}
 
