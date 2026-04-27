@@ -76,13 +76,56 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
         </div>
 
         {status === 'success' ? (
-          <div className="text-center py-10">
+          <div className="text-center py-6">
             <svg className="mx-auto mb-4" width="52" height="52" viewBox="0 0 52 52" fill="none">
               <circle cx="26" cy="26" r="24" stroke="white" strokeWidth="1" opacity="0.3" />
               <path d="M15 26l9 9 13-16" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <p className="font-heebo font-bold text-xl text-white mb-1">תודה!</p>
-            <p className="font-inter text-sm text-white/40">נציג יחזור אליך בהקדם</p>
+            <p className="font-heebo font-bold text-xl text-white mb-1">הפרטים נשלחו!</p>
+            <p className="font-heebo text-base text-white/60 mb-8">ניצור קשר בהקדם</p>
+
+            <div className="border-t border-white/10 pt-6">
+              <p className="font-inter text-[10px] tracking-widest text-white/30 uppercase mb-4">גלה עוד</p>
+              <div className="flex flex-col gap-3">
+                <a
+                  href="https://bavarian-motors.co.il"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 py-3 rounded-xl font-heebo text-sm text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M2 12h20M12 2c-2.5 3-4 6.5-4 10s1.5 7 4 10M12 2c2.5 3 4 6.5 4 10s-1.5 7-4 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  bavarian-motors.co.il
+                </a>
+                <a
+                  href="https://www.instagram.com/bavarianmotors?igsh=MTk0MTgxY3R3N2Z5YQ=="
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 py-3 rounded-xl font-heebo text-sm text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                  </svg>
+                  Instagram
+                </a>
+                <a
+                  href="https://youtube.com/@bavarianmotorsclub?si=9Zr3-jPY5xKbuScH"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 py-3 rounded-xl font-heebo text-sm text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" stroke="currentColor" strokeWidth="1.5" />
+                    <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+                  </svg>
+                  YouTube
+                </a>
+              </div>
+            </div>
           </div>
         ) : (
           <>
