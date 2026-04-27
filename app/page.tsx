@@ -352,8 +352,9 @@ function PageContent() {
             position: 'absolute',
             inset: 0,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             justifyContent: 'center',
+            paddingBottom: '8%',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
