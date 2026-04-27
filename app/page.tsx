@@ -294,7 +294,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: isDesktop ? '-5%' : 0,
+            top: '-5%',
             left: 0,
             right: 0,
             bottom: 0,
@@ -482,6 +482,28 @@ function PageContent() {
           paddingBottom: isDesktop ? '18px' : 'calc(52px + env(safe-area-inset-bottom, 0px))',
         }}
       >
+        {/* Dots — mobile only: above headlines */}
+        {!isDesktop && (
+          <div className="flex justify-center gap-1 mb-2">
+            {BACKGROUNDS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => jumpToBg(i)}
+                style={{
+                  width: i === currentIndex ? 14 : 4,
+                  height: 4,
+                  borderRadius: 2,
+                  background: i === currentIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'all 0.3s',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Headlines */}
         <div className="mb-5">
           <h1 className="font-heebo font-black text-[24px] text-white leading-tight">
@@ -496,9 +518,10 @@ function PageContent() {
           </p>
         </div>
 
-        {/* Dots */}
-        <div className="flex justify-center gap-1 mb-2">
-          {(isDesktop ? BACKGROUNDS_DESKTOP : BACKGROUNDS).map((_, i) => (
+        {/* Dots — desktop only: above buttons */}
+        {isDesktop && (
+          <div className="flex justify-center gap-1 mb-2">
+            {BACKGROUNDS_DESKTOP.map((_, i) => (
             <button
               key={i}
               onClick={() => jumpToBg(i)}
@@ -514,7 +537,8 @@ function PageContent() {
               }}
             />
           ))}
-        </div>
+          </div>
+        )}
 
         {/* ─── 3 Buttons ─── */}
         <div className="grid grid-cols-3 gap-2.5">
