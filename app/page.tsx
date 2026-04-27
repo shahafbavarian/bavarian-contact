@@ -435,7 +435,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 58%, rgba(0,0,0,0.2) 68%, rgba(0,0,0,0.65) 80%)',
+          background: 'linear-gradient(to bottom, transparent 56%, rgba(0,0,0,0.12) 66%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.65) 86%)',
           pointerEvents: 'none',
         }}
       />
@@ -463,7 +463,7 @@ function PageContent() {
             position: 'absolute',
             inset: 0,
             zIndex: 2,
-            background: 'linear-gradient(to bottom, transparent 66%, rgba(0,0,0,0.6) 74%, #000 86%)',
+            background: 'linear-gradient(to bottom, transparent 68%, rgba(0,0,0,0.6) 76%, #000 88%)',
             pointerEvents: 'none',
           }}
         />
