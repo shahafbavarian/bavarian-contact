@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const WHATSAPP_NUMBER = '97299561906'
@@ -159,6 +159,8 @@ function PageContent() {
   const [utmCampaign, setUtmCampaign] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState<number | null>(null)
+  const touchStartX = useRef<number | null>(null)
+  const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setUtmSource(searchParams.get('utm_source') ?? '')
@@ -191,15 +193,29 @@ function PageContent() {
     return 0
   }
 
+  // Auto slideshow
+  useEffect(() => {
+    autoplayRef.current = setTimeout(() => goToBg(1), 5000)
+    return () => { if (autoplayRef.current) clearTimeout(autoplayRef.current) }
+  }, [currentIndex, nextIndex])
+
+  // Touch swipe
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (Math.abs(dx) > 40) goToBg(dx > 0 ? 1 : -1)
+    touchStartX.current = null
+  }
+
   return (
     <main
       dir="rtl"
-      style={{
-        height: '100vh',
-        overflow: 'hidden',
-        position: 'relative',
-        background: '#000',
-      }}
+      style={{ height: '100vh', overflow: 'hidden', position: 'relative', background: '#000' }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* ─── Background Images (fade) ─── */}
       {BACKGROUNDS.map((src, i) => (
@@ -207,7 +223,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: '0%',
+            top: '-8%',
             left: 0,
             right: 0,
             bottom: 0,
