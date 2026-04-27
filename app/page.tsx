@@ -6,8 +6,9 @@ import { useSearchParams } from 'next/navigation'
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
 
-const BG_FIXED = '/BG0.PNG'
-const CAR_IMAGES = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
+const BACKGROUNDS_MOBILE = ['/BG1.PNG', '/BG2.PNG', '/BG3.PNG', '/BG4.PNG']
+const BG_FIXED_DESKTOP = '/BG0.PNG'
+const CAR_IMAGES_DESKTOP = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
@@ -258,7 +259,7 @@ function PageContent() {
 
   function goToBg(dir: 1 | -1) {
     if (nextIndex !== null) return
-    const len = CAR_IMAGES.length
+    const len = isDesktop ? CAR_IMAGES_DESKTOP.length : BACKGROUNDS_MOBILE.length
     const next = (currentIndex + dir + len) % len
     setNextIndex(next)
     setTimeout(() => {
@@ -307,18 +308,44 @@ function PageContent() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ─── Fixed Background ─── */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={BG_FIXED}
-          alt=""
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-        />
-      </div>
+      {/* ─── Mobile: rotating background images ─── */}
+      {!isDesktop && BACKGROUNDS_MOBILE.map((src, i) => (
+        <div
+          key={src}
+          style={{
+            position: 'absolute',
+            top: '-5%',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            overflow: 'hidden',
+            opacity: getBgOpacity(i),
+            transition: 'opacity 0.6s ease-in-out',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt=""
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+          />
+        </div>
+      ))}
 
-      {/* ─── Rotating Car Images ─── */}
-      {CAR_IMAGES.map((src, i) => (
+      {/* ─── Desktop: fixed background ─── */}
+      {isDesktop && (
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={BG_FIXED_DESKTOP}
+            alt=""
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+          />
+        </div>
+      )}
+
+      {/* ─── Desktop: rotating car images ─── */}
+      {isDesktop && CAR_IMAGES_DESKTOP.map((src, i) => (
         <div
           key={src}
           style={{
@@ -543,7 +570,7 @@ function PageContent() {
         {/* Dots — mobile only: above headlines */}
         {!isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
-            {CAR_IMAGES.map((_, i) => (
+            {BACKGROUNDS_MOBILE.map((_, i) => (
               <button
                 key={i}
                 onClick={() => jumpToBg(i)}
@@ -579,7 +606,7 @@ function PageContent() {
         {/* Dots — desktop only: above buttons */}
         {isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
-            {CAR_IMAGES.map((_, i) => (
+            {CAR_IMAGES_DESKTOP.map((_, i) => (
             <button
               key={i}
               onClick={() => jumpToBg(i)}
