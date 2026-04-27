@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'טלפון הוא שדה חובה' }, { status: 400 })
     }
 
-    const { error } = await supabase.from('leads').insert({
+    const { error } = await supabaseAdmin.from('leads').insert({
       name: name.trim(),
       phone: phone.trim(),
       message: message?.trim() || null,
