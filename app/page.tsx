@@ -284,15 +284,14 @@ function PageContent() {
       {BACKGROUNDS.map((src, i) => (
         <div
           key={src}
+          className="bg-slide"
           style={{
             position: 'absolute',
-            top: '-5%',
             left: 0,
             right: 0,
             bottom: 0,
             backgroundImage: `url(${src})`,
             backgroundSize: '100% auto',
-            backgroundPosition: 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
