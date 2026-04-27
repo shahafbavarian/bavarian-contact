@@ -1,15 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-// For client-side / read operations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// For server-side API routes — created fresh each call so env vars are read at runtime
+// Created inside function so env vars are read at runtime, not at build time
 export function getSupabaseAdmin() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? supabaseAnonKey
-  return createClient(supabaseUrl, key)
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  return createClient(url, key)
 }
 
 export type Lead = {
