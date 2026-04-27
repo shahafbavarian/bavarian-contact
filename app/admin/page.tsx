@@ -1,4 +1,5 @@
 import React from 'react'
+import { unstable_noStore as noStore } from 'next/cache'
 import { getSupabaseAdmin, type Lead } from '@/lib/supabase'
 
 function formatDate(iso: string) {
@@ -15,6 +16,7 @@ function formatDate(iso: string) {
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
+  noStore()
   const { data: leads, error } = await getSupabaseAdmin()
     .from('leads')
     .select('*')
@@ -68,9 +70,9 @@ export default async function AdminPage() {
 
         {/* Error */}
         {error && (
-          <div style={{ border: '1px solid rgba(220,50,50,0.3)', background: 'rgba(220,50,50,0.05)', padding: '20px 28px', borderRadius: 4 }}>
+          <div style={{ border: '1px solid rgba(220,50,50,0.3)', background: 'rgba(220,50,50,0.05)', padding: '20px 28px', borderRadius: 4, marginBottom: 16 }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: 13, color: '#f87171', margin: 0 }}>
-              שגיאה בטעינת הנתונים. בדוק את חיבור Supabase.
+              שגיאה: {error.message} (code: {error.code})
             </p>
           </div>
         )}
