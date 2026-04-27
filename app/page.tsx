@@ -20,13 +20,24 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
 }) {
   const [form, setForm] = useState({ name: '', phone: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [phoneError, setPhoneError] = useState('')
 
   function setField(f: string, v: string) {
     setForm(p => ({ ...p, [f]: v }))
+    if (f === 'phone') setPhoneError('')
+  }
+
+  function validatePhone(value: string): string {
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return 'נדרש למלא מספר טלפון'
+    if (!/^05\d{8}$/.test(digits)) return 'מספר טלפון לא תקין'
+    return ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const err = validatePhone(form.phone)
+    if (err) { setPhoneError(err); return }
     setStatus('loading')
     try {
       const res = await fetch('/api/leads', {
@@ -82,12 +93,16 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
                 </label>
                 <input
                   type="tel"
-                  required
                   value={form.phone}
                   onChange={e => setField('phone', e.target.value)}
+                  onBlur={() => { if (form.phone) setPhoneError(validatePhone(form.phone)) }}
                   placeholder="050-000-0000"
-                  className="w-full bg-white/5 border border-white/10 px-4 py-3.5 font-inter text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors rounded-xl text-right"
+                  maxLength={12}
+                  className={`w-full bg-white/5 border px-4 py-3.5 font-inter text-sm text-white placeholder-white/20 focus:outline-none transition-colors rounded-xl text-right ${phoneError ? 'border-red-500/60 focus:border-red-500/80' : 'border-white/10 focus:border-white/30'}`}
                 />
+                {phoneError && (
+                  <p className="mt-1.5 font-inter text-xs text-red-400">{phoneError}</p>
+                )}
               </div>
 
               <div>
