@@ -252,7 +252,13 @@ function PageContent() {
         }
         @keyframes btnPulse {
           0% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-          16.5% { box-shadow: 0 0 0 5px rgba(255,255,255,0.32), 0 0 26px rgba(255,255,255,0.18); }
+          16.5% {
+            box-shadow:
+              0 0 0 1.5px rgba(255,255,255,0.75),
+              0 0 10px 3px rgba(255,255,255,0.35),
+              0 0 28px 8px rgba(255,255,255,0.15),
+              0 0 55px 14px rgba(255,255,255,0.06);
+          }
           33%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
         }
       `}</style>
