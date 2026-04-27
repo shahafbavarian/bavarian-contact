@@ -295,7 +295,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: '-14%',
+            top: '-20%',
             left: 0,
             right: 0,
             bottom: 0,
@@ -490,7 +490,7 @@ function PageContent() {
           inset: 0,
           zIndex: 2,
           background: isDesktop
-            ? 'linear-gradient(to bottom, transparent 88%, rgba(0,0,0,0.5) 96%, #000 100%)'
+            ? 'linear-gradient(to bottom, transparent 84%, rgba(0,0,0,0.75) 93%, #000 100%)'
             : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
           pointerEvents: 'none',
         }}
@@ -514,18 +514,6 @@ function PageContent() {
         />
       </div>
 
-      {/* ─── Strong bottom blackout (desktop only) ─── */}
-      {isDesktop && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 2,
-            background: 'linear-gradient(to bottom, transparent 92%, #000 100%)',
-            pointerEvents: 'none',
-          }}
-        />
-      )}
 
       {/* ─── Solid black bar at very bottom (mobile only) ─── */}
       {!isDesktop && (
