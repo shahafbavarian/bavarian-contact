@@ -295,7 +295,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: '-20%',
+            top: '-26%',
             left: 0,
             right: 0,
             bottom: 0,
@@ -342,7 +342,7 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: '20%',
+              bottom: '14%',
               left: '50%',
               transform: 'translateX(-50%)',
               width: '72%',
