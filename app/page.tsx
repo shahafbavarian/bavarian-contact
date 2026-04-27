@@ -207,7 +207,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: '-5%',
+            top: '-12%',
             left: 0,
             right: 0,
             bottom: 0,
