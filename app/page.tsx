@@ -294,7 +294,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: isDesktop ? '-12%' : '-5%',
+            top: isDesktop ? '-18%' : '-5%',
             left: 0,
             right: 0,
             bottom: 0,
@@ -435,7 +435,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 64%, rgba(0,0,0,0.65) 70%)',
+          background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.2) 65%, rgba(0,0,0,0.65) 78%)',
           pointerEvents: 'none',
         }}
       />
