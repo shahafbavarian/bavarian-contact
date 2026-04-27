@@ -442,7 +442,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 56%, rgba(0,0,0,0.12) 66%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.65) 86%)',
+          background: 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.55) 83%, rgba(0,0,0,0.65) 89%)',
           pointerEvents: 'none',
         }}
       />
@@ -482,7 +482,7 @@ function PageContent() {
             position: 'absolute',
             inset: 0,
             zIndex: 2,
-            background: 'linear-gradient(to bottom, transparent 68%, rgba(0,0,0,0.6) 76%, #000 88%)',
+            background: 'linear-gradient(to bottom, transparent 67%, rgba(0,0,0,0.6) 75%, #000 87%)',
             pointerEvents: 'none',
           }}
         />
