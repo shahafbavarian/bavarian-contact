@@ -228,7 +228,7 @@ function PageContent() {
 
   useEffect(() => {
     setDesktopScale(Math.min(window.innerWidth / 1280, (window.innerHeight - 40) / 720))
-    const mq = window.matchMedia('(min-aspect-ratio: 4/3)')
+    const mq = window.matchMedia('(min-width: 1024px)')
     setIsDesktop(mq.matches)
     const handler = (e: MediaQueryListEvent) => { setIsDesktop(e.matches); setCurrentIndex(0); setNextIndex(null) }
     mq.addEventListener('change', handler)
@@ -244,8 +244,8 @@ function PageContent() {
       // On screens taller than 16:9, expand the fade zone proportionally.
       const t = Math.max(0, Math.min(1, (ratio169 - ratio) / (ratio169 - 4 / 3)))
       const delta = Math.round(t * 8)
-      setFadeStart(61 - delta)
-      setBlackoutStart(67 - delta)
+      setFadeStart(70 - delta)
+      setBlackoutStart(76 - delta)
     }
     computeFade()
     window.addEventListener('resize', computeFade)
