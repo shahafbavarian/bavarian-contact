@@ -569,9 +569,9 @@ function PageContent() {
         {/* Headlines */}
         <div className="mb-5">
           <h1 className="font-heebo font-black text-[24px] text-white leading-tight">
-            מלאי נרחב של רכבי יוקרה וספורט
+            מגוון רכבי ספורט ויוקרה חדשים 2026 יד 00
             <br />
-            מחכה לכם בבוואריאן מוטורס!
+            מחכים לכם בבוואריאן מוטורס!
           </h1>
           <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
             בואו להנות מאבזור עשיר, שירות אישי
