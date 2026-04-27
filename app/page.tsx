@@ -244,8 +244,8 @@ function PageContent() {
       // On screens taller than 16:9, expand the fade zone proportionally.
       const t = Math.max(0, Math.min(1, (ratio169 - ratio) / (ratio169 - 4 / 3)))
       const delta = Math.round(t * 8)
-      setFadeStart(70 - delta)
-      setBlackoutStart(76 - delta)
+      setFadeStart(76 - delta)
+      setBlackoutStart(82 - delta)
     }
     computeFade()
     window.addEventListener('resize', computeFade)
@@ -354,7 +354,7 @@ function PageContent() {
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
-            paddingBottom: '8%',
+            paddingBottom: '26%',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
