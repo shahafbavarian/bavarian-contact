@@ -43,18 +43,21 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end"
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-5"
+      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-full bg-[#0e0e0e] border-t border-white/10 px-6 pb-10 pt-5"
-        style={{ maxHeight: '88vh', overflowY: 'auto', direction: 'rtl' }}
+        className="w-full bg-[#0e0e0e] border border-white/10 rounded-2xl px-6 pb-8 pt-5"
+        style={{ maxHeight: '90vh', overflowY: 'auto', direction: 'rtl' }}
       >
-        {/* Handle */}
-        <div className="flex items-center justify-center mb-6 relative">
-          <div className="w-10 h-1 bg-white/20 rounded-full" />
-          <button onClick={onClose} className="absolute left-0 p-1 text-white/40 hover:text-white/80 transition-colors">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-heebo font-bold text-xl text-white">השאירו פרטים</h2>
+            <p className="font-inter text-xs text-white/40 mt-0.5">ונציג יחזור אליכם בהקדם</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-white/40 hover:text-white/80 transition-colors">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -72,24 +75,7 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
           </div>
         ) : (
           <>
-            <h2 className="font-heebo font-bold text-xl text-white mb-1">השאירו פרטים</h2>
-            <p className="font-inter text-sm text-white/40 mb-6">ונציג יחזור אליכם בהקדם</p>
-
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div>
-                <label className="block font-inter text-[10px] tracking-widest text-white/30 uppercase mb-2">
-                  שם מלא <span className="text-white/60">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={e => setField('name', e.target.value)}
-                  placeholder="הכנס את שמך"
-                  className="w-full bg-white/5 border border-white/10 px-4 py-3.5 font-inter text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors rounded-xl"
-                />
-              </div>
-
               <div>
                 <label className="block font-inter text-[10px] tracking-widest text-white/30 uppercase mb-2">
                   טלפון <span className="text-white/60">*</span>
@@ -101,6 +87,19 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
                   onChange={e => setField('phone', e.target.value)}
                   placeholder="050-000-0000"
                   className="w-full bg-white/5 border border-white/10 px-4 py-3.5 font-inter text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors rounded-xl text-right"
+                />
+              </div>
+
+              <div>
+                <label className="block font-inter text-[10px] tracking-widest text-white/30 uppercase mb-2">
+                  שם מלא
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={e => setField('name', e.target.value)}
+                  placeholder="הכנס את שמך"
+                  className="w-full bg-white/5 border border-white/10 px-4 py-3.5 font-inter text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors rounded-xl"
                 />
               </div>
 
@@ -349,6 +348,19 @@ function PageContent() {
         }}
       />
 
+      {/* ─── Solid black bar at very bottom ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
+          background: '#000',
+          zIndex: 3,
+        }}
+      />
+
       {/* ─── Bottom Content ─── */}
       <div
         style={{
@@ -356,7 +368,7 @@ function PageContent() {
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 3,
+          zIndex: 4,
           paddingLeft: 20,
           paddingRight: 20,
           paddingTop: 0,
