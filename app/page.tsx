@@ -300,7 +300,7 @@ function PageContent() {
             bottom: 0,
             backgroundImage: `url(${src})`,
             backgroundSize: isDesktop ? 'cover' : '100% auto',
-            backgroundPosition: isDesktop ? 'center center' : 'center top',
+            backgroundPosition: isDesktop ? 'center 35%' : 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
@@ -460,7 +460,7 @@ function PageContent() {
           paddingLeft: 20,
           paddingRight: 20,
           paddingTop: 0,
-          paddingBottom: 'calc(52px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: isDesktop ? '18px' : 'calc(52px + env(safe-area-inset-bottom, 0px))',
         }}
       >
         {/* Dots */}
