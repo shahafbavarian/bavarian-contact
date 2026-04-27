@@ -450,7 +450,8 @@ function PageContent() {
       {/* ─── Logo ─── */}
       <div style={{
         position: 'absolute',
-        top: isDesktop ? 14 : 16,
+        top: isDesktop ? 8 : 'auto',
+        bottom: isDesktop ? 'auto' : 140,
         left: 0,
         right: 0,
         display: 'flex',
@@ -461,7 +462,7 @@ function PageContent() {
         <img
           src="/LOGO.PNG"
           alt="Bavarian Motors"
-          style={{ height: isDesktop ? 130 : 72, width: 'auto', display: 'block' }}
+          style={{ height: isDesktop ? 130 : 120, width: 'auto', display: 'block' }}
         />
       </div>
 
