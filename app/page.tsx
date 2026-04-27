@@ -362,7 +362,7 @@ function PageContent() {
           <img
             src={src}
             alt=""
-            style={{ width: '55%', height: '55%', objectFit: 'contain', objectPosition: 'center' }}
+            style={{ width: '75%', height: '75%', objectFit: 'contain', objectPosition: 'center bottom' }}
           />
         </div>
       ))}
