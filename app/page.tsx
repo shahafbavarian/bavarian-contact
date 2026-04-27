@@ -221,8 +221,6 @@ function PageContent() {
   const [showDesktop, setShowDesktop] = useState(false)
   const [desktopScale, setDesktopScale] = useState(1)
   const [isDesktop, setIsDesktop] = useState(false)
-  const [fadeStart, setFadeStart] = useState(82)
-  const [blackoutStart, setBlackoutStart] = useState(88)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -233,23 +231,6 @@ function PageContent() {
     const handler = (e: MediaQueryListEvent) => { setIsDesktop(e.matches); setCurrentIndex(0); setNextIndex(null) }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  useEffect(() => {
-    function computeFade() {
-      const ratio = window.innerWidth / window.innerHeight
-      const ratio169 = 16 / 9
-      // Anchor the fade to the same point in the image (67% of image height).
-      // With the -18% top offset: viewport% = imgPt * 1.18 - 0.18 = 61% (constant).
-      // On screens taller than 16:9, expand the fade zone proportionally.
-      const t = Math.max(0, Math.min(1, (ratio169 - ratio) / (ratio169 - 4 / 3)))
-      const delta = Math.round(t * 8)
-      setFadeStart(82 - delta)
-      setBlackoutStart(88 - delta)
-    }
-    computeFade()
-    window.addEventListener('resize', computeFade)
-    return () => window.removeEventListener('resize', computeFade)
   }, [])
 
   useEffect(() => {
@@ -314,7 +295,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: '-5%',
+            top: '-8%',
             left: 0,
             right: 0,
             bottom: 0,
@@ -361,7 +342,7 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: '26%',
+              bottom: '20%',
               left: '50%',
               transform: 'translateX(-50%)',
               width: '72%',
@@ -508,7 +489,9 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: `linear-gradient(to bottom, transparent ${fadeStart}%, rgba(0,0,0,0.45) 90%, rgba(0,0,0,0.7) 97%)`,
+          background: isDesktop
+            ? 'linear-gradient(to bottom, transparent 82%, rgba(0,0,0,0.5) 92%, #000 100%)'
+            : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
           pointerEvents: 'none',
         }}
       />
@@ -538,7 +521,7 @@ function PageContent() {
             position: 'absolute',
             inset: 0,
             zIndex: 2,
-            background: `linear-gradient(to bottom, transparent ${blackoutStart}%, #000 100%)`,
+            background: 'linear-gradient(to bottom, transparent 88%, #000 100%)',
             pointerEvents: 'none',
           }}
         />
