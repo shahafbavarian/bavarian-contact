@@ -435,7 +435,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 72%, rgba(0,0,0,0.65) 82%)',
+          background: 'linear-gradient(to bottom, transparent 62%, rgba(0,0,0,0.65) 74%)',
           pointerEvents: 'none',
         }}
       />
