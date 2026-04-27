@@ -6,12 +6,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // For client-side / read operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// For server-side API routes — bypasses RLS
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  serviceRoleKey ?? supabaseAnonKey
-)
+// For server-side API routes — created fresh each call so env vars are read at runtime
+export function getSupabaseAdmin() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? supabaseAnonKey
+  return createClient(supabaseUrl, key)
+}
 
 export type Lead = {
   id: string

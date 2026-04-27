@@ -1,5 +1,5 @@
 import React from 'react'
-import { supabaseAdmin, type Lead } from '@/lib/supabase'
+import { getSupabaseAdmin, type Lead } from '@/lib/supabase'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -15,7 +15,7 @@ function formatDate(iso: string) {
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
-  const { data: leads, error } = await supabaseAdmin
+  const { data: leads, error } = await getSupabaseAdmin()
     .from('leads')
     .select('*')
     .order('created_at', { ascending: false })
