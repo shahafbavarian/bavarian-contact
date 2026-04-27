@@ -213,7 +213,7 @@ function PageContent() {
   return (
     <main
       dir="rtl"
-      style={{ height: '100vh', overflow: 'hidden', position: 'relative', background: '#000' }}
+      style={{ height: '100%', overflow: 'hidden', position: 'relative', background: '#000' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -223,7 +223,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: '-8%',
+            top: '-5%',
             left: 0,
             right: 0,
             bottom: 0,
@@ -235,6 +235,48 @@ function PageContent() {
           }}
         />
       ))}
+
+      {/* ─── Spotlight Effects ─── */}
+      <style>{`
+        @keyframes spotlightA {
+          0%, 100% { transform: rotate(-9deg); opacity: 0.85; }
+          50% { transform: rotate(7deg); opacity: 0.45; }
+        }
+        @keyframes spotlightB {
+          0%, 100% { transform: rotate(11deg); opacity: 0.55; }
+          50% { transform: rotate(-8deg); opacity: 0.9; }
+        }
+        @keyframes spotlightC {
+          0%, 100% { transform: rotate(3deg); opacity: 0.4; }
+          50% { transform: rotate(-11deg); opacity: 0.7; }
+        }
+      `}</style>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute', top: 0, left: '8%',
+          width: '38%', height: '72%',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 55%, transparent 100%)',
+          clipPath: 'polygon(38% 0%, 62% 0%, 88% 100%, 12% 100%)',
+          transformOrigin: '50% 0%',
+          animation: 'spotlightA 13s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute', top: 0, left: '50%',
+          width: '35%', height: '80%',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 55%, transparent 100%)',
+          clipPath: 'polygon(35% 0%, 65% 0%, 92% 100%, 8% 100%)',
+          transformOrigin: '50% 0%',
+          animation: 'spotlightB 17s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute', top: 0, left: '28%',
+          width: '30%', height: '65%',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 100%)',
+          clipPath: 'polygon(40% 0%, 60% 0%, 85% 100%, 15% 100%)',
+          transformOrigin: '50% 0%',
+          animation: 'spotlightC 20s ease-in-out infinite',
+        }} />
+      </div>
 
       {/* ─── Side Arrows ─── */}
       <button
@@ -293,6 +335,7 @@ function PageContent() {
         style={{
           position: 'absolute',
           inset: 0,
+          zIndex: 2,
           background: 'linear-gradient(to bottom, transparent 63%, rgba(0,0,0,0.65) 68%)',
         }}
       />
@@ -304,7 +347,11 @@ function PageContent() {
           bottom: 0,
           left: 0,
           right: 0,
-          padding: '0 20px 64px',
+          zIndex: 3,
+          paddingLeft: 20,
+          paddingRight: 20,
+          paddingTop: 0,
+          paddingBottom: 'calc(52px + env(safe-area-inset-bottom, 0px))',
         }}
       >
         {/* Dots */}
@@ -329,12 +376,12 @@ function PageContent() {
 
         {/* Headlines */}
         <div className="mb-5">
-          <h1 className="font-heebo font-black text-[22px] text-white leading-tight">
+          <h1 className="font-heebo font-black text-[28px] text-white leading-tight">
             מלאי נרחב של רכבי יוקרה וספורט
             <br />
             מחכה לכם בבוואריאן מוטורס!
           </h1>
-          <p className="font-heebo font-light text-[22px] text-white/50 leading-tight mt-0.5">
+          <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
             בואו להנות מאבזור עשיר, שירות אישי
             <br />
             ומהיר ויתרון במחיר!
