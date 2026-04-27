@@ -440,6 +440,22 @@ function PageContent() {
         }}
       />
 
+      {/* ─── Logo (desktop only) ─── */}
+      {isDesktop && (
+        <div style={{
+          position: 'absolute',
+          top: 24,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          zIndex: 5,
+          pointerEvents: 'none',
+        }}>
+          <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 64, width: 'auto' }} />
+        </div>
+      )}
+
       {/* ─── Strong bottom blackout (desktop only) ─── */}
       {isDesktop && (
         <div
