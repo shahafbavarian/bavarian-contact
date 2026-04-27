@@ -42,14 +42,6 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        <div style={{ textAlign: 'left' }}>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', margin: '0 0 4px', textTransform: 'uppercase' }}>
-            סה״כ פניות
-          </p>
-          <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 32, fontWeight: 700, color: 'rgba(200,169,110,0.9)', margin: 0, lineHeight: 1 }}>
-            {leads?.length ?? 0}
-          </p>
-        </div>
       </header>
 
       <div style={{ height: 1, background: 'linear-gradient(to left, transparent, rgba(200,169,110,0.4), transparent)', margin: '0 40px' }} />
