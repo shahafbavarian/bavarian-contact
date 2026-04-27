@@ -447,21 +447,23 @@ function PageContent() {
         }}
       />
 
-      {/* ─── Logo (desktop only) ─── */}
-      {isDesktop && (
-        <div style={{
-          position: 'absolute',
-          top: 24,
-          left: 0,
-          right: 0,
-          display: 'flex',
-          justifyContent: 'center',
-          zIndex: 5,
-          pointerEvents: 'none',
-        }}>
-          <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 110, width: 'auto', display: 'block' }} />
-        </div>
-      )}
+      {/* ─── Logo ─── */}
+      <div style={{
+        position: 'absolute',
+        top: isDesktop ? 14 : 16,
+        left: 0,
+        right: 0,
+        display: 'flex',
+        justifyContent: 'center',
+        zIndex: 5,
+        pointerEvents: 'none',
+      }}>
+        <img
+          src="/LOGO.PNG"
+          alt="Bavarian Motors"
+          style={{ height: isDesktop ? 130 : 72, width: 'auto', display: 'block' }}
+        />
+      </div>
 
       {/* ─── Strong bottom blackout (desktop only) ─── */}
       {isDesktop && (
