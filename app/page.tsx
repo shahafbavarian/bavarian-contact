@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const WHATSAPP_NUMBER = '97299561906'
-const PHONE_NUMBER = 'PHONE_PLACEHOLDER'
+const PHONE_NUMBER = '099561906'
 
 const BACKGROUNDS = ['/BG1.PNG', '/BG2.PNG', '/BG3.PNG', '/BG4.PNG']
 const BACKGROUNDS_DESKTOP = ['/BG01.PNG', '/BG02.PNG', '/BG03.PNG', '/BG04.PNG']
@@ -220,6 +220,8 @@ function PageContent() {
   const [showDesktop, setShowDesktop] = useState(false)
   const [desktopScale, setDesktopScale] = useState(1)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [fadeStart, setFadeStart] = useState(61)
+  const [blackoutStart, setBlackoutStart] = useState(67)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -230,6 +232,23 @@ function PageContent() {
     const handler = (e: MediaQueryListEvent) => { setIsDesktop(e.matches); setCurrentIndex(0); setNextIndex(null) }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  useEffect(() => {
+    function computeFade() {
+      const ratio = window.innerWidth / window.innerHeight
+      const ratio169 = 16 / 9
+      // Anchor the fade to the same point in the image (67% of image height).
+      // With the -18% top offset: viewport% = imgPt * 1.18 - 0.18 = 61% (constant).
+      // On screens taller than 16:9, expand the fade zone proportionally.
+      const t = Math.max(0, Math.min(1, (ratio169 - ratio) / (ratio169 - 4 / 3)))
+      const delta = Math.round(t * 8)
+      setFadeStart(61 - delta)
+      setBlackoutStart(67 - delta)
+    }
+    computeFade()
+    window.addEventListener('resize', computeFade)
+    return () => window.removeEventListener('resize', computeFade)
   }, [])
 
   useEffect(() => {
@@ -298,13 +317,25 @@ function PageContent() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundImage: `url(${src})`,
-            backgroundSize: isDesktop ? 'cover' : '100% auto',
-            backgroundPosition: 'center top',
+            overflow: 'hidden',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
-        />
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt=""
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center top',
+            }}
+          />
+        </div>
       ))}
 
       {/* ─── Spotlight Effects ─── */}
@@ -442,7 +473,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.55) 83%, rgba(0,0,0,0.65) 89%)',
+          background: `linear-gradient(to bottom, transparent ${fadeStart}%, rgba(0,0,0,0.12) ${fadeStart + 9}%, rgba(0,0,0,0.55) ${fadeStart + 22}%, rgba(0,0,0,0.65) ${fadeStart + 28}%)`,
           pointerEvents: 'none',
         }}
       />
@@ -472,7 +503,7 @@ function PageContent() {
             position: 'absolute',
             inset: 0,
             zIndex: 2,
-            background: 'linear-gradient(to bottom, transparent 67%, rgba(0,0,0,0.6) 75%, #000 87%)',
+            background: `linear-gradient(to bottom, transparent ${blackoutStart}%, rgba(0,0,0,0.6) ${blackoutStart + 8}%, #000 ${blackoutStart + 20}%)`,
             pointerEvents: 'none',
           }}
         />
