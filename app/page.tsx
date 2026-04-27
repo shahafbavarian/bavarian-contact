@@ -297,10 +297,10 @@ function PageContent() {
             top: isDesktop ? 0 : '-5%',
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: isDesktop ? '22%' : 0,
             backgroundImage: `url(${src})`,
-            backgroundSize: isDesktop ? 'auto 120%' : '100% auto',
-            backgroundPosition: isDesktop ? 'center 20%' : 'center top',
+            backgroundSize: '100% auto',
+            backgroundPosition: 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
           }}
