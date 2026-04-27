@@ -294,7 +294,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: isDesktop ? '-20%' : 0,
+            top: isDesktop ? '-10%' : 0,
             left: 0,
             right: 0,
             bottom: 0,
@@ -468,9 +468,23 @@ function PageContent() {
           paddingBottom: isDesktop ? '18px' : 'calc(52px + env(safe-area-inset-bottom, 0px))',
         }}
       >
+        {/* Headlines */}
+        <div className="mb-5">
+          <h1 className="font-heebo font-black text-[24px] text-white leading-tight">
+            מלאי נרחב של רכבי יוקרה וספורט
+            <br />
+            מחכה לכם בבוואריאן מוטורס!
+          </h1>
+          <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
+            בואו להנות מאבזור עשיר, שירות אישי
+            <br />
+            ומהיר ויתרון במחיר!
+          </p>
+        </div>
+
         {/* Dots */}
         <div className="flex justify-center gap-1 mb-2">
-          {BACKGROUNDS.map((_, i) => (
+          {(isDesktop ? BACKGROUNDS_DESKTOP : BACKGROUNDS).map((_, i) => (
             <button
               key={i}
               onClick={() => jumpToBg(i)}
@@ -486,20 +500,6 @@ function PageContent() {
               }}
             />
           ))}
-        </div>
-
-        {/* Headlines */}
-        <div className="mb-5">
-          <h1 className="font-heebo font-black text-[24px] text-white leading-tight">
-            מלאי נרחב של רכבי יוקרה וספורט
-            <br />
-            מחכה לכם בבוואריאן מוטורס!
-          </h1>
-          <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
-            בואו להנות מאבזור עשיר, שירות אישי
-            <br />
-            ומהיר ויתרון במחיר!
-          </p>
         </div>
 
         {/* ─── 3 Buttons ─── */}
