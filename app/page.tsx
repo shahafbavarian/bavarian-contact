@@ -332,14 +332,14 @@ function PageContent() {
         </div>
       ))}
 
-      {/* ─── Desktop: fixed background ─── */}
+      {/* ─── Desktop: fixed background (raised) ─── */}
       {isDesktop && (
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-35%', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={BG_FIXED_DESKTOP}
             alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
           />
         </div>
       )}
@@ -362,7 +362,7 @@ function PageContent() {
           <img
             src={src}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }}
+            style={{ width: '55%', height: '55%', objectFit: 'contain', objectPosition: 'center' }}
           />
         </div>
       ))}
