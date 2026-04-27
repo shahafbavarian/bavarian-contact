@@ -569,7 +569,7 @@ function PageContent() {
         {/* Headlines */}
         <div className="mb-5">
           <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
-            מגוון רכבי ספורט ויוקרה חדשים 2026 יד 00
+            מגוון רכבי ספורט ויוקרה חדשים 2026 ללא יד
             <br />
             מחכים לכם בבוואריאן מוטורס!
           </h1>
