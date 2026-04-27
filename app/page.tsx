@@ -222,7 +222,7 @@ function PageContent() {
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setDesktopScale(window.innerWidth / 1280)
+    setDesktopScale(Math.min(window.innerWidth / 1280, (window.innerHeight - 40) / 720))
   }, [])
 
   useEffect(() => {
@@ -594,7 +594,7 @@ function DesktopPreviewOverlay({ scale, onClose }: { scale: number; onClose: () 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 14px', zIndex: 301, fontFamily: 'var(--font-inter)',
       }}>
-        <span style={{ color: '#888', fontSize: 12 }}>Desktop preview — 1280px</span>
+        <span style={{ color: '#888', fontSize: 12 }}>Desktop preview — 1280×720 (16:9)</span>
         <button
           onClick={onClose}
           style={{
@@ -603,17 +603,24 @@ function DesktopPreviewOverlay({ scale, onClose }: { scale: number; onClose: () 
           }}
         >✕ סגור</button>
       </div>
-      {/* scaled iframe */}
+      {/* scaled iframe — centered */}
       <div style={{
-        position: 'absolute', top: 40, left: 0,
-        transformOrigin: 'top left',
-        transform: `scale(${scale})`,
-        width: 1280,
+        position: 'absolute', top: 40, left: 0, right: 0, bottom: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <iframe
-          src="/"
-          style={{ width: 1280, height: Math.round((window.innerHeight - 40) / scale), border: 'none', display: 'block' }}
-        />
+        <div style={{
+          transformOrigin: 'center center',
+          transform: `scale(${scale})`,
+          width: 1280,
+          height: 720,
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}>
+          <iframe
+            src="/"
+            style={{ width: 1280, height: 720, border: 'none', display: 'block' }}
+          />
+        </div>
       </div>
     </div>
   )
