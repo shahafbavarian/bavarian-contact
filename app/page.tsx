@@ -300,6 +300,22 @@ function PageContent() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* ─── Rotate screen overlay (mobile landscape) ─── */}
+      {!isDesktop && isLandscape && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: '#000',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20,
+        }}>
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48m-3.25 5.51c-1.55 3.27-4.72 5.61-8.48 5.97M2 12.5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="3" y="3" width="10" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" transform="rotate(-90 8 11) translate(-3 -2)"/>
+          </svg>
+          <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 18, color: 'rgba(255,255,255,0.7)', textAlign: 'center', direction: 'rtl' }}>
+            נא לסובב את המסך לאנכי
+          </p>
+        </div>
+      )}
       {/* ─── Mobile: rotating background images ─── */}
       {!showDesktopImages && BACKGROUNDS_MOBILE.map((src, i) => (
         <div
