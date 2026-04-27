@@ -221,16 +221,27 @@ function PageContent() {
   const [showDesktop, setShowDesktop] = useState(false)
   const [desktopScale, setDesktopScale] = useState(1)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [isLandscape, setIsLandscape] = useState(true)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // showDesktopImages: use desktop BG0 + rotating cars only on wide landscape screens
+  const showDesktopImages = isDesktop && isLandscape
 
   useEffect(() => {
     setDesktopScale(Math.min(window.innerWidth / 1280, (window.innerHeight - 40) / 720))
     const mq = window.matchMedia('(min-width: 1024px)')
+    const mqLandscape = window.matchMedia('(orientation: landscape)')
     setIsDesktop(mq.matches)
+    setIsLandscape(mqLandscape.matches)
     const handler = (e: MediaQueryListEvent) => { setIsDesktop(e.matches); setCurrentIndex(0); setNextIndex(null) }
+    const landscapeHandler = (e: MediaQueryListEvent) => { setIsLandscape(e.matches); setCurrentIndex(0); setNextIndex(null) }
     mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
+    mqLandscape.addEventListener('change', landscapeHandler)
+    return () => {
+      mq.removeEventListener('change', handler)
+      mqLandscape.removeEventListener('change', landscapeHandler)
+    }
   }, [])
 
   useEffect(() => {
@@ -290,12 +301,12 @@ function PageContent() {
       onTouchEnd={handleTouchEnd}
     >
       {/* ─── Mobile: rotating background images ─── */}
-      {!isDesktop && BACKGROUNDS_MOBILE.map((src, i) => (
+      {!showDesktopImages && BACKGROUNDS_MOBILE.map((src, i) => (
         <div
           key={src}
           style={{
             position: 'absolute',
-            top: '-26%',
+            top: 0,
             left: 0,
             right: 0,
             bottom: 0,
@@ -308,25 +319,26 @@ function PageContent() {
           <img
             src={src}
             alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 'auto' }}
           />
         </div>
       ))}
 
       {/* ─── Desktop: fixed background (raised) ─── */}
-      {isDesktop && (
+      {showDesktopImages && (
         <div style={{ position: 'absolute', top: '-35%', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={BG_FIXED_DESKTOP}
             alt=""
+            fetchPriority="high"
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
           />
         </div>
       )}
 
       {/* ─── Desktop: rotating car images ─── */}
-      {isDesktop && CAR_IMAGES_DESKTOP.map((src, i) => (
+      {showDesktopImages && CAR_IMAGES_DESKTOP.map((src, i) => (
         <div
           key={src}
           style={{
@@ -345,8 +357,8 @@ function PageContent() {
               bottom: '14%',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: '72%',
-              height: '58%',
+              width: '85%',
+              height: '70%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
@@ -490,7 +502,7 @@ function PageContent() {
           inset: 0,
           zIndex: 2,
           background: isDesktop
-            ? 'linear-gradient(to bottom, transparent 84%, rgba(0,0,0,0.75) 93%, #000 100%)'
+            ? 'linear-gradient(to bottom, transparent 76%, rgba(0,0,0,0.75) 90%, #000 100%)'
             : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
           pointerEvents: 'none',
         }}
@@ -569,7 +581,7 @@ function PageContent() {
         {/* Headlines */}
         <div className="mb-5">
           <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
-            מגוון רכבי ספורט ויוקרה חדשים 2026 ללא יד
+            מגוון רכבי ספורט ויוקרה 2026 ללא יד
             <br />
             מחכים לכם בבוואריאן מוטורס!
           </h1>
