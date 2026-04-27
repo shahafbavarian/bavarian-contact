@@ -132,10 +132,8 @@ export default async function AdminPage() {
                         {lead.phone}
                       </a>
                     </td>
-                    <td style={{ padding: '16px 20px', fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.55)', maxWidth: 280 }}>
-                      <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {lead.message || '—'}
-                      </span>
+                    <td style={{ padding: '16px 20px', fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.55)', maxWidth: 300, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {lead.message || '—'}
                     </td>
                     <td style={{ padding: '16px 20px' }}>
                       {lead.utm_source
