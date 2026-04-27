@@ -2,13 +2,16 @@
 
 create table if not exists leads (
   id           uuid        default gen_random_uuid() primary key,
-  name         text        not null,
+  name         text,
   phone        text        not null,
   message      text,
   utm_source   text,
   utm_campaign text,
   created_at   timestamptz default now() not null
 );
+
+-- If table already exists, allow null name:
+alter table leads alter column name drop not null;
 
 -- Allow anonymous inserts (contact form submissions)
 alter table leads enable row level security;
