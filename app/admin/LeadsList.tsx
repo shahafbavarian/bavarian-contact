@@ -82,20 +82,20 @@ export default function LeadsList({ initialLeads }: { initialLeads: Lead[] }) {
             )}
 
             {/* Row 3: meta */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.02em' }}>
                 {formatDate(lead.created_at)}
               </span>
-              {lead.utm_source && (
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.1em', border: '1px solid rgba(255,255,255,0.12)', padding: '2px 7px', color: 'rgba(255,255,255,0.4)', borderRadius: 3 }}>
-                  {lead.utm_source}
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
+                מקור: <span style={{ color: lead.utm_source ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)' }}>
+                  {lead.utm_source ?? '—'}
                 </span>
-              )}
-              {lead.utm_campaign && (
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.1em', border: '1px solid rgba(200,169,110,0.3)', padding: '2px 7px', color: 'rgba(200,169,110,0.7)', borderRadius: 3 }}>
-                  {lead.utm_campaign}
+              </span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
+                קמפיין: <span style={{ color: lead.utm_campaign ? 'rgba(200,169,110,0.8)' : 'rgba(255,255,255,0.2)' }}>
+                  {lead.utm_campaign ?? '—'}
                 </span>
-              )}
+              </span>
             </div>
           </div>
 
