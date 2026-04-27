@@ -251,15 +251,13 @@ function PageContent() {
           50% { transform: rotate(-11deg); opacity: 0.7; }
         }
         @keyframes btnPulse {
-          0% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-          16.5% {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+          50% {
             box-shadow:
-              0 0 0 1.5px rgba(255,255,255,0.75),
-              0 0 10px 3px rgba(255,255,255,0.35),
-              0 0 28px 8px rgba(255,255,255,0.15),
-              0 0 55px 14px rgba(255,255,255,0.06);
+              0 0 0 1.5px rgba(255,255,255,0.65),
+              0 0 8px 2px rgba(255,255,255,0.28),
+              0 0 18px 5px rgba(255,255,255,0.12);
           }
-          33%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
         }
       `}</style>
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
@@ -347,7 +345,7 @@ function PageContent() {
           position: 'absolute',
           inset: 0,
           zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent 68%, rgba(0,0,0,0.65) 73%)',
+          background: 'linear-gradient(to bottom, transparent 64%, rgba(0,0,0,0.65) 70%)',
         }}
       />
 
@@ -408,7 +406,7 @@ function PageContent() {
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] font-medium text-black transition-all active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.92)', animation: 'btnPulse 9s ease-in-out 0s infinite' }}
+            style={{ background: 'rgba(255,255,255,0.92)', animation: 'btnPulse 4s ease-in-out 0s infinite' }}
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
@@ -425,7 +423,7 @@ function PageContent() {
               background: 'rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.18)',
               backdropFilter: 'blur(10px)',
-              animation: 'btnPulse 9s ease-in-out 3s infinite',
+              animation: 'btnPulse 4s ease-in-out 0s infinite',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -442,7 +440,7 @@ function PageContent() {
               background: 'rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.18)',
               backdropFilter: 'blur(10px)',
-              animation: 'btnPulse 9s ease-in-out 6s infinite',
+              animation: 'btnPulse 4s ease-in-out 0s infinite',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
