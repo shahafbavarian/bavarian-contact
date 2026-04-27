@@ -349,7 +349,7 @@ function PageContent() {
       `}</style>
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
         <div style={{
-          position: 'absolute', top: 0, left: '8%',
+          position: 'absolute', top: 0, left: '31%',
           width: '38%', height: '72%',
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 55%, transparent 100%)',
           clipPath: 'polygon(38% 0%, 62% 0%, 88% 100%, 12% 100%)',
@@ -357,7 +357,7 @@ function PageContent() {
           animation: 'spotlightA 13s ease-in-out infinite',
         }} />
         <div style={{
-          position: 'absolute', top: 0, left: '50%',
+          position: 'absolute', top: 0, left: '32.5%',
           width: '35%', height: '80%',
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 55%, transparent 100%)',
           clipPath: 'polygon(35% 0%, 65% 0%, 92% 100%, 8% 100%)',
@@ -365,7 +365,7 @@ function PageContent() {
           animation: 'spotlightB 17s ease-in-out infinite',
         }} />
         <div style={{
-          position: 'absolute', top: 0, left: '28%',
+          position: 'absolute', top: 0, left: '35%',
           width: '30%', height: '65%',
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 100%)',
           clipPath: 'polygon(40% 0%, 60% 0%, 85% 100%, 15% 100%)',
