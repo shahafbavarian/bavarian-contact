@@ -299,7 +299,7 @@ function PageContent() {
             right: 0,
             bottom: 0,
             backgroundImage: `url(${src})`,
-            backgroundSize: '100% auto',
+            backgroundSize: isDesktop ? 'auto 120%' : '100% auto',
             backgroundPosition: isDesktop ? 'center 20%' : 'center top',
             opacity: getBgOpacity(i),
             transition: 'opacity 0.6s ease-in-out',
@@ -348,14 +348,16 @@ function PageContent() {
         }
       `}</style>
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
+        {/* Left beam — center at 25% */}
         <div style={{
-          position: 'absolute', top: 0, left: '8%',
+          position: 'absolute', top: 0, left: '6%',
           width: '38%', height: '72%',
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 55%, transparent 100%)',
           clipPath: 'polygon(38% 0%, 62% 0%, 88% 100%, 12% 100%)',
           transformOrigin: '50% 0%',
           animation: 'spotlightA 13s ease-in-out infinite',
         }} />
+        {/* Center beam — center at 50% */}
         <div style={{
           position: 'absolute', top: 0, left: '32.5%',
           width: '35%', height: '80%',
@@ -364,8 +366,9 @@ function PageContent() {
           transformOrigin: '50% 0%',
           animation: 'spotlightB 17s ease-in-out infinite',
         }} />
+        {/* Right beam — center at 75% */}
         <div style={{
-          position: 'absolute', top: 0, left: '28%',
+          position: 'absolute', top: 0, left: '60%',
           width: '30%', height: '65%',
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 100%)',
           clipPath: 'polygon(40% 0%, 60% 0%, 85% 100%, 15% 100%)',
