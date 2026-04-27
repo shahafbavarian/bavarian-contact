@@ -23,7 +23,7 @@ html {
 @media (min-aspect-ratio: 4/3) {
   .bg-slide {
     top: 0%;
-    background-position: center 55%;
+    background-position: center 80%;
   }
 }
 
