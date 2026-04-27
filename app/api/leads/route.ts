@@ -6,8 +6,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { name, phone, message, utm_source, utm_campaign } = body
 
-    if (!name?.trim() || !phone?.trim()) {
-      return NextResponse.json({ error: 'שם וטלפון הם שדות חובה' }, { status: 400 })
+    if (!phone?.trim()) {
+      return NextResponse.json({ error: 'טלפון הוא שדה חובה' }, { status: 400 })
     }
 
     const { error } = await supabase.from('leads').insert({
