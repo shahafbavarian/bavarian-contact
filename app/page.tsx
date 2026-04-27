@@ -381,12 +381,12 @@ function PageContent() {
 
         {/* Headlines */}
         <div className="mb-5">
-          <h1 className="font-heebo font-black text-[22px] text-white leading-tight">
+          <h1 className="font-heebo font-black text-[26px] text-white leading-tight">
             מלאי נרחב של רכבי יוקרה וספורט
             <br />
             מחכה לכם בבוואריאן מוטורס!
           </h1>
-          <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
+          <p className="font-heebo font-light text-[22px] text-white/50 leading-tight mt-0.5">
             בואו להנות מאבזור עשיר, שירות אישי
             <br />
             ומהיר ויתרון במחיר!
