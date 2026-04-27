@@ -294,7 +294,7 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: isDesktop ? '-10%' : 0,
+            top: isDesktop ? '-5%' : 0,
             left: 0,
             right: 0,
             bottom: 0,
@@ -436,6 +436,18 @@ function PageContent() {
           inset: 0,
           zIndex: 2,
           background: 'linear-gradient(to bottom, transparent 64%, rgba(0,0,0,0.65) 70%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* ─── Strong bottom blackout ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 2,
+          background: 'linear-gradient(to bottom, transparent 62%, rgba(0,0,0,0.55) 68%, #000 80%)',
+          pointerEvents: 'none',
         }}
       />
 
