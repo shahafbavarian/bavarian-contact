@@ -216,8 +216,14 @@ function PageContent() {
   const [utmCampaign, setUtmCampaign] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState<number | null>(null)
+  const [showDesktop, setShowDesktop] = useState(false)
+  const [desktopScale, setDesktopScale] = useState(1)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setDesktopScale(window.innerWidth / 1280)
+  }, [])
 
   useEffect(() => {
     setUtmSource(searchParams.get('utm_source') ?? '')
@@ -547,7 +553,69 @@ function PageContent() {
         />
       )}
 
+      {/* ─── Dev: Desktop Preview Overlay ─── */}
+      {showDesktop && <DesktopPreviewOverlay scale={desktopScale} onClose={() => setShowDesktop(false)} />}
+
+      {/* ─── Dev: Desktop Preview Button ─── */}
+      <button
+        onClick={() => setShowDesktop(true)}
+        style={{
+          position: 'absolute',
+          top: 10,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 20,
+          background: 'rgba(0,0,0,0.55)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          backdropFilter: 'blur(8px)',
+          color: 'rgba(255,255,255,0.65)',
+          fontSize: 11,
+          fontFamily: 'var(--font-inter)',
+          padding: '4px 12px',
+          borderRadius: 20,
+          cursor: 'pointer',
+          letterSpacing: '0.05em',
+        }}
+      >
+        🖥 desktop
+      </button>
+
     </main>
+  )
+}
+
+function DesktopPreviewOverlay({ scale, onClose }: { scale: number; onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: '#111', zIndex: 300, overflow: 'hidden' }}>
+      {/* toolbar */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 40,
+        background: '#222', borderBottom: '1px solid #333',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 14px', zIndex: 301, fontFamily: 'var(--font-inter)',
+      }}>
+        <span style={{ color: '#888', fontSize: 12 }}>Desktop preview — 1280px</span>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+            color: '#aaa', fontSize: 12, padding: '3px 12px', borderRadius: 6, cursor: 'pointer',
+          }}
+        >✕ סגור</button>
+      </div>
+      {/* scaled iframe */}
+      <div style={{
+        position: 'absolute', top: 40, left: 0,
+        transformOrigin: 'top left',
+        transform: `scale(${scale})`,
+        width: 1280,
+      }}>
+        <iframe
+          src="/"
+          style={{ width: 1280, height: Math.round((window.innerHeight - 40) / scale), border: 'none', display: 'block' }}
+        />
+      </div>
+    </div>
   )
 }
 
