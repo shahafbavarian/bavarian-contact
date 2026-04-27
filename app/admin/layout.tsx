@@ -5,7 +5,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div style={{
       position: 'fixed',
       inset: 0,
-      overflowY: 'auto',
+      overflow: 'auto',
       background: '#080808',
       direction: 'rtl',
     }}>
