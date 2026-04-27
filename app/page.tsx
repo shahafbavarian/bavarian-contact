@@ -376,7 +376,7 @@ function PageContent() {
 
         {/* Headlines */}
         <div className="mb-5">
-          <h1 className="font-heebo font-black text-[28px] text-white leading-tight">
+          <h1 className="font-heebo font-black text-[22px] text-white leading-tight">
             מלאי נרחב של רכבי יוקרה וספורט
             <br />
             מחכה לכם בבוואריאן מוטורס!
