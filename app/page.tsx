@@ -294,10 +294,10 @@ function PageContent() {
           key={src}
           style={{
             position: 'absolute',
-            top: isDesktop ? 0 : '-5%',
+            top: isDesktop ? '-20%' : 0,
             left: 0,
             right: 0,
-            bottom: isDesktop ? '22%' : 0,
+            bottom: 0,
             backgroundImage: `url(${src})`,
             backgroundSize: '100% auto',
             backgroundPosition: 'center top',
