@@ -569,7 +569,7 @@ function PageContent() {
           paddingBottom: isDesktop ? '18px' : 'calc(52px + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        {/* Dots — mobile only */}
+        {/* Dots — mobile only: above headlines */}
         {!isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
             {CAR_IMAGES.map((_, i) => (
@@ -591,43 +591,47 @@ function PageContent() {
           </div>
         )}
 
-        {isDesktop ? (
-          /* ── Desktop: single row — headlines + form ── */
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: 28, direction: 'rtl' }}>
-            {/* Headlines — right, drives row height */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
-                מגוון רכבי ספורט ויוקרה 2026 ללא יד
-                <br />
-                מחכים לכם בבוואריאן מוטורס!
-              </h1>
-              <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
-                בואו להנות מאבזור עשיר, שירות אישי
-                <br />
-                ומהיר ויתרון במחיר!
-              </p>
-            </div>
-            {/* Form — stretches to match headline height, fields grow with screen width */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <DesktopInlineForm utmSource={utmSource} utmCampaign={utmCampaign} />
-            </div>
+        {/* Headlines */}
+        <div className="mb-5">
+          <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
+            מגוון רכבי ספורט ויוקרה 2026 ללא יד
+            <br />
+            מחכים לכם בבוואריאן מוטורס!
+          </h1>
+          <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
+            בואו להנות מאבזור עשיר, שירות אישי
+            <br />
+            ומהיר ויתרון במחיר!
+          </p>
+        </div>
+
+        {/* Dots — desktop only: above buttons */}
+        {isDesktop && (
+          <div className="flex justify-center gap-1 mb-2">
+            {CAR_IMAGES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => jumpToBg(i)}
+              style={{
+                width: i === currentIndex ? 14 : 4,
+                height: 4,
+                borderRadius: 2,
+                background: i === currentIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'all 0.3s',
+              }}
+            />
+          ))}
           </div>
+        )}
+
+        {/* ─── Actions ─── */}
+        {isDesktop ? (
+          <DesktopInlineForm utmSource={utmSource} utmCampaign={utmCampaign} />
         ) : (
-          /* ── Mobile: stacked ── */
-          <>
-            <div className="mb-5">
-              <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
-                מגוון רכבי ספורט ויוקרה 2026 ללא יד
-                <br />
-                מחכים לכם בבוואריאן מוטורס!
-              </h1>
-              <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
-                בואו להנות מאבזור עשיר, שירות אישי
-                <br />
-                ומהיר ויתרון במחיר!
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
 
             {/* WhatsApp */}
             <a
@@ -679,7 +683,6 @@ function PageContent() {
             </button>
 
           </div>
-          </>
         )}
       </div>
 
@@ -776,16 +779,14 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Gradient border wrapper — stretches to row height set by headlines */}
+    <form onSubmit={handleSubmit} noValidate>
+      {/* Gradient border wrapper */}
       <div style={{
-        flex: 1,
         borderRadius: 20, padding: 1.5,
         background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.04) 40%, rgba(37,211,102,0.35) 100%)',
         boxShadow: '0 4px 32px rgba(37,211,102,0.08), 0 8px 40px rgba(0,0,0,0.5)',
       }}>
         <div style={{
-          height: '100%',
           background: 'rgba(12,12,12,0.92)', backdropFilter: 'blur(20px)',
           borderRadius: 19, display: 'flex', alignItems: 'stretch', overflow: 'hidden',
         }}>
@@ -796,7 +797,7 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center gap-1.5 font-inter text-[12px] font-medium text-black transition-all active:scale-95"
             style={{
-              flexShrink: 0, padding: '0 28px',
+              flexShrink: 0, padding: '16px 28px',
               background: 'rgba(255,255,255,0.92)',
               animation: 'btnPulseWA 4s ease-in-out 0s infinite',
               textDecoration: 'none',
