@@ -359,7 +359,7 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: showDesktopImages ? '6%' : '28%',
+              bottom: showDesktopImages ? '3%' : '28%',
               left: '50%',
               transform: 'translateX(-50%)',
               width: showDesktopImages ? '96%' : '230%',
