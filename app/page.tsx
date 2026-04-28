@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
 
-const BG_FIXED_MOBILE = '/BG.PNG'
-const BG_FIXED_DESKTOP = '/BG0.PNG'
-const CAR_IMAGES = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
+const BG_FIXED_MOBILE = '/BG.webp'
+const BG_FIXED_DESKTOP = '/BG0.webp'
+const CAR_IMAGES = ['/1.webp', '/2.webp', '/3.webp', '/4.webp']
 
 // Set to false to show cars immediately without preload logic
 const PRELOAD_CARS = true
@@ -223,7 +222,6 @@ function PageContent() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState<number | null>(null)
   const [showDesktop, setShowDesktop] = useState(false)
-  const [desktopScale, setDesktopScale] = useState(1)
   const [isDesktop, setIsDesktop] = useState(false)
   const [isLandscape, setIsLandscape] = useState(true)
   const [carsReady, setCarsReady] = useState(!PRELOAD_CARS)
@@ -234,7 +232,6 @@ function PageContent() {
   const showDesktopImages = isDesktop && isLandscape
 
   useEffect(() => {
-    setDesktopScale(Math.min(window.innerWidth / 1280, (window.innerHeight - 40) / 720))
     const mq = window.matchMedia('(min-width: 1024px)')
     const mqLandscape = window.matchMedia('(orientation: landscape)')
     setIsDesktop(mq.matches)
@@ -334,16 +331,14 @@ function PageContent() {
           </p>
         </div>
       )}
-      {/* ─── Fixed background (BG.PNG mobile / BG0.PNG desktop) ─── */}
+      {/* ─── Fixed background (BG.webp mobile / BG0.webp desktop) ─── */}
       <div style={{ position: 'absolute', top: showDesktopImages ? '-35%' : '-12%', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={showDesktopImages ? BG_FIXED_DESKTOP : BG_FIXED_MOBILE}
           alt=""
-          fill
-          priority
-          quality={80}
-          sizes="100vw"
-          style={{ objectFit: 'cover', objectPosition: 'center top' }}
+          fetchPriority="high"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
         />
       </div>
 
@@ -529,13 +524,11 @@ function PageContent() {
         zIndex: 5,
         pointerEvents: 'none',
       }}>
-        <Image
-          src="/LOGO.PNG"
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/LOGO.webp"
           alt="Bavarian Motors"
-          width={300}
-          height={130}
-          priority
-          quality={90}
+          fetchPriority="high"
           style={{ height: isDesktop ? 130 : 120, width: 'auto', display: 'block' }}
         />
       </div>
@@ -693,7 +686,7 @@ function PageContent() {
       )}
 
       {/* ─── Dev: Desktop Preview Overlay ─── */}
-      {showDesktop && <DesktopPreviewOverlay scale={desktopScale} onClose={() => setShowDesktop(false)} />}
+      {showDesktop && <DesktopPreviewOverlay onClose={() => setShowDesktop(false)} />}
 
       {/* ─── Dev: Desktop Preview Button ─── */}
       <button
@@ -723,7 +716,20 @@ function PageContent() {
   )
 }
 
-function DesktopPreviewOverlay({ scale, onClose }: { scale: number; onClose: () => void }) {
+const PREVIEW_SCREENS = [
+  { label: '16:9', detail: '1280×720', w: 1280, h: 720 },
+  { label: 'iPad Pro', detail: '1366×1024', w: 1366, h: 1024 },
+  { label: 'MacBook Pro', detail: '1512×982', w: 1512, h: 982 },
+]
+
+function DesktopPreviewOverlay({ onClose }: { onClose: () => void }) {
+  const [screenIdx, setScreenIdx] = useState(0)
+  const screen = PREVIEW_SCREENS[screenIdx]
+
+  const availW = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const availH = typeof window !== 'undefined' ? window.innerHeight - 80 : 640
+  const scale = Math.min(availW / screen.w, availH / screen.h, 1)
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#111', zIndex: 300, overflow: 'hidden' }}>
       {/* toolbar */}
@@ -733,7 +739,24 @@ function DesktopPreviewOverlay({ scale, onClose }: { scale: number; onClose: () 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 14px', zIndex: 301, fontFamily: 'var(--font-inter)',
       }}>
-        <span style={{ color: '#888', fontSize: 12 }}>Desktop preview — 1280×720 (16:9)</span>
+        {/* screen tabs */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {PREVIEW_SCREENS.map((s, i) => (
+            <button
+              key={s.label}
+              onClick={() => setScreenIdx(i)}
+              style={{
+                background: i === screenIdx ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${i === screenIdx ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                color: i === screenIdx ? '#fff' : '#888',
+                fontSize: 11, padding: '3px 10px', borderRadius: 5, cursor: 'pointer',
+                fontFamily: 'var(--font-inter)',
+              }}
+            >
+              {s.label} <span style={{ opacity: 0.5, fontSize: 10 }}>{s.detail}</span>
+            </button>
+          ))}
+        </div>
         <button
           onClick={onClose}
           style={{
@@ -750,14 +773,15 @@ function DesktopPreviewOverlay({ scale, onClose }: { scale: number; onClose: () 
         <div style={{
           transformOrigin: 'center center',
           transform: `scale(${scale})`,
-          width: 1280,
-          height: 720,
+          width: screen.w,
+          height: screen.h,
           overflow: 'hidden',
           flexShrink: 0,
+          boxShadow: '0 0 0 1px rgba(255,255,255,0.1)',
         }}>
           <iframe
             src="/"
-            style={{ width: 1280, height: 720, border: 'none', display: 'block' }}
+            style={{ width: screen.w, height: screen.h, border: 'none', display: 'block' }}
           />
         </div>
       </div>
