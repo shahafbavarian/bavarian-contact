@@ -492,7 +492,7 @@ function PageContent() {
           inset: 0,
           zIndex: 2,
           background: isDesktop
-            ? 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.75) 76%, #000 100%)'
+            ? 'linear-gradient(to bottom, transparent 65%, rgba(0,0,0,0.75) 84%, #000 100%)'
             : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
           pointerEvents: 'none',
         }}
