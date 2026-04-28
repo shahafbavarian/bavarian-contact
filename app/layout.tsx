@@ -31,9 +31,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="he" dir="rtl" className={`${heebo.variable} ${inter.variable}`}>
-      <head>
-        <link rel="preload" as="image" href="/BG0.PNG" />
-      </head>
       <body>{children}</body>
     </html>
   )

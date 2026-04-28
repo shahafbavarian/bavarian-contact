@@ -341,7 +341,7 @@ function PageContent() {
           alt=""
           fill
           priority
-          quality={85}
+          quality={80}
           sizes="100vw"
           style={{ objectFit: 'cover', objectPosition: 'center top' }}
         />
@@ -529,9 +529,13 @@ function PageContent() {
         zIndex: 5,
         pointerEvents: 'none',
       }}>
-        <img
+        <Image
           src="/LOGO.PNG"
           alt="Bavarian Motors"
+          width={300}
+          height={130}
+          priority
+          quality={90}
           style={{ height: isDesktop ? 130 : 120, width: 'auto', display: 'block' }}
         />
       </div>
