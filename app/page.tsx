@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
@@ -9,6 +10,9 @@ const PHONE_NUMBER = '099561906'
 const BG_FIXED_MOBILE = '/BG.PNG'
 const BG_FIXED_DESKTOP = '/BG0.PNG'
 const CAR_IMAGES = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
+
+// Set to false to show cars immediately without preload logic
+const PRELOAD_CARS = true
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
@@ -222,6 +226,7 @@ function PageContent() {
   const [desktopScale, setDesktopScale] = useState(1)
   const [isDesktop, setIsDesktop] = useState(false)
   const [isLandscape, setIsLandscape] = useState(true)
+  const [carsReady, setCarsReady] = useState(!PRELOAD_CARS)
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -248,6 +253,19 @@ function PageContent() {
     setUtmSource(searchParams.get('utm_source') ?? '')
     setUtmCampaign(searchParams.get('utm_campaign') ?? '')
   }, [searchParams])
+
+  // Preload all car images before showing them
+  useEffect(() => {
+    if (!PRELOAD_CARS) return
+    let count = 0
+    CAR_IMAGES.forEach(src => {
+      const img = new window.Image()
+      img.onload = img.onerror = () => {
+        if (++count === CAR_IMAGES.length) setCarsReady(true)
+      }
+      img.src = src
+    })
+  }, [])
 
   function goToBg(dir: 1 | -1) {
     if (nextIndex !== null) return
@@ -318,12 +336,14 @@ function PageContent() {
       )}
       {/* ─── Fixed background (BG.PNG mobile / BG0.PNG desktop) ─── */}
       <div style={{ position: 'absolute', top: showDesktopImages ? '-35%' : '-12%', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={showDesktopImages ? BG_FIXED_DESKTOP : BG_FIXED_MOBILE}
           alt=""
-          fetchPriority="high"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+          fill
+          priority
+          quality={85}
+          sizes="100vw"
+          style={{ objectFit: 'cover', objectPosition: 'center top' }}
         />
       </div>
 
@@ -334,7 +354,7 @@ function PageContent() {
           style={{
             position: 'absolute',
             inset: 0,
-            opacity: getBgOpacity(i),
+            opacity: carsReady ? getBgOpacity(i) : 0,
             transition: 'opacity 0.6s ease-in-out',
           }}
         >
@@ -347,8 +367,8 @@ function PageContent() {
               bottom: showDesktopImages ? '6%' : '28%',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? '96%' : '220%',
-              height: showDesktopImages ? '80%' : '144%',
+              width: showDesktopImages ? '96%' : '230%',
+              height: showDesktopImages ? '80%' : '150%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
