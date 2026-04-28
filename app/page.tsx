@@ -817,22 +817,31 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
             background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, transparent)',
           }} />
 
-          {/* Fields */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', direction: 'rtl' }}>
-            <input
-              type="tel"
-              placeholder="טלפון *"
-              value={form.phone}
-              onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setPhoneError('') }}
-              className="desktop-input"
-              style={{
-                flex: 1, background: 'rgba(255,255,255,0.06)',
-                border: `1px solid ${phoneError ? 'rgba(255,80,80,0.55)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 10, padding: '10px 14px', color: 'white',
-                fontSize: 12, fontFamily: 'var(--font-inter)', outline: 'none', direction: 'rtl',
-              }}
-            />
-            <input
+          {/* Fields + label */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, padding: '14px 20px', direction: 'rtl' }}>
+            {/* Label */}
+            <p style={{
+              fontFamily: 'var(--font-heebo)', fontSize: 13, fontWeight: 600,
+              color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.01em',
+            }}>
+              השאירו פרטים ונחזור אליכם
+            </p>
+            {/* Inputs row */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+              <input
+                type="tel"
+                placeholder="טלפון *"
+                value={form.phone}
+                onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setPhoneError('') }}
+                className="desktop-input"
+                style={{
+                  flex: 1, background: 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${phoneError ? 'rgba(255,80,80,0.55)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 9, padding: '9px 13px', color: 'white',
+                  fontSize: 12, fontFamily: 'var(--font-inter)', outline: 'none', direction: 'rtl',
+                }}
+              />
+              <input
               type="text"
               placeholder="שם (אופציונלי)"
               value={form.name}
@@ -841,7 +850,7 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
               style={{
                 flex: 1, background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 10, padding: '10px 14px', color: 'white',
+                borderRadius: 9, padding: '9px 13px', color: 'white',
                 fontSize: 12, fontFamily: 'var(--font-inter)', outline: 'none', direction: 'rtl',
               }}
             />
@@ -849,9 +858,9 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
               type="submit"
               disabled={status === 'loading'}
               style={{
-                flexShrink: 0, padding: '10px 24px',
+                flexShrink: 0, padding: '9px 22px',
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%)',
-                border: '1px solid rgba(255,255,255,0.18)', borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.18)', borderRadius: 9,
                 color: 'white', fontFamily: 'var(--font-heebo)', fontWeight: 700,
                 fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
                 opacity: status === 'loading' ? 0.55 : 1, transition: 'background 0.2s',
@@ -859,6 +868,7 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
             >
               {status === 'loading' ? 'שולח...' : 'שלח פנייה'}
             </button>
+            </div>{/* end inputs row */}
           </div>
         </div>
       </div>
