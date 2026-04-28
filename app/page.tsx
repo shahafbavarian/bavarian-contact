@@ -48,7 +48,7 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign }),
+        body: JSON.stringify({ ...form, utm_source: utmSource, utm_campaign: utmCampaign }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -105,7 +105,7 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
                   bavarian-motors.co.il
                 </a>
                 <a
-                  href="https://www.instagram.com/bavarianmotors?igsh=MXNiYjg4cmY1MWtieA%3D%3D&utm_source=qr"
+                  href="https://www.instagram.com/bavarianmotors?igsh=MTk0MTgxY3R3N2Z5YQ=="
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2.5 py-3 rounded-xl font-heebo text-sm text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
