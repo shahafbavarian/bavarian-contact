@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desktop CTA Mockup — Bavarian Motors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000;
+    font-family: 'Heebo', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 80px;
+    padding: 60px 40px;
+  }
+
+  /* ── Shared label ── */
+  .option-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .option-wrap {
+    width: 100%;
+    max-width: 860px;
+  }
+
+  /* ── Fake background context ── */
+  .fake-bg {
+    background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 60%, #000 100%);
+    padding: 32px 24px 28px;
+    border-radius: 4px;
+  }
+  .fake-headline {
+    font-family: 'Heebo', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    color: white;
+    line-height: 1.35;
+    margin-bottom: 6px;
+  }
+  .fake-sub {
+    font-family: 'Heebo', sans-serif;
+    font-weight: 300;
+    font-size: 16px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.4;
+    margin-bottom: 18px;
+  }
+  .dots {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .dot { width: 4px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); }
+  .dot.active { width: 14px; background: rgba(255,255,255,0.9); }
+
+  /* ── WA icon path ── */
+  /* Shared WA SVG is inline in each option */
+
+  /* ═══════════════════════════════════════
+     OPTION A — Unified Glass Bar
+     One seamless card, gradient border
+  ═══════════════════════════════════════ */
+  .optA-bar {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    backdrop-filter: blur(16px);
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .optA-wa {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 18px 28px;
+    background: rgba(255,255,255,0.92);
+    color: #000;
+    text-decoration: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+    border-radius: 19px 0 0 19px;
+    transition: background 0.2s;
+    animation: pulseWA 4s ease-in-out infinite;
+  }
+  .optA-wa:hover { background: #fff; }
+  .optA-divider {
+    width: 1px;
+    background: rgba(255,255,255,0.1);
+    flex-shrink: 0;
+  }
+  .optA-fields {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .optA-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.18);
+    padding: 8px 4px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    outline: none;
+    direction: rtl;
+    transition: border-color 0.2s;
+  }
+  .optA-input::placeholder { color: rgba(255,255,255,0.3); }
+  .optA-input:focus { border-bottom-color: rgba(255,255,255,0.55); }
+  .optA-submit {
+    flex-shrink: 0;
+    padding: 10px 22px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .optA-submit:hover { background: rgba(255,255,255,0.18); }
+
+  /* ═══════════════════════════════════════
+     OPTION B — Separated Elevated Cards
+     WhatsApp prominent, form beside it
+  ═══════════════════════════════════════ */
+  .optB-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    direction: rtl;
+  }
+  .optB-wa {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px 28px;
+    background: rgba(255,255,255,0.92);
+    border-radius: 18px;
+    text-decoration: none;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    animation: pulseWA 4s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+  }
+  .optB-wa::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #25D366, #128C7E);
+    border-radius: 0 0 18px 18px;
+  }
+  .optB-form {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+    padding: 10px 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .optB-input {
+    flex: 1;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 0 14px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    outline: none;
+    direction: rtl;
+    transition: border-color 0.2s;
+  }
+  .optB-input::placeholder { color: rgba(255,255,255,0.28); }
+  .optB-input:focus { border-color: rgba(255,255,255,0.35); }
+  .optB-submit {
+    flex-shrink: 0;
+    padding: 0 24px;
+    background: white;
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-family: 'Heebo', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .optB-submit:hover { opacity: 0.88; }
+
+  /* ═══════════════════════════════════════
+     OPTION C — Premium Gradient Border
+     Gradient border card, luxury feel
+  ═══════════════════════════════════════ */
+  .optC-wrap {
+    position: relative;
+    border-radius: 20px;
+    padding: 1.5px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.04) 40%, rgba(37,211,102,0.35) 100%);
+    box-shadow: 0 4px 32px rgba(37,211,102,0.08), 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .optC-inner {
+    background: rgba(12,12,12,0.92);
+    backdrop-filter: blur(20px);
+    border-radius: 19px;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+  }
+  .optC-wa {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 18px 32px;
+    background: rgba(255,255,255,0.93);
+    text-decoration: none;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 18px 0 0 18px;
+    animation: pulseWA 4s ease-in-out infinite;
+  }
+  .optC-divider {
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, transparent);
+    flex-shrink: 0;
+    margin: 8px 0;
+  }
+  .optC-fields {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    direction: rtl;
+  }
+  .optC-input {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    outline: none;
+    direction: rtl;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .optC-input::placeholder { color: rgba(255,255,255,0.25); }
+  .optC-input:focus { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.09); }
+  .optC-submit {
+    flex-shrink: 0;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 10px;
+    color: white;
+    font-family: 'Heebo', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .optC-submit:hover { background: rgba(255,255,255,0.18); }
+
+  /* ═══════════════════════════════════════
+     OPTION D — "Float" — WA as tall pill,
+     form fields floating beside as pills
+  ═══════════════════════════════════════ */
+  .optD-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    direction: rtl;
+  }
+  .optD-wa {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px 26px;
+    background: rgba(255,255,255,0.92);
+    border-radius: 100px;
+    text-decoration: none;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    animation: pulseWA 4s ease-in-out infinite;
+    letter-spacing: 0.03em;
+  }
+  .optD-sep {
+    width: 1px;
+    height: 32px;
+    background: rgba(255,255,255,0.14);
+    flex-shrink: 0;
+  }
+  .optD-input {
+    flex: 1;
+    height: 52px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 0 20px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    outline: none;
+    direction: rtl;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.2s, background 0.2s;
+    animation: pulse 4s ease-in-out infinite;
+  }
+  .optD-input::placeholder { color: rgba(255,255,255,0.28); }
+  .optD-input:focus { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.1); }
+  .optD-submit {
+    flex-shrink: 0;
+    height: 52px;
+    padding: 0 28px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 100px;
+    color: white;
+    font-family: 'Heebo', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    animation: pulse 4s ease-in-out infinite;
+    transition: background 0.2s;
+  }
+  .optD-submit:hover { background: rgba(255,255,255,0.14); }
+
+  /* Animations */
+  @keyframes pulseWA {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+    50% { box-shadow: 0 0 0 1.5px rgba(37,211,102,0.8), 0 0 10px 3px rgba(37,211,102,0.35), 0 0 22px 7px rgba(37,211,102,0.14); }
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    50% { box-shadow: 0 0 0 1.5px rgba(255,255,255,0.55), 0 0 8px 2px rgba(255,255,255,0.22); }
+  }
+  @keyframes waGlow {
+    0%, 100% { color: #000; filter: none; }
+    50% { color: #25D366; filter: drop-shadow(0 0 4px rgba(37,211,102,0.9)); }
+  }
+  .wa-icon { animation: waGlow 4s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- ─── OPTION A ─── -->
+<div class="option-wrap">
+  <p class="option-label">אפשרות A — בר זכוכית אחוד, שדות ללא מסגרת פנים</p>
+  <div class="fake-bg">
+    <p class="fake-headline">מגוון רכבי ספורט ויוקרה 2026 ללא יד<br>מחכים לכם בבוואריאן מוטורס!</p>
+    <p class="fake-sub">בואו להנות מאבזור עשיר, שירות אישי<br>ומהיר ויתרון במחיר!</p>
+    <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="optA-bar">
+      <a href="#" class="optA-wa">
+        <svg class="wa-icon" width="19" height="19" viewBox="0 0 24 24" fill="none">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor"/>
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+        WhatsApp
+      </a>
+      <div class="optA-divider"></div>
+      <div class="optA-fields">
+        <input class="optA-input" type="tel" placeholder="טלפון *" dir="rtl">
+        <input class="optA-input" type="text" placeholder="שם (אופציונלי)" dir="rtl">
+        <button class="optA-submit">שלח פנייה</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── OPTION B ─── -->
+<div class="option-wrap">
+  <p class="option-label">אפשרות B — ווצאפ בולט עם קצה ירוק, טופס בצד</p>
+  <div class="fake-bg">
+    <p class="fake-headline">מגוון רכבי ספורט ויוקרה 2026 ללא יד<br>מחכים לכם בבוואריאן מוטורס!</p>
+    <p class="fake-sub">בואו להנות מאבזור עשיר, שירות אישי<br>ומהיר ויתרון במחיר!</p>
+    <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="optB-row">
+      <a href="#" class="optB-wa">
+        <svg class="wa-icon" width="19" height="19" viewBox="0 0 24 24" fill="none">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor"/>
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+        WhatsApp
+      </a>
+      <div class="optB-form">
+        <input class="optB-input" type="tel" placeholder="טלפון *" dir="rtl">
+        <input class="optB-input" type="text" placeholder="שם (אופציונלי)" dir="rtl">
+        <button class="optB-submit">שלח פנייה</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── OPTION C ─── -->
+<div class="option-wrap">
+  <p class="option-label">אפשרות C — מסגרת גרדיאנט פרמיום, זכוכית כהה</p>
+  <div class="fake-bg">
+    <p class="fake-headline">מגוון רכבי ספורט ויוקרה 2026 ללא יד<br>מחכים לכם בבוואריאן מוטורס!</p>
+    <p class="fake-sub">בואו להנות מאבזור עשיר, שירות אישי<br>ומהיר ויתרון במחיר!</p>
+    <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="optC-wrap">
+      <div class="optC-inner">
+        <a href="#" class="optC-wa">
+          <svg class="wa-icon" width="19" height="19" viewBox="0 0 24 24" fill="none">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor"/>
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+          WhatsApp
+        </a>
+        <div class="optC-divider"></div>
+        <div class="optC-fields">
+          <input class="optC-input" type="tel" placeholder="טלפון *" dir="rtl">
+          <input class="optC-input" type="text" placeholder="שם (אופציונלי)" dir="rtl">
+          <button class="optC-submit">שלח פנייה</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── OPTION D ─── -->
+<div class="option-wrap">
+  <p class="option-label">אפשרות D — עיגולים (pill), מינימליסטי יוקרתי</p>
+  <div class="fake-bg">
+    <p class="fake-headline">מגוון רכבי ספורט ויוקרה 2026 ללא יד<br>מחכים לכם בבוואריאן מוטורס!</p>
+    <p class="fake-sub">בואו להנות מאבזור עשיר, שירות אישי<br>ומהיר ויתרון במחיר!</p>
+    <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="optD-row">
+      <a href="#" class="optD-wa">
+        <svg class="wa-icon" width="19" height="19" viewBox="0 0 24 24" fill="none">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor"/>
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+        WhatsApp
+      </a>
+      <div class="optD-sep"></div>
+      <input class="optD-input" type="tel" placeholder="טלפון *" dir="rtl">
+      <input class="optD-input" type="text" placeholder="שם (אופציונלי)" dir="rtl">
+      <button class="optD-submit">שלח פנייה</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
