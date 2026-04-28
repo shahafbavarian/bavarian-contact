@@ -315,19 +315,23 @@ function PageContent() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ─── Rotate screen overlay (mobile landscape) ─── */}
-      {!isDesktop && isLandscape && (
+      {/* ─── Rotate screen overlays ─── */}
+      {((!isDesktop && isLandscape) || (isDesktop && !isLandscape)) && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 999,
           background: '#000',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28,
         }}>
-          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48m-3.25 5.51c-1.55 3.27-4.72 5.61-8.48 5.97M2 12.5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <rect x="3" y="3" width="10" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" transform="rotate(-90 8 11) translate(-3 -2)"/>
+          <svg width="72" height="72" viewBox="0 0 64 64" fill="none" style={{ color: 'rgba(255,255,255,0.82)' }}>
+            <rect x="21" y="11" width="22" height="37" rx="4" stroke="currentColor" strokeWidth="1.8"/>
+            <rect x="24" y="17" width="16" height="23" rx="2" fill="currentColor" opacity="0.11"/>
+            <circle cx="32" cy="14.5" r="1.5" fill="currentColor" opacity="0.65"/>
+            <rect x="27" y="44" width="10" height="2" rx="1" fill="currentColor" opacity="0.55"/>
+            <path d="M12 26 A22 22 0 0 1 32 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.6"/>
+            <path d="M27 4 L32 7 L29 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
           </svg>
-          <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 18, color: 'rgba(255,255,255,0.7)', textAlign: 'center', direction: 'rtl' }}>
-            נא לסובב את המסך לאנכי
+          <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 18, color: 'rgba(255,255,255,0.72)', textAlign: 'center', direction: 'rtl' }}>
+            {!isDesktop ? 'נא לסובב את המסך' : 'נא לסובב את המסך לרוחב'}
           </p>
         </div>
       )}
@@ -621,59 +625,63 @@ function PageContent() {
           </div>
         )}
 
-        {/* ─── 3 Buttons ─── */}
-        <div className="grid grid-cols-3 gap-2.5">
+        {/* ─── Actions ─── */}
+        {isDesktop ? (
+          <DesktopInlineForm utmSource={utmSource} utmCampaign={utmCampaign} />
+        ) : (
+          <div className="grid grid-cols-3 gap-2.5">
 
-          {/* WhatsApp */}
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] font-medium text-black transition-all active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.92)', animation: 'btnPulseWA 4s ease-in-out 0s infinite' }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" style={{ animation: 'waIconGlow 4s ease-in-out 0s infinite' }}>
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
-              <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            </svg>
-            WhatsApp
-          </a>
+            {/* WhatsApp */}
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] font-medium text-black transition-all active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.92)', animation: 'btnPulseWA 4s ease-in-out 0s infinite' }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" style={{ animation: 'waIconGlow 4s ease-in-out 0s infinite' }}>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              </svg>
+              WhatsApp
+            </a>
 
-          {/* Phone */}
-          <a
-            href={`tel:+972${PHONE_NUMBER}`}
-            className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] text-white transition-all active:scale-95"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(10px)',
-              animation: 'btnPulse 4s ease-in-out 0s infinite',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            שיחה עם נציג
-          </a>
+            {/* Phone */}
+            <a
+              href={`tel:+972${PHONE_NUMBER}`}
+              className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] text-white transition-all active:scale-95"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                backdropFilter: 'blur(10px)',
+                animation: 'btnPulse 4s ease-in-out 0s infinite',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              שיחה עם נציג
+            </a>
 
-          {/* Form */}
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] text-white transition-all active:scale-95"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(10px)',
-              animation: 'btnPulse 4s ease-in-out 0s infinite',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            השאירו פרטים
-          </button>
+            {/* Form */}
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] text-white transition-all active:scale-95"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                backdropFilter: 'blur(10px)',
+                animation: 'btnPulse 4s ease-in-out 0s infinite',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              השאירו פרטים
+            </button>
 
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ─── Form Modal ─── */}
@@ -713,6 +721,149 @@ function PageContent() {
       </button>
 
     </main>
+  )
+}
+
+function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmCampaign: string }) {
+  const [form, setForm] = useState({ name: '', phone: '' })
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [phoneError, setPhoneError] = useState('')
+
+  function validatePhone(value: string): string {
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return 'נדרש מספר טלפון'
+    if (!/^05\d{8}$/.test(digits)) return 'מספר לא תקין'
+    return ''
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const err = validatePhone(form.phone)
+    if (err) { setPhoneError(err); return }
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name.trim() || 'ללא שם', phone: form.phone, message: '', utm_source: utmSource, utm_campaign: utmCampaign }),
+      })
+      if (!res.ok) throw new Error()
+      setStatus('success')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.13)',
+    borderRadius: 10,
+    padding: '11px 14px',
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'var(--font-heebo)',
+    outline: 'none',
+    direction: 'rtl',
+    width: '100%',
+  }
+
+  if (status === 'success') {
+    return (
+      <div style={{
+        maxWidth: 660, margin: '0 auto',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
+        backdropFilter: 'blur(12px)', borderRadius: 16, padding: '22px 28px',
+      }}>
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+          <circle cx="15" cy="15" r="13.5" stroke="white" strokeWidth="1.2" opacity="0.35"/>
+          <path d="M9 15l5 5 7-9" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <p style={{ fontFamily: 'var(--font-heebo)', color: 'white', fontSize: 17, fontWeight: 700 }}>
+          הפרטים נשלחו! ניצור קשר בהקדם
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate>
+      <div style={{
+        maxWidth: 660, margin: '0 auto',
+        display: 'flex', gap: 12, direction: 'rtl', alignItems: 'stretch',
+      }}>
+        {/* WhatsApp button */}
+        <a
+          href={`https://wa.me/${WHATSAPP_NUMBER}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flexShrink: 0, width: 130,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+            background: 'linear-gradient(160deg, #25D366 0%, #1aab52 100%)',
+            borderRadius: 14, color: 'white', textDecoration: 'none',
+            fontFamily: 'var(--font-heebo)', fontSize: 15, fontWeight: 700,
+            boxShadow: '0 4px 24px rgba(37,211,102,0.28)',
+            transition: 'opacity 0.2s',
+          }}
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="white"/>
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" fill="white" opacity="0.25"/>
+          </svg>
+          WhatsApp
+        </a>
+
+        {/* Form panel */}
+        <div style={{
+          flex: 1,
+          background: 'rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.13)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: 14,
+          padding: '14px 18px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              type="tel"
+              placeholder="טלפון *"
+              value={form.phone}
+              onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setPhoneError('') }}
+              style={{ ...inputStyle, border: `1px solid ${phoneError ? 'rgba(255,80,80,0.55)' : 'rgba(255,255,255,0.13)'}` }}
+            />
+            <input
+              type="text"
+              placeholder="שם (אופציונלי)"
+              value={form.name}
+              onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+              style={inputStyle}
+            />
+          </div>
+          {phoneError && (
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,100,100,0.9)', marginTop: -4 }}>{phoneError}</p>
+          )}
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            style={{
+              background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: 10,
+              padding: '11px 0', fontFamily: 'var(--font-heebo)', fontWeight: 700,
+              fontSize: 15, color: '#000', cursor: 'pointer',
+              transition: 'opacity 0.2s', opacity: status === 'loading' ? 0.55 : 1,
+            }}
+          >
+            {status === 'loading' ? 'שולח...' : 'שלח פנייה'}
+          </button>
+          {status === 'error' && (
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,100,100,0.9)', textAlign: 'center' }}>
+              אירעה שגיאה. נסה שוב.
+            </p>
+          )}
+        </div>
+      </div>
+    </form>
   )
 }
 
