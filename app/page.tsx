@@ -6,9 +6,9 @@ import { useSearchParams } from 'next/navigation'
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
 
-const BACKGROUNDS_MOBILE = ['/BG1.PNG', '/BG2.PNG', '/BG3.PNG', '/BG4.PNG']
+const BG_FIXED_MOBILE = '/BG.PNG'
 const BG_FIXED_DESKTOP = '/BG0.PNG'
-const CAR_IMAGES_DESKTOP = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
+const CAR_IMAGES = ['/1.PNG', '/2.PNG', '/3.PNG', '/4.PNG']
 
 const PRESET_MESSAGES = [
   'היי, אשמח לדבר עם נציג מכירות!',
@@ -251,7 +251,7 @@ function PageContent() {
 
   function goToBg(dir: 1 | -1) {
     if (nextIndex !== null) return
-    const len = isDesktop ? CAR_IMAGES_DESKTOP.length : BACKGROUNDS_MOBILE.length
+    const len = CAR_IMAGES.length
     const next = (currentIndex + dir + len) % len
     setNextIndex(next)
     setTimeout(() => {
@@ -316,45 +316,19 @@ function PageContent() {
           </p>
         </div>
       )}
-      {/* ─── Mobile: rotating background images ─── */}
-      {!showDesktopImages && BACKGROUNDS_MOBILE.map((src, i) => (
-        <div
-          key={src}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            overflow: 'hidden',
-            opacity: getBgOpacity(i),
-            transition: 'opacity 0.6s ease-in-out',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt=""
-            style={{ position: 'absolute', top: '-12%', left: 0, width: '100%', height: 'auto' }}
-          />
-        </div>
-      ))}
+      {/* ─── Fixed background (BG.PNG mobile / BG0.PNG desktop) ─── */}
+      <div style={{ position: 'absolute', top: showDesktopImages ? '-35%' : '-12%', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={showDesktopImages ? BG_FIXED_DESKTOP : BG_FIXED_MOBILE}
+          alt=""
+          fetchPriority="high"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+        />
+      </div>
 
-      {/* ─── Desktop: fixed background (raised) ─── */}
-      {showDesktopImages && (
-        <div style={{ position: 'absolute', top: '-35%', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={BG_FIXED_DESKTOP}
-            alt=""
-            fetchPriority="high"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
-          />
-        </div>
-      )}
-
-      {/* ─── Desktop: rotating car images ─── */}
-      {showDesktopImages && CAR_IMAGES_DESKTOP.map((src, i) => (
+      {/* ─── Rotating car images (1–4, both mobile & desktop) ─── */}
+      {CAR_IMAGES.map((src, i) => (
         <div
           key={src}
           style={{
@@ -370,11 +344,11 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: '6%',
+              bottom: showDesktopImages ? '6%' : '22%',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: '96%',
-              height: '80%',
+              width: showDesktopImages ? '96%' : '100%',
+              height: showDesktopImages ? '80%' : '55%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
@@ -575,7 +549,7 @@ function PageContent() {
         {/* Dots — mobile only: above headlines */}
         {!isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
-            {BACKGROUNDS_MOBILE.map((_, i) => (
+            {CAR_IMAGES.map((_, i) => (
               <button
                 key={i}
                 onClick={() => jumpToBg(i)}
@@ -611,7 +585,7 @@ function PageContent() {
         {/* Dots — desktop only: above buttons */}
         {isDesktop && (
           <div className="flex justify-center gap-1 mb-2">
-            {CAR_IMAGES_DESKTOP.map((_, i) => (
+            {CAR_IMAGES.map((_, i) => (
             <button
               key={i}
               onClick={() => jumpToBg(i)}
