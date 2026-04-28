@@ -347,8 +347,8 @@ function PageContent() {
               bottom: showDesktopImages ? '6%' : '28%',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? '96%' : '212%',
-              height: showDesktopImages ? '80%' : '138%',
+              width: showDesktopImages ? '96%' : '220%',
+              height: showDesktopImages ? '80%' : '144%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
