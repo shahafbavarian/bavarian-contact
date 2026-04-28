@@ -344,7 +344,7 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: showDesktopImages ? '6%' : '34%',
+              bottom: showDesktopImages ? '6%' : '22%',
               left: '50%',
               transform: 'translateX(-50%)',
               width: showDesktopImages ? '96%' : '120%',
@@ -493,7 +493,7 @@ function PageContent() {
           zIndex: 2,
           background: isDesktop
             ? 'linear-gradient(to bottom, transparent 65%, rgba(0,0,0,0.75) 84%, #000 100%)'
-            : 'linear-gradient(to bottom, transparent 61%, rgba(0,0,0,0.55) 80%, #000 95%)',
+            : 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55) 62%, #000 95%)',
           pointerEvents: 'none',
         }}
       />
