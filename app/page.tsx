@@ -344,11 +344,11 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: showDesktopImages ? '6%' : '14%',
+              bottom: showDesktopImages ? '6%' : '32%',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? '96%' : '128%',
-              height: showDesktopImages ? '80%' : '78%',
+              width: showDesktopImages ? '96%' : '145%',
+              height: showDesktopImages ? '80%' : '88%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
