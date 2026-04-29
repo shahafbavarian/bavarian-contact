@@ -363,11 +363,11 @@ function PageContent() {
             alt=""
             style={{
               position: 'absolute',
-              bottom: showDesktopImages ? '3%' : '28%',
-              left: '50%',
+              bottom: showDesktopImages ? '2%' : '28%',
+              left: showDesktopImages ? '66.5%' : '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? '96%' : '230%',
-              height: showDesktopImages ? '80%' : '150%',
+              width: showDesktopImages ? '70%' : '230%',
+              height: showDesktopImages ? '88%' : '150%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
@@ -423,6 +423,8 @@ function PageContent() {
         }
         .desktop-input::placeholder { color: rgba(255,255,255,0.28); }
         .desktop-input:focus { border-color: rgba(255,255,255,0.35) !important; }
+        .sidebar-input::placeholder { color: rgba(255,255,255,0.25); }
+        .sidebar-input:focus { border-color: rgba(255,255,255,0.35) !important; background: rgba(255,255,255,0.08) !important; }
       `}</style>
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
         {/* Left beam — center at 25% */}
@@ -459,24 +461,24 @@ function PageContent() {
         onClick={() => goToBg(1)}
         style={{
           position: 'absolute',
-          left: 12,
-          top: '42%',
+          left: showDesktopImages ? 'calc(33.33% + 14px)' : 12,
+          top: '45%',
           transform: 'translateY(-50%)',
           zIndex: 10,
-          width: 28,
-          height: 28,
+          width: showDesktopImages ? 36 : 28,
+          height: showDesktopImages ? 36 : 28,
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.14)',
+          backdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
+          color: 'rgba(255,255,255,0.7)',
           cursor: 'pointer',
         }}
       >
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+        <svg width={showDesktopImages ? 13 : 11} height={showDesktopImages ? 13 : 11} viewBox="0 0 16 16" fill="none">
           <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
@@ -484,24 +486,24 @@ function PageContent() {
         onClick={() => goToBg(-1)}
         style={{
           position: 'absolute',
-          right: 12,
-          top: '42%',
+          right: 14,
+          top: '45%',
           transform: 'translateY(-50%)',
           zIndex: 10,
-          width: 28,
-          height: 28,
+          width: showDesktopImages ? 36 : 28,
+          height: showDesktopImages ? 36 : 28,
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.14)',
+          backdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
+          color: 'rgba(255,255,255,0.7)',
           cursor: 'pointer',
         }}
       >
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+        <svg width={showDesktopImages ? 13 : 11} height={showDesktopImages ? 13 : 11} viewBox="0 0 16 16" fill="none">
           <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
@@ -555,66 +557,57 @@ function PageContent() {
         />
       )}
 
-      {/* ─── Bottom Content ─── */}
-      <div
-        style={{
+      {/* ─── Desktop: Left Sidebar Panel ─── */}
+      {isDesktop && (
+        <div style={{
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
+          left: 0, top: 0, bottom: 0,
+          width: '33.33%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px 18px',
           zIndex: 4,
-          paddingLeft: 20,
-          paddingRight: 20,
-          paddingTop: 0,
-          paddingBottom: isDesktop ? '18px' : 'calc(52px + env(safe-area-inset-bottom, 0px))',
-        }}
-      >
-        {/* Dots — mobile only */}
-        {!isDesktop && (
+        }}>
+          <DesktopSidebarCard utmSource={utmSource} utmCampaign={utmCampaign} />
+        </div>
+      )}
+
+      {/* ─── Mobile: Bottom Content ─── */}
+      {!isDesktop && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 4,
+            paddingLeft: 20,
+            paddingRight: 20,
+            paddingTop: 0,
+            paddingBottom: 'calc(52px + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
+          {/* Dots */}
           <div className="flex justify-center gap-1 mb-2">
             {CAR_IMAGES.map((_, i) => (
               <button key={i} onClick={() => jumpToBg(i)} style={{ width: i === currentIndex ? 14 : 4, height: 4, borderRadius: 2, background: i === currentIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 0.3s' }} />
             ))}
           </div>
-        )}
 
-        {isDesktop ? (
-          /* ─── Desktop: single row — headlines right + form left ─── */
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: 28, direction: 'rtl' }}>
-            {/* Headlines — drives row height */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
-                מגוון רכבי ספורט ויוקרה 2026 ללא יד
-                <br />
-                מחכים לכם בבוואריאן מוטורס!
-              </h1>
-              <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
-                בואו להנות מאבזור עשיר, שירות אישי
-                <br />
-                ומהיר ויתרון במחיר!
-              </p>
-            </div>
-            {/* Form — fills remaining width, height matches headlines */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <DesktopInlineForm utmSource={utmSource} utmCampaign={utmCampaign} />
-            </div>
+          <div className="mb-5">
+            <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
+              מגוון רכבי ספורט ויוקרה 2026 ללא יד
+              <br />
+              מחכים לכם בבוואריאן מוטורס!
+            </h1>
+            <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
+              בואו להנות מאבזור עשיר, שירות אישי
+              <br />
+              ומהיר ויתרון במחיר!
+            </p>
           </div>
-        ) : (
-          /* ─── Mobile: stacked ─── */
-          <>
-            <div className="mb-5">
-              <h1 className="font-heebo font-black text-white leading-tight" style={{ fontSize: 'clamp(17px, 4.7vw, 24px)' }}>
-                מגוון רכבי ספורט ויוקרה 2026 ללא יד
-                <br />
-                מחכים לכם בבוואריאן מוטורס!
-              </h1>
-              <p className="font-heebo font-light text-[20px] text-white/50 leading-tight mt-0.5">
-                בואו להנות מאבזור עשיר, שירות אישי
-                <br />
-                ומהיר ויתרון במחיר!
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
 
             {/* WhatsApp */}
             <a
@@ -666,9 +659,8 @@ function PageContent() {
             </button>
 
           </div>
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ─── Form Modal ─── */}
       {showModal && (
@@ -710,10 +702,15 @@ function PageContent() {
   )
 }
 
-function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmCampaign: string }) {
-  const [form, setForm] = useState({ name: '', phone: '' })
+function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utmCampaign: string }) {
+  const [form, setForm] = useState({ name: '', phone: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [phoneError, setPhoneError] = useState('')
+
+  function setField(f: string, v: string) {
+    setForm(p => ({ ...p, [f]: v }))
+    if (f === 'phone') setPhoneError('')
+  }
 
   function validatePhone(value: string): string {
     const digits = value.replace(/\D/g, '')
@@ -731,7 +728,7 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name.trim() || 'ללא שם', phone: form.phone, message: '', utm_source: utmSource, utm_campaign: utmCampaign }),
+        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -740,130 +737,288 @@ function DesktopInlineForm({ utmSource, utmCampaign }: { utmSource: string; utmC
     }
   }
 
-  if (status === 'success') {
-    return (
-      <div style={{
-        borderRadius: 20, padding: 1.5,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.04) 40%, rgba(37,211,102,0.35) 100%)',
-        boxShadow: '0 4px 32px rgba(37,211,102,0.08), 0 8px 40px rgba(0,0,0,0.5)',
-      }}>
-        <div style={{
-          background: 'rgba(12,12,12,0.92)', backdropFilter: 'blur(20px)',
-          borderRadius: 19, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 14, padding: '18px 28px',
-        }}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="9" stroke="white" strokeWidth="1.2" opacity="0.4"/>
-            <path d="M5.5 10l3.5 3.5 5.5-7" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <p className="font-heebo font-bold text-white text-base">הפרטים נשלחו! ניצור קשר בהקדם</p>
-        </div>
-      </div>
-    )
+  const cardLabelStyle: React.CSSProperties = {
+    display: 'block',
+    fontFamily: 'var(--font-inter)',
+    fontSize: 10,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.3)',
+    marginBottom: 7,
+  }
+
+  const inputStyle = (hasError = false): React.CSSProperties => ({
+    width: '100%',
+    background: 'rgba(255,255,255,0.05)',
+    border: `1px solid ${hasError ? 'rgba(255,80,80,0.55)' : 'rgba(255,255,255,0.1)'}`,
+    borderRadius: 10,
+    padding: '10px 14px',
+    color: 'white',
+    fontSize: 13,
+    fontFamily: 'var(--font-inter)',
+    outline: 'none',
+    direction: 'rtl',
+  })
+
+  const WaButton = ({ style }: { style?: React.CSSProperties }) => (
+    <a
+      href={`https://wa.me/${WHATSAPP_NUMBER}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+        padding: '13px 20px',
+        background: 'rgba(255,255,255,0.93)',
+        borderRadius: 12,
+        textDecoration: 'none',
+        color: '#000',
+        animation: 'btnPulseWA 4s ease-in-out 0s infinite',
+        ...style,
+      }}
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ animation: 'waIconGlow 4s ease-in-out 0s infinite', flexShrink: 0 }}>
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      </svg>
+      <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15 }}>WhatsApp</span>
+    </a>
+  )
+
+  const socialBtnStyle: React.CSSProperties = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: '11px 6px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    textDecoration: 'none',
+    color: 'rgba(255,255,255,0.65)',
+    fontFamily: 'var(--font-inter)',
+    fontSize: 11,
+    transition: 'background 0.2s, border-color 0.2s',
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Gradient border wrapper — height from parent (headlines row) */}
+    <div style={{
+      width: '100%',
+      borderRadius: 22,
+      padding: '1.5px',
+      background: 'linear-gradient(145deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.04) 50%, rgba(37,211,102,0.28) 100%)',
+      boxShadow: '0 8px 48px rgba(0,0,0,0.65), 0 2px 20px rgba(37,211,102,0.05)',
+    }}>
       <div style={{
-        flex: 1,
-        borderRadius: 20, padding: 1.5,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.04) 40%, rgba(37,211,102,0.35) 100%)',
-        boxShadow: '0 4px 32px rgba(37,211,102,0.08), 0 8px 40px rgba(0,0,0,0.5)',
+        background: 'rgba(10,10,10,0.94)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRadius: '20.5px',
+        direction: 'rtl',
+        overflow: 'hidden',
+        maxHeight: '90vh',
+        overflowY: 'auto',
       }}>
-        <div style={{
-          height: '100%',
-          background: 'rgba(12,12,12,0.92)', backdropFilter: 'blur(20px)',
-          borderRadius: 19, display: 'flex', alignItems: 'stretch', overflow: 'hidden',
-        }}>
-          {/* WhatsApp — identical to mobile */}
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center gap-1.5 font-inter text-[12px] font-medium text-black transition-all active:scale-95"
-            style={{
-              flexShrink: 0, padding: '0 28px',
-              background: 'rgba(255,255,255,0.92)',
-              animation: 'btnPulseWA 4s ease-in-out 0s infinite',
-              textDecoration: 'none',
-              borderRadius: '18px 0 0 18px',
-            }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" style={{ animation: 'waIconGlow 4s ease-in-out 0s infinite' }}>
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
-              <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            </svg>
-            WhatsApp
-          </a>
 
-          {/* Divider */}
-          <div style={{
-            width: 1, flexShrink: 0, margin: '8px 0',
-            background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, transparent)',
-          }} />
+        {status === 'success' ? (
+          /* ─── Success State ─── */
+          <div style={{ padding: '26px 20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ textAlign: 'center', paddingBottom: 4 }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 48, height: 48, borderRadius: '50%',
+                border: '1px solid rgba(255,255,255,0.18)', marginBottom: 12,
+              }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M4 10l5 5 7-8" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <p style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 18, color: 'white', marginBottom: 5 }}>
+                הפרטים נשלחו!
+              </p>
+              <p style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                ניצור קשר בהקדם
+              </p>
+            </div>
 
-          {/* Fields + label */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, padding: '14px 20px', direction: 'rtl' }}>
-            {/* Label */}
-            <p style={{
-              fontFamily: 'var(--font-heebo)', fontSize: 13, fontWeight: 600,
-              color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.01em',
-            }}>
-              השאירו פרטים ונחזור אליכם
-            </p>
-            {/* Inputs row */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-              <input
-                type="tel"
-                placeholder="טלפון *"
-                value={form.phone}
-                onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setPhoneError('') }}
-                className="desktop-input"
-                style={{
-                  flex: 1, background: 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${phoneError ? 'rgba(255,80,80,0.55)' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: 9, padding: '9px 13px', color: 'white',
-                  fontSize: 12, fontFamily: 'var(--font-inter)', outline: 'none', direction: 'rtl',
-                }}
-              />
-              <input
-              type="text"
-              placeholder="שם (אופציונלי)"
-              value={form.name}
-              onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-              className="desktop-input"
-              style={{
-                flex: 1, background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 9, padding: '9px 13px', color: 'white',
-                fontSize: 12, fontFamily: 'var(--font-inter)', outline: 'none', direction: 'rtl',
-              }}
-            />
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              style={{
-                flexShrink: 0, padding: '9px 22px',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%)',
-                border: '1px solid rgba(255,255,255,0.18)', borderRadius: 9,
-                color: 'white', fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
-                opacity: status === 'loading' ? 0.55 : 1, transition: 'background 0.2s',
-              }}
-            >
-              {status === 'loading' ? 'שולח...' : 'שלח פנייה'}
-            </button>
-            </div>{/* end inputs row */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
+
+            <WaButton />
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <a href="https://bavarian-motors.co.il" target="_blank" rel="noopener noreferrer" style={socialBtnStyle}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="M2 12h20M12 2c-2.5 3-4 6.5-4 10s1.5 7 4 10M12 2c2.5 3 4 6.5 4 10s-1.5 7-4 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                <span>אתר</span>
+              </a>
+              <a
+                href="https://www.instagram.com/bavarianmotors?igsh=MXNiYjg4cmY1MWtieA%3D%3D&utm_source=qr"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={socialBtnStyle}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" strokeWidth="1.4" />
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.4" />
+                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                </svg>
+                <span>Instagram</span>
+              </a>
+              <a
+                href="https://youtube.com/@bavarianmotorsclub?si=9Zr3-jPY5xKbuScH"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={socialBtnStyle}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z" stroke="currentColor" strokeWidth="1.4" />
+                  <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
+                </svg>
+                <span>YouTube</span>
+              </a>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* ─── Form State ─── */
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Headings */}
+            <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <h1 style={{
+                fontFamily: 'var(--font-heebo)', fontWeight: 900,
+                fontSize: 'clamp(15px, 1.45vw, 22px)', color: 'white',
+                lineHeight: 1.35, marginBottom: 6,
+              }}>
+                מגוון רכבי ספורט ויוקרה 2026 ללא יד
+                <br />מחכים לכם בבוואריאן מוטורס!
+              </h1>
+              <p style={{
+                fontFamily: 'var(--font-heebo)', fontWeight: 300,
+                fontSize: 'clamp(12px, 1.05vw, 16px)', color: 'rgba(255,255,255,0.45)',
+                lineHeight: 1.45,
+              }}>
+                בואו להנות מאבזור עשיר, שירות אישי
+                <br />ומהיר ויתרון במחיר!
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* WhatsApp */}
+              <WaButton />
+
+              {/* Separator */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.05em' }}>
+                  או השאר פרטים
+                </span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label style={cardLabelStyle}>
+                  טלפון <span style={{ color: 'rgba(255,255,255,0.45)' }}>*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={e => setField('phone', e.target.value)}
+                  onBlur={() => { if (form.phone) setPhoneError(validatePhone(form.phone)) }}
+                  placeholder="050-000-0000"
+                  maxLength={12}
+                  className="sidebar-input"
+                  style={inputStyle(!!phoneError)}
+                />
+                {phoneError && (
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,100,100,0.9)', marginTop: 5 }}>
+                    {phoneError}
+                  </p>
+                )}
+              </div>
+
+              {/* Name */}
+              <div>
+                <label style={cardLabelStyle}>שם מלא</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={e => setField('name', e.target.value)}
+                  placeholder="הכנס את שמך"
+                  className="sidebar-input"
+                  style={inputStyle()}
+                />
+              </div>
+
+              {/* Preset messages */}
+              <div>
+                <label style={cardLabelStyle}>הודעה</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {PRESET_MESSAGES.map(msg => (
+                    <button
+                      key={msg}
+                      type="button"
+                      onClick={() => setField('message', form.message === msg ? '' : msg)}
+                      style={{
+                        textAlign: 'right',
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        border: `1px solid ${form.message === msg ? 'rgba(255,255,255,0.38)' : 'rgba(255,255,255,0.09)'}`,
+                        background: form.message === msg ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        color: form.message === msg ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.38)',
+                        fontFamily: 'var(--font-inter)',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        transition: 'all 0.18s',
+                        direction: 'rtl',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {msg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                style={{
+                  marginTop: 2,
+                  padding: '13px 20px',
+                  background: 'white',
+                  borderRadius: 11,
+                  border: 'none',
+                  color: '#000',
+                  fontFamily: 'var(--font-heebo)',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  cursor: status === 'loading' ? 'default' : 'pointer',
+                  width: '100%',
+                  opacity: status === 'loading' ? 0.5 : 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {status === 'loading' ? 'שולח...' : 'שלח פנייה'}
+              </button>
+
+              {status === 'error' && (
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,100,100,0.9)', textAlign: 'center' }}>
+                  אירעה שגיאה. נסה שוב.
+                </p>
+              )}
+
+            </div>
+          </form>
+        )}
+
       </div>
-      {(phoneError || status === 'error') && (
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,100,100,0.9)', direction: 'rtl', marginTop: 6 }}>
-          {phoneError || 'אירעה שגיאה. נסה שוב.'}
-        </p>
-      )}
-    </form>
+    </div>
   )
 }
 
