@@ -223,6 +223,7 @@ function PageContent() {
   const [nextIndex, setNextIndex] = useState<number | null>(null)
   const [isDesktop, setIsDesktop] = useState(false)
   const [isLandscape, setIsLandscape] = useState(true)
+  const [isTabletOrLarger, setIsTabletOrLarger] = useState(false)
   const [carsReady, setCarsReady] = useState(!PRELOAD_CARS)
   const [dims, setDims] = useState({ w: 1280, h: 720 })
   const touchStartX = useRef<number | null>(null)
@@ -245,15 +246,20 @@ function PageContent() {
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
     const mqLandscape = window.matchMedia('(orientation: landscape)')
+    const mqTablet = window.matchMedia('(min-width: 768px)')
     setIsDesktop(mq.matches)
     setIsLandscape(mqLandscape.matches)
+    setIsTabletOrLarger(mqTablet.matches)
     const handler = (e: MediaQueryListEvent) => { setIsDesktop(e.matches); setCurrentIndex(0); setNextIndex(null) }
     const landscapeHandler = (e: MediaQueryListEvent) => { setIsLandscape(e.matches); setCurrentIndex(0); setNextIndex(null) }
+    const tabletHandler = (e: MediaQueryListEvent) => setIsTabletOrLarger(e.matches)
     mq.addEventListener('change', handler)
     mqLandscape.addEventListener('change', landscapeHandler)
+    mqTablet.addEventListener('change', tabletHandler)
     return () => {
       mq.removeEventListener('change', handler)
       mqLandscape.removeEventListener('change', landscapeHandler)
+      mqTablet.removeEventListener('change', tabletHandler)
     }
   }, [])
 
@@ -334,7 +340,7 @@ function PageContent() {
       onTouchEnd={handleTouchEnd}
     >
       {/* ─── Rotate screen overlays ─── */}
-      {((!isDesktop && isLandscape) || (isDesktop && !isLandscape)) && (
+      {((!isDesktop && isLandscape) || (isTabletOrLarger && !isLandscape)) && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 999,
           background: '#000',
@@ -349,7 +355,7 @@ function PageContent() {
             <path d="M27 4 L32 7 L29 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
           </svg>
           <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 18, color: 'rgba(255,255,255,0.72)', textAlign: 'center', direction: 'rtl' }}>
-            {!isDesktop ? 'נא לסובב את המסך' : 'נא לסובב את המסך לרוחב'}
+            {(!isDesktop && isLandscape) ? 'נא לסובב את המסך' : 'נא לסובב את המסך לרוחב'}
           </p>
         </div>
       )}
@@ -384,7 +390,7 @@ function PageContent() {
               bottom: showDesktopImages ? '2%' : '28%',
               left: showDesktopImages ? carDesktopLeft : '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? '70%' : '230%',
+              width: showDesktopImages ? carDesktopWidth : '230%',
               height: showDesktopImages ? '88%' : '150%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
