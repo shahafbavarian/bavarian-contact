@@ -221,7 +221,6 @@ function PageContent() {
   const [utmCampaign, setUtmCampaign] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState<number | null>(null)
-  const [showDesktop, setShowDesktop] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
   const [isLandscape, setIsLandscape] = useState(true)
   const [carsReady, setCarsReady] = useState(!PRELOAD_CARS)
@@ -385,7 +384,7 @@ function PageContent() {
               bottom: showDesktopImages ? '2%' : '28%',
               left: showDesktopImages ? carDesktopLeft : '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? carDesktopWidth : '230%',
+              width: showDesktopImages ? '70%' : '230%',
               height: showDesktopImages ? '88%' : '150%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
@@ -717,33 +716,6 @@ function PageContent() {
         />
       )}
 
-      {/* ─── Dev: Desktop Preview Overlay ─── */}
-      {showDesktop && <DesktopPreviewOverlay onClose={() => setShowDesktop(false)} />}
-
-      {/* ─── Dev: Desktop Preview Button ─── */}
-      <button
-        onClick={() => setShowDesktop(true)}
-        style={{
-          position: 'absolute',
-          top: 10,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 20,
-          background: 'rgba(0,0,0,0.55)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          backdropFilter: 'blur(8px)',
-          color: 'rgba(255,255,255,0.65)',
-          fontSize: 11,
-          fontFamily: 'var(--font-inter)',
-          padding: '4px 12px',
-          borderRadius: 20,
-          cursor: 'pointer',
-          letterSpacing: '0.05em',
-        }}
-      >
-        🖥 desktop
-      </button>
-
     </main>
   )
 }
@@ -931,7 +903,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
           /* ─── Form State ─── */
           <form onSubmit={handleSubmit} noValidate>
             {/* Card header — minimal label */}
-            <div style={{ padding: '14px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', direction: 'rtl' }}>
+            <div style={{ padding: '14px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', direction: 'rtl' }}>
               <span style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: 10,
@@ -941,11 +913,6 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
               }}>
                 צור קשר
               </span>
-              <div style={{ display: 'flex', gap: 5 }}>
-                {[0,1,2].map(i => (
-                  <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? 'rgba(255,95,87,0.7)' : i === 1 ? 'rgba(255,189,46,0.7)' : 'rgba(40,200,64,0.7)' }} />
-                ))}
-              </div>
             </div>
 
             {/* Body */}
