@@ -225,11 +225,23 @@ function PageContent() {
   const [isDesktop, setIsDesktop] = useState(false)
   const [isLandscape, setIsLandscape] = useState(true)
   const [carsReady, setCarsReady] = useState(!PRELOAD_CARS)
+  const [dims, setDims] = useState({ w: 1280, h: 720 })
   const touchStartX = useRef<number | null>(null)
   const autoplayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // showDesktopImages: use desktop BG0 + rotating cars only on wide landscape screens
   const showDesktopImages = isDesktop && isLandscape
+
+  // BG0.webp is 1672×941. Compute car left/width so its position in the bg image stays
+  // constant across different aspect ratios (scale-by-height holds for vw/vh < 2.4).
+  // Reference on 16:9 (1280×720): center at left=66.5% → fx=0.622, width=70% → fw=0.519
+  const _renderedBgW = showDesktopImages ? (1.35 * dims.h / 941) * 1672 : 0
+  const carDesktopLeft = showDesktopImages
+    ? `${((0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2) / dims.w * 100).toFixed(2)}%`
+    : '50%'
+  const carDesktopWidth = showDesktopImages
+    ? `${(0.519 * _renderedBgW / dims.w * 100).toFixed(2)}%`
+    : '230%'
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -244,6 +256,13 @@ function PageContent() {
       mq.removeEventListener('change', handler)
       mqLandscape.removeEventListener('change', landscapeHandler)
     }
+  }, [])
+
+  useEffect(() => {
+    function update() { setDims({ w: window.innerWidth, h: window.innerHeight }) }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
   useEffect(() => {
@@ -364,9 +383,9 @@ function PageContent() {
             style={{
               position: 'absolute',
               bottom: showDesktopImages ? '2%' : '28%',
-              left: showDesktopImages ? '66.5%' : '50%',
+              left: showDesktopImages ? carDesktopLeft : '50%',
               transform: 'translateX(-50%)',
-              width: showDesktopImages ? '70%' : '230%',
+              width: showDesktopImages ? carDesktopWidth : '230%',
               height: showDesktopImages ? '88%' : '150%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
@@ -564,11 +583,38 @@ function PageContent() {
           left: 0, top: 0, bottom: 0,
           width: '33.33%',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           justifyContent: 'center',
           padding: '20px 18px',
+          gap: 18,
           zIndex: 4,
         }}>
+          {/* Headings — outside the card, above it */}
+          <div style={{ direction: 'rtl' }}>
+            <h1 style={{
+              fontFamily: 'var(--font-heebo)',
+              fontWeight: 900,
+              fontSize: 'clamp(15px, 1.45vw, 22px)',
+              color: 'white',
+              lineHeight: 1.35,
+              marginBottom: 8,
+              textShadow: '0 2px 16px rgba(0,0,0,0.85)',
+            }}>
+              מגוון רכבי ספורט ויוקרה 2026 ללא יד
+              <br />מחכים לכם בבוואריאן מוטורס!
+            </h1>
+            <p style={{
+              fontFamily: 'var(--font-heebo)',
+              fontWeight: 300,
+              fontSize: 'clamp(12px, 1.05vw, 16px)',
+              color: 'rgba(255,255,255,0.55)',
+              lineHeight: 1.5,
+              textShadow: '0 1px 10px rgba(0,0,0,0.75)',
+            }}>
+              בואו להנות מאבזור עשיר, שירות אישי
+              <br />ומהיר ויתרון במחיר!
+            </p>
+          </div>
           <DesktopSidebarCard utmSource={utmSource} utmCampaign={utmCampaign} />
         </div>
       )}
@@ -884,24 +930,22 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
         ) : (
           /* ─── Form State ─── */
           <form onSubmit={handleSubmit} noValidate>
-            {/* Headings */}
-            <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <h1 style={{
-                fontFamily: 'var(--font-heebo)', fontWeight: 900,
-                fontSize: 'clamp(15px, 1.45vw, 22px)', color: 'white',
-                lineHeight: 1.35, marginBottom: 6,
+            {/* Card header — minimal label */}
+            <div style={{ padding: '14px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', direction: 'rtl' }}>
+              <span style={{
+                fontFamily: 'var(--font-inter)',
+                fontSize: 10,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.35)',
               }}>
-                מגוון רכבי ספורט ויוקרה 2026 ללא יד
-                <br />מחכים לכם בבוואריאן מוטורס!
-              </h1>
-              <p style={{
-                fontFamily: 'var(--font-heebo)', fontWeight: 300,
-                fontSize: 'clamp(12px, 1.05vw, 16px)', color: 'rgba(255,255,255,0.45)',
-                lineHeight: 1.45,
-              }}>
-                בואו להנות מאבזור עשיר, שירות אישי
-                <br />ומהיר ויתרון במחיר!
-              </p>
+                צור קשר
+              </span>
+              <div style={{ display: 'flex', gap: 5 }}>
+                {[0,1,2].map(i => (
+                  <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? 'rgba(255,95,87,0.7)' : i === 1 ? 'rgba(255,189,46,0.7)' : 'rgba(40,200,64,0.7)' }} />
+                ))}
+              </div>
             </div>
 
             {/* Body */}
