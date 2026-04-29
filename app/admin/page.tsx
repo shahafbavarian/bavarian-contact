@@ -17,31 +17,20 @@ export default async function AdminPage() {
 
       {/* ─── Header ─── */}
       <header style={{
-        borderBottom: '1px solid rgba(200,169,110,0.15)',
-        padding: '28px 40px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'rgba(255,255,255,0.015)',
+        borderBottom: '1px solid rgba(200,169,110,0.1)',
+        padding: '20px 40px',
+        background: 'rgba(255,255,255,0.012)',
         backdropFilter: 'blur(12px)',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/LOGO.PNG" alt="Bavarian Motors" style={{ height: 52, width: 'auto' }} />
-          <div style={{ width: 1, height: 36, background: 'rgba(200,169,110,0.25)' }} />
-          <div>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.3em', color: 'rgba(200,169,110,0.7)', textTransform: 'uppercase', margin: 0 }}>
-              ניהול
-            </p>
-            <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 22, color: '#fff', margin: 0, letterSpacing: '0.02em' }}>
-              פניות נכנסות
-            </h1>
-          </div>
-        </div>
-
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.3em', color: 'rgba(200,169,110,0.6)', textTransform: 'uppercase', margin: '0 0 3px' }}>
+          ניהול
+        </p>
+        <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 20, color: '#fff', margin: 0, letterSpacing: '0.02em' }}>
+          פניות נכנסות
+        </h1>
       </header>
 
       <div style={{ height: 1, background: 'linear-gradient(to left, transparent, rgba(200,169,110,0.4), transparent)', margin: '0 40px' }} />
