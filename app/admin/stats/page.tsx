@@ -3,14 +3,25 @@ import type { Event } from '@/lib/supabase'
 import StatsPanel from './StatsPanel'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function StatsPage() {
   const supabase = getSupabaseAdmin()
 
-  const { data: events } = await supabase
+  const { data: events, error } = await supabase
     .from('events')
     .select('*')
     .order('created_at', { ascending: false })
+
+  if (error) {
+    return (
+      <div style={{ padding: '32px 28px' }}>
+        <p style={{ color: '#f87171', fontFamily: 'var(--font-inter)', fontSize: 13 }}>
+          שגיאה בטעינת נתונים: {error.message}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '32px 28px', maxWidth: 900, margin: '0 auto' }}>

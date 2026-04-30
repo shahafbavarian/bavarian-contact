@@ -88,6 +88,13 @@ export default function StatsPanel({ events }: { events: Event[] }) {
 
   return (
     <div>
+      {/* Debug: total raw events */}
+      {events.length > 0 && (
+        <div style={{ marginBottom: 16, fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+          סה״כ {events.length} אירועים בבסיס הנתונים · מוצגים {filtered.length} לתקופה הנבחרת
+        </div>
+      )}
+
       {/* Period selector */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 28, direction: 'ltr' }}>
         {(Object.keys(PERIOD_LABELS) as Period[]).map(p => {
