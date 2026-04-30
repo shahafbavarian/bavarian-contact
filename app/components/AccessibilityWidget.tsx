@@ -22,11 +22,13 @@ const STORAGE_KEY = 'a11y-settings'
 
 function applySettings(s: Settings) {
   const root = document.documentElement
-  root.style.setProperty('--a11y-font-scale', s.fontSize === 2 ? '1.22' : s.fontSize === 1 ? '1.1' : '1')
+  // zoom scales everything including px-based inline styles
+  root.style.zoom = ['1', '1.1', '1.22'][s.fontSize]
   root.classList.toggle('a11y-contrast', s.contrast)
   root.classList.toggle('a11y-grayscale', s.grayscale)
   root.classList.toggle('a11y-underline', s.underlineLinks)
   root.classList.toggle('a11y-pause', s.pauseAnimations)
+  window.dispatchEvent(new Event('a11y-settings-changed'))
 }
 
 export default function AccessibilityWidget() {
@@ -53,11 +55,11 @@ export default function AccessibilityWidget() {
     })
   }
 
-  function reset() {
-    update(DEFAULT)
-  }
+  function reset() { update(DEFAULT) }
 
-  const btnStyle = (active: boolean): React.CSSProperties => ({
+  const isChanged = JSON.stringify(settings) !== JSON.stringify(DEFAULT)
+
+  const rowStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
     gap: 10,
@@ -77,7 +79,6 @@ export default function AccessibilityWidget() {
 
   return (
     <>
-      {/* Global a11y styles */}
       <style>{`
         .a11y-contrast { filter: contrast(1.5) brightness(1.05); }
         .a11y-grayscale { filter: grayscale(1); }
@@ -85,66 +86,57 @@ export default function AccessibilityWidget() {
         .a11y-underline a { text-decoration: underline !important; }
         .a11y-pause *, .a11y-pause *::before, .a11y-pause *::after {
           animation-play-state: paused !important;
-          transition: none !important;
+          transition-duration: 0s !important;
         }
-        html { font-size: calc(16px * var(--a11y-font-scale, 1)); }
       `}</style>
 
-      {/* Trigger button */}
+      {/* Trigger button — top left */}
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="פתח תפריט נגישות"
         style={{
           position: 'fixed',
-          bottom: 24,
-          left: 24,
+          top: 16,
+          left: 16,
           zIndex: 9999,
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           borderRadius: '50%',
-          background: 'rgba(20,20,20,0.92)',
-          border: '1.5px solid rgba(200,169,110,0.45)',
+          background: 'rgba(14,14,14,0.92)',
+          border: `1.5px solid ${open ? 'rgba(200,169,110,0.8)' : 'rgba(200,169,110,0.4)'}`,
           color: 'rgba(200,169,110,0.9)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.5)',
           backdropFilter: 'blur(8px)',
-          transition: 'border-color 0.2s, box-shadow 0.2s',
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(200,169,110,0.8)'
-          ;(e.currentTarget as HTMLElement).style.boxShadow = '0 4px 28px rgba(200,169,110,0.2)'
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(200,169,110,0.45)'
-          ;(e.currentTarget as HTMLElement).style.boxShadow = '0 4px 24px rgba(0,0,0,0.5)'
+          transition: 'border-color 0.2s',
         }}
       >
-        {/* Accessibility icon (person with circle) */}
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="5" r="2" fill="currentColor" />
-          <path d="M12 8c-3 0-5 1.5-5 3.5V13h3v5h4v-5h3v-1.5C17 9.5 15 8 12 8z" fill="currentColor" />
+        {/* Universal accessibility icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="4.5" r="2" fill="currentColor" />
+          <path d="M7 8.5h10M12 8.5v5M9 22l3-8.5 3 8.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
-      {/* Panel */}
+      {/* Panel — drops down from button */}
       {open && (
         <div
           role="dialog"
           aria-label="תפריט נגישות"
           style={{
             position: 'fixed',
-            bottom: 84,
-            left: 24,
+            top: 68,
+            left: 16,
             zIndex: 9999,
-            width: 260,
-            background: 'rgba(12,12,12,0.97)',
-            border: '1px solid rgba(200,169,110,0.2)',
+            width: 256,
+            background: 'rgba(10,10,10,0.97)',
+            border: '1px solid rgba(200,169,110,0.18)',
             borderRadius: 14,
-            padding: 16,
-            boxShadow: '0 8px 48px rgba(0,0,0,0.7)',
+            padding: 14,
+            boxShadow: '0 8px 48px rgba(0,0,0,0.75)',
             backdropFilter: 'blur(16px)',
             direction: 'rtl',
           }}
@@ -154,13 +146,13 @@ export default function AccessibilityWidget() {
             fontSize: 10,
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.3)',
-            marginBottom: 12,
+            color: 'rgba(255,255,255,0.28)',
+            marginBottom: 10,
           }}>
             נגישות
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
 
             {/* Font size */}
             <div style={{
@@ -179,47 +171,61 @@ export default function AccessibilityWidget() {
                   <button
                     key={level}
                     onClick={() => update({ fontSize: level })}
+                    aria-label={['רגיל', 'גדול', 'גדול מאוד'][level]}
                     style={{
                       width: 28, height: 28, borderRadius: 6,
                       border: `1px solid ${settings.fontSize === level ? 'rgba(200,169,110,0.5)' : 'rgba(255,255,255,0.12)'}`,
                       background: settings.fontSize === level ? 'rgba(200,169,110,0.12)' : 'transparent',
                       color: settings.fontSize === level ? 'rgba(200,169,110,0.9)' : 'rgba(255,255,255,0.5)',
                       fontFamily: 'var(--font-heebo)',
-                      fontSize: [11, 13, 15][level],
+                      fontSize: [11, 13, 16][level],
+                      fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    א
+                    A
                   </button>
                 ))}
               </div>
             </div>
 
-            <button style={btnStyle(settings.contrast)} onClick={() => update({ contrast: !settings.contrast })}>
-              <span style={{ fontSize: 16 }}>◑</span>
+            <button style={rowStyle(settings.contrast)} onClick={() => update({ contrast: !settings.contrast })}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M12 2a10 10 0 010 20V2z" fill="currentColor" />
+              </svg>
               ניגודיות גבוהה
             </button>
 
-            <button style={btnStyle(settings.grayscale)} onClick={() => update({ grayscale: !settings.grayscale })}>
-              <span style={{ fontSize: 16 }}>◐</span>
+            <button style={rowStyle(settings.grayscale)} onClick={() => update({ grayscale: !settings.grayscale })}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              </svg>
               גווני אפור
             </button>
 
-            <button style={btnStyle(settings.underlineLinks)} onClick={() => update({ underlineLinks: !settings.underlineLinks })}>
-              <span style={{ fontSize: 13, textDecoration: 'underline', fontFamily: 'serif' }}>א</span>
+            <button style={rowStyle(settings.underlineLinks)} onClick={() => update({ underlineLinks: !settings.underlineLinks })}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M6 3v7a6 6 0 0012 0V3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M4 21h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
               הדגש קישורים
             </button>
 
-            <button style={btnStyle(settings.pauseAnimations)} onClick={() => update({ pauseAnimations: !settings.pauseAnimations })}>
-              <span style={{ fontSize: 14 }}>⏸</span>
+            <button style={rowStyle(settings.pauseAnimations)} onClick={() => update({ pauseAnimations: !settings.pauseAnimations })}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
+                <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
+              </svg>
               עצור אנימציות
             </button>
 
           </div>
 
-          {/* Reset */}
-          {JSON.stringify(settings) !== JSON.stringify(DEFAULT) && (
+          {isChanged && (
             <button
               onClick={reset}
               style={{
@@ -235,7 +241,7 @@ export default function AccessibilityWidget() {
                 cursor: 'pointer',
               }}
             >
-              איפוס
+              איפוס הגדרות
             </button>
           )}
         </div>
