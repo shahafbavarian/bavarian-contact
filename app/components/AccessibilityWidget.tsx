@@ -19,43 +19,37 @@ const DEFAULT: Settings = {
 }
 
 const STORAGE_KEY = 'a11y-settings'
-
-function applySettings(s: Settings) {
-  const root = document.documentElement
-  // zoom scales everything including px-based inline styles
-  root.style.zoom = ['1', '1.1', '1.22'][s.fontSize]
-  root.classList.toggle('a11y-contrast', s.contrast)
-  root.classList.toggle('a11y-grayscale', s.grayscale)
-  root.classList.toggle('a11y-underline', s.underlineLinks)
-  root.classList.toggle('a11y-pause', s.pauseAnimations)
-  window.dispatchEvent(new Event('a11y-settings-changed'))
-}
+const ZOOM_LEVELS = [1, 1.2, 1.4]
 
 export default function AccessibilityWidget() {
   const [open, setOpen] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULT)
+  const [mounted, setMounted] = useState(false)
 
+  // Load saved settings on mount
   useEffect(() => {
+    setMounted(true)
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = { ...DEFAULT, ...JSON.parse(saved) }
-        setSettings(parsed)
-        applySettings(parsed)
-      }
+      if (saved) setSettings({ ...DEFAULT, ...JSON.parse(saved) })
     } catch {}
   }, [])
 
-  function update(patch: Partial<Settings>) {
-    setSettings(prev => {
-      const next = { ...prev, ...patch }
-      applySettings(next)
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
-      return next
-    })
-  }
+  // Apply settings to DOM whenever they change
+  useEffect(() => {
+    if (!mounted) return
+    const root = document.documentElement
+    root.style.zoom = String(ZOOM_LEVELS[settings.fontSize])
+    root.classList.toggle('a11y-contrast', settings.contrast)
+    root.classList.toggle('a11y-grayscale', settings.grayscale)
+    root.classList.toggle('a11y-underline', settings.underlineLinks)
+    root.classList.toggle('a11y-pause', settings.pauseAnimations)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)) } catch {}
+  }, [settings, mounted])
 
-  function reset() { update(DEFAULT) }
+  function update(patch: Partial<Settings>) {
+    setSettings(prev => ({ ...prev, ...patch }))
+  }
 
   const isChanged = JSON.stringify(settings) !== JSON.stringify(DEFAULT)
 
@@ -76,6 +70,8 @@ export default function AccessibilityWidget() {
     direction: 'rtl',
     textAlign: 'right',
   })
+
+  if (!mounted) return null
 
   return (
     <>
@@ -114,14 +110,13 @@ export default function AccessibilityWidget() {
           transition: 'border-color 0.2s',
         }}
       >
-        {/* Universal accessibility icon */}
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="4.5" r="2" fill="currentColor" />
           <path d="M7 8.5h10M12 8.5v5M9 22l3-8.5 3 8.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
-      {/* Panel — drops down from button */}
+      {/* Panel */}
       {open && (
         <div
           role="dialog"
@@ -167,21 +162,22 @@ export default function AccessibilityWidget() {
             }}>
               <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>גודל טקסט</span>
               <div style={{ display: 'flex', gap: 4 }}>
-                {[0, 1, 2].map(level => (
+                {([0, 1, 2] as const).map(level => (
                   <button
                     key={level}
                     onClick={() => update({ fontSize: level })}
                     aria-label={['רגיל', 'גדול', 'גדול מאוד'][level]}
                     style={{
-                      width: 28, height: 28, borderRadius: 6,
-                      border: `1px solid ${settings.fontSize === level ? 'rgba(200,169,110,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                      background: settings.fontSize === level ? 'rgba(200,169,110,0.12)' : 'transparent',
-                      color: settings.fontSize === level ? 'rgba(200,169,110,0.9)' : 'rgba(255,255,255,0.5)',
-                      fontFamily: 'var(--font-heebo)',
-                      fontSize: [11, 13, 16][level],
+                      width: 32, height: 32, borderRadius: 6,
+                      border: `1px solid ${settings.fontSize === level ? 'rgba(200,169,110,0.6)' : 'rgba(255,255,255,0.12)'}`,
+                      background: settings.fontSize === level ? 'rgba(200,169,110,0.15)' : 'transparent',
+                      color: settings.fontSize === level ? 'rgba(200,169,110,0.95)' : 'rgba(255,255,255,0.45)',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: [12, 15, 19][level],
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
                     }}
                   >
                     A
@@ -227,7 +223,7 @@ export default function AccessibilityWidget() {
 
           {isChanged && (
             <button
-              onClick={reset}
+              onClick={() => update(DEFAULT)}
               style={{
                 marginTop: 10,
                 width: '100%',

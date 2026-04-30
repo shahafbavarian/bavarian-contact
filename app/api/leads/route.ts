@@ -10,14 +10,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'טלפון הוא שדה חובה' }, { status: 400 })
     }
 
-    const { data, error } = await getSupabaseAdmin().from('leads').insert({
+    const base = {
       name: name?.trim() || null,
       phone: phone.trim(),
       message: message?.trim() || null,
       utm_source: utm_source || null,
       utm_campaign: utm_campaign || null,
-      device: device || null,
-    }).select()
+    }
+
+    let { data, error } = await getSupabaseAdmin().from('leads').insert({ ...base, device: device || null }).select()
+
+    // Fallback: if device column doesn't exist yet, retry without it
+    if (error?.code === '42703') {
+      const r2 = await getSupabaseAdmin().from('leads').insert(base).select()
+      data = r2.data; error = r2.error
+    }
 
     if (error) {
       console.error('Supabase insert error:', error)
