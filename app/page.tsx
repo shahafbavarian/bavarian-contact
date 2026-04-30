@@ -246,25 +246,21 @@ function PageContent() {
   // showDesktopImages: use desktop BG0 + rotating cars only on wide landscape screens
   const showDesktopImages = isDesktop && isLandscape
 
-  // BG0.webp is 1672×941. Car box tracks the background image scale (scale-by-height).
-  // Both width and height are scaled by the same factor so the box aspect ratio stays
-  // constant → objectFit:contain renders the car identically on all screen aspect ratios
-  // (no vertical drift). The scale factor is clamped so the car never overflows the viewport.
+  // BG0.webp is 1672×941. Car size is proportional to background (scale-by-height).
+  // Box AR is always constant so objectFit:contain renders car identically — no vertical drift.
+  // If right edge would overflow viewport, shift center leftward (left overflow = empty sky).
   const _renderedBgW = showDesktopImages ? (1.35 * dims.h / 941) * 1672 : 0
-  const carDesktopLeft = showDesktopImages
-    ? `${((0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2) / dims.w * 100).toFixed(2)}%`
-    : '50%'
   const _rawCarW = showDesktopImages ? 0.519 * _renderedBgW : 0
-  const _carCenterX = showDesktopImages
+  const _naturalCenterX = showDesktopImages
     ? 0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2
     : 0
-  // Max width so the car right edge stays within the viewport (2% breathing room)
-  const _maxCarW = showDesktopImages
-    ? Math.min((dims.w - _carCenterX) * 2 + dims.w * 0.02, dims.w * 0.98)
-    : 0
-  const _carScale = _rawCarW > 0 ? Math.min(1, _maxCarW / _rawCarW) : 1
-  const carDesktopWidth = showDesktopImages ? `${(_rawCarW * _carScale / dims.w * 100).toFixed(2)}%` : '230%'
-  const carDesktopHeight = showDesktopImages ? `${(88 * _carScale).toFixed(2)}%` : '150%'
+  const _maxCenterX = showDesktopImages ? dims.w - _rawCarW / 2 + dims.w * 0.01 : 0
+  const _effectiveCenterX = showDesktopImages ? Math.min(_naturalCenterX, _maxCenterX) : 0
+  const carDesktopLeft = showDesktopImages
+    ? `${(_effectiveCenterX / dims.w * 100).toFixed(2)}%`
+    : '50%'
+  const carDesktopWidth = showDesktopImages ? `${(_rawCarW / dims.w * 100).toFixed(2)}%` : '230%'
+  const carDesktopHeight = showDesktopImages ? '88%' : '150%'
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
