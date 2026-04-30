@@ -19,7 +19,7 @@ const DEFAULT: Settings = {
 }
 
 const STORAGE_KEY = 'a11y-settings'
-const ZOOM_LEVELS = [1, 1.2, 1.4]
+const FONT_SIZES = ['100%', '120%', '140%']
 
 export default function AccessibilityWidget() {
   const [open, setOpen] = useState(false)
@@ -39,7 +39,7 @@ export default function AccessibilityWidget() {
   useEffect(() => {
     if (!mounted) return
     const root = document.documentElement
-    root.style.zoom = String(ZOOM_LEVELS[settings.fontSize])
+    root.style.fontSize = FONT_SIZES[settings.fontSize]
     root.classList.toggle('a11y-contrast', settings.contrast)
     root.classList.toggle('a11y-grayscale', settings.grayscale)
     root.classList.toggle('a11y-underline', settings.underlineLinks)

@@ -41,6 +41,7 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
   const [form, setForm] = useState({ name: '', phone: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [phoneError, setPhoneError] = useState('')
+  const honeypotRef = useRef<HTMLInputElement>(null)
 
   function setField(f: string, v: string) {
     setForm(p => ({ ...p, [f]: v }))
@@ -63,7 +64,7 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign, device: getDevice() }),
+        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign, device: getDevice(), website: honeypotRef.current?.value || '' }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -150,6 +151,8 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
         ) : (
           <>
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              {/* honeypot — hidden from humans, bots fill it */}
+              <input ref={honeypotRef} type="text" name="website" tabIndex={-1} aria-hidden="true" autoComplete="off" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} />
               <div>
                 <label className="block font-inter text-[10px] tracking-widest text-white/30 uppercase mb-2">
                   טלפון <span className="text-white/60">*</span>
@@ -773,6 +776,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
   const [form, setForm] = useState({ name: '', phone: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [phoneError, setPhoneError] = useState('')
+  const honeypotRef = useRef<HTMLInputElement>(null)
 
   function setField(f: string, v: string) {
     setForm(p => ({ ...p, [f]: v }))
@@ -795,7 +799,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign, device: getDevice() }),
+        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign, device: getDevice(), website: honeypotRef.current?.value || '' }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -952,6 +956,8 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
         ) : (
           /* ─── Form State ─── */
           <form onSubmit={handleSubmit} noValidate>
+            {/* honeypot — hidden from humans, bots fill it */}
+            <input ref={honeypotRef} type="text" name="website" tabIndex={-1} aria-hidden="true" autoComplete="off" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} />
             {/* Card header — minimal label */}
             <div style={{ padding: '14px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', direction: 'rtl' }}>
               <span style={{
