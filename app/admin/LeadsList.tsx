@@ -3,6 +3,15 @@
 import { useState } from 'react'
 import type { Lead } from '@/lib/supabase'
 
+const SOURCE_LABELS: Record<string, string> = {
+  'ins-portal': 'פורטל ביטוחי',
+}
+
+function sourceLabel(raw: string | null) {
+  if (!raw) return null
+  return SOURCE_LABELS[raw] ?? raw
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso)
   return d.toLocaleString('he-IL', {
@@ -150,7 +159,7 @@ export default function LeadsList({ initialLeads }: { initialLeads: Lead[] }) {
                   </span>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
                     מקור: <span style={{ color: lead.utm_source ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)' }}>
-                      {lead.utm_source ?? '—'}
+                      {sourceLabel(lead.utm_source) ?? '—'}
                     </span>
                   </span>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
