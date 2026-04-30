@@ -7,25 +7,25 @@ const NAV_ITEMS = [
     href: '/admin',
     label: 'פניות',
     icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
   {
     href: '/admin/stats',
-    label: 'סטטיסטיקות',
+    label: 'נתונים',
     icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
         <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
   {
     href: '/admin/preview',
-    label: 'תצוגה מקדימה',
+    label: 'תצוגה',
     icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
         <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
         <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
@@ -38,16 +38,15 @@ export default function AdminNav() {
 
   return (
     <nav style={{
-      height: 56,
+      height: 52,
       background: 'rgba(8,8,8,0.98)',
       borderBottom: '1px solid rgba(200,169,110,0.1)',
       display: 'flex',
       alignItems: 'center',
-      padding: '0 16px',
+      padding: '0 12px',
       flexShrink: 0,
       direction: 'rtl',
-      gap: 0,
-      backdropFilter: 'blur(12px)',
+      overflow: 'hidden',
     }}>
 
       {/* Logo */}
@@ -55,14 +54,14 @@ export default function AdminNav() {
       <img
         src="/LOGO.PNG"
         alt="Bavarian Motors"
-        style={{ height: 30, width: 'auto', marginLeft: 12, opacity: 0.9, flexShrink: 0 }}
+        style={{ height: 28, width: 'auto', marginLeft: 10, opacity: 0.9, flexShrink: 0 }}
       />
 
       {/* Divider */}
-      <div style={{ width: 1, height: 20, background: 'rgba(200,169,110,0.18)', marginLeft: 12, flexShrink: 0 }} />
+      <div style={{ width: 1, height: 18, background: 'rgba(200,169,110,0.18)', marginLeft: 10, flexShrink: 0 }} />
 
       {/* Nav tabs */}
-      <div style={{ display: 'flex', gap: 2, flex: 1, minWidth: 0, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: 2, flex: 1, minWidth: 0 }}>
         {NAV_ITEMS.map(item => {
           const active = path === item.href
           return (
@@ -72,9 +71,9 @@ export default function AdminNav() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 8,
+                gap: 5,
+                padding: '5px 10px',
+                borderRadius: 7,
                 fontFamily: 'var(--font-heebo)',
                 fontSize: 13,
                 fontWeight: active ? 600 : 400,
@@ -96,9 +95,9 @@ export default function AdminNav() {
         })}
       </div>
 
-      {/* External link */}
+      {/* External link — icon only */}
       <a
-        href="/"
+        href="https://contact.bavarian-motors.co.il"
         target="_blank"
         rel="noopener noreferrer"
         title="פתח אתר"
@@ -106,13 +105,14 @@ export default function AdminNav() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: 32,
-          height: 32,
-          borderRadius: 8,
+          width: 30,
+          height: 30,
+          borderRadius: 7,
           color: 'rgba(255,255,255,0.28)',
           textDecoration: 'none',
           border: '1px solid rgba(255,255,255,0.08)',
           flexShrink: 0,
+          marginRight: 4,
           transition: 'all 0.15s',
         }}
         onMouseEnter={e => {
@@ -124,7 +124,7 @@ export default function AdminNav() {
           ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'
         }}
       >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
           <path d="M13 3L3 13M13 3H7M13 3V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </a>
