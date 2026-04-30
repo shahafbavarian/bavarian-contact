@@ -34,6 +34,7 @@ function exportToWhatsApp(leads: Lead[]) {
 export default function LeadsList({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = useState(initialLeads)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deletingAll, setDeletingAll] = useState(false)
 
   async function handleDelete(id: string) {
     if (!confirm('למחוק ליד זה לצמיתות?')) return
@@ -43,6 +44,22 @@ export default function LeadsList({ initialLeads }: { initialLeads: Lead[] }) {
       if (res.ok) setLeads(prev => prev.filter(l => l.id !== id))
     } finally {
       setDeleting(null)
+    }
+  }
+
+  async function handleDeleteAll() {
+    if (!confirm(`למחוק את כל ${leads.length} הלידים הנוכחיים לצמיתות?`)) return
+    setDeletingAll(true)
+    try {
+      const ids = leads.map(l => l.id)
+      const res = await fetch('/api/leads', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (res.ok) setLeads([])
+    } finally {
+      setDeletingAll(false)
     }
   }
 
@@ -60,38 +77,73 @@ export default function LeadsList({ initialLeads }: { initialLeads: Lead[] }) {
           </span>
         </div>
         {leads.length > 0 && (
-          <button
-            onClick={() => exportToWhatsApp(leads)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              background: 'rgba(37,211,102,0.08)',
-              border: '1px solid rgba(37,211,102,0.25)',
-              borderRadius: 8,
-              color: 'rgba(37,211,102,0.9)',
-              fontFamily: 'var(--font-heebo)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.14)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(37,211,102,0.45)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.08)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(37,211,102,0.25)'
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
-              <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            </svg>
-            ייצור לווצאפ
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* WhatsApp export — icon only */}
+            <button
+              onClick={() => exportToWhatsApp(leads)}
+              title="ייצא לווצאפ"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36,
+                background: 'rgba(37,211,102,0.08)',
+                border: '1px solid rgba(37,211,102,0.25)',
+                borderRadius: 8,
+                color: 'rgba(37,211,102,0.9)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.14)'
+                ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(37,211,102,0.45)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.08)'
+                ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(37,211,102,0.25)'
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" />
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.418A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              </svg>
+            </button>
+
+            {/* Delete all loaded leads */}
+            <button
+              onClick={handleDeleteAll}
+              disabled={deletingAll}
+              title="מחק את כל הלידים המוצגים"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36,
+                background: 'rgba(248,113,113,0.06)',
+                border: '1px solid rgba(248,113,113,0.2)',
+                borderRadius: 8,
+                color: 'rgba(248,113,113,0.7)',
+                cursor: deletingAll ? 'default' : 'pointer',
+                transition: 'all 0.15s',
+                opacity: deletingAll ? 0.4 : 1,
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                if (!deletingAll) {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(248,113,113,0.12)'
+                  ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,113,113,0.4)'
+                }
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(248,113,113,0.06)'
+                ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,113,113,0.2)'
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+              </svg>
+            </button>
+          </div>
         )}
       </div>
 

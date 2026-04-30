@@ -252,7 +252,7 @@ function PageContent() {
   // If right edge would overflow viewport, shift center leftward (left overflow = empty sky).
   const _renderedBgW = showDesktopImages ? (1.35 * dims.h / 941) * 1672 : 0
   const _rawCarW = showDesktopImages ? 0.519 * _renderedBgW : 0
-  const _carScale = _rawCarW > 0 ? Math.min(1, (dims.w * 0.78) / _rawCarW) : 1
+  const _carScale = _rawCarW > 0 ? Math.min(1, (dims.w * 0.73) / _rawCarW) : 1
   const _scaledCarW = _rawCarW * _carScale
   const _naturalCenterX = showDesktopImages
     ? 0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2
@@ -467,6 +467,22 @@ function PageContent() {
           50% {
             color: #25D366;
             filter: drop-shadow(0 0 4px rgba(37,211,102,0.9)) drop-shadow(0 0 9px rgba(37,211,102,0.5));
+          }
+        }
+        @keyframes inputGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(200,169,110,0); border-color: rgba(255,255,255,0.1); }
+          50% {
+            box-shadow: 0 0 0 1px rgba(200,169,110,0.35), 0 0 10px 2px rgba(200,169,110,0.15);
+            border-color: rgba(200,169,110,0.55);
+          }
+        }
+        @keyframes submitGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+          50% {
+            box-shadow:
+              0 0 0 1.5px rgba(255,255,255,0.7),
+              0 0 10px 3px rgba(255,255,255,0.3),
+              0 0 22px 7px rgba(255,255,255,0.12);
           }
         }
         .desktop-input::placeholder { color: rgba(255,255,255,0.28); }
@@ -976,7 +992,10 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
                   placeholder="050-000-0000"
                   maxLength={12}
                   className="sidebar-input"
-                  style={inputStyle(!!phoneError)}
+                  style={{
+                    ...inputStyle(!!phoneError),
+                    ...(!phoneError ? { animation: 'inputGlow 3s ease-in-out infinite' } : {}),
+                  }}
                 />
                 {phoneError && (
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,100,100,0.9)', marginTop: 5 }}>
@@ -1046,6 +1065,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
                   width: '100%',
                   opacity: status === 'loading' ? 0.5 : 1,
                   transition: 'opacity 0.2s',
+                  ...(form.phone && !phoneError ? { animation: 'submitGlow 3s ease-in-out infinite' } : {}),
                 }}
               >
                 {status === 'loading' ? 'שולח...' : 'שלח פנייה'}
