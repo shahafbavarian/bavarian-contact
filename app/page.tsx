@@ -247,20 +247,23 @@ function PageContent() {
   const showDesktopImages = isDesktop && isLandscape
 
   // BG0.webp is 1672×941. Car size is proportional to background (scale-by-height).
-  // Box AR is always constant so objectFit:contain renders car identically — no vertical drift.
+  // Cap at 78% of viewport width so tall screens (iPad Pro) don't get an oversized car.
+  // Box AR stays constant so objectFit:contain renders car identically — no vertical drift.
   // If right edge would overflow viewport, shift center leftward (left overflow = empty sky).
   const _renderedBgW = showDesktopImages ? (1.35 * dims.h / 941) * 1672 : 0
   const _rawCarW = showDesktopImages ? 0.519 * _renderedBgW : 0
+  const _carScale = _rawCarW > 0 ? Math.min(1, (dims.w * 0.78) / _rawCarW) : 1
+  const _scaledCarW = _rawCarW * _carScale
   const _naturalCenterX = showDesktopImages
     ? 0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2
     : 0
-  const _maxCenterX = showDesktopImages ? dims.w - _rawCarW / 2 + dims.w * 0.01 : 0
+  const _maxCenterX = showDesktopImages ? dims.w - _scaledCarW / 2 + dims.w * 0.01 : 0
   const _effectiveCenterX = showDesktopImages ? Math.min(_naturalCenterX, _maxCenterX) : 0
   const carDesktopLeft = showDesktopImages
     ? `${(_effectiveCenterX / dims.w * 100).toFixed(2)}%`
     : '50%'
-  const carDesktopWidth = showDesktopImages ? `${(_rawCarW / dims.w * 100).toFixed(2)}%` : '230%'
-  const carDesktopHeight = showDesktopImages ? '88%' : '150%'
+  const carDesktopWidth = showDesktopImages ? `${(_scaledCarW / dims.w * 100).toFixed(2)}%` : '230%'
+  const carDesktopHeight = showDesktopImages ? `${(88 * _carScale).toFixed(2)}%` : '150%'
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
