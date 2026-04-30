@@ -27,7 +27,9 @@ function trackEvent(type: string, utmSource?: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, device: getDevice(), utm_source: utmSource || null }),
-  }).catch(() => {})
+  }).then(r => {
+    if (!r.ok) r.text().then(t => console.warn('[track] error', r.status, t))
+  }).catch(e => console.warn('[track] failed', e))
 }
 
 function FormModal({ onClose, utmSource, utmCampaign }: {
