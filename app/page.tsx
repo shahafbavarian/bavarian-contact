@@ -232,16 +232,25 @@ function PageContent() {
   // showDesktopImages: use desktop BG0 + rotating cars only on wide landscape screens
   const showDesktopImages = isDesktop && isLandscape
 
-  // BG0.webp is 1672×941. Compute car left/width so its position in the bg image stays
-  // constant across different aspect ratios (scale-by-height holds for vw/vh < 2.4).
-  // Reference on 16:9 (1280×720): center at left=66.5% → fx=0.622, width=70% → fw=0.519
+  // BG0.webp is 1672×941. Car box tracks the background image scale (scale-by-height).
+  // Both width and height are scaled by the same factor so the box aspect ratio stays
+  // constant → objectFit:contain renders the car identically on all screen aspect ratios
+  // (no vertical drift). The scale factor is clamped so the car never overflows the viewport.
   const _renderedBgW = showDesktopImages ? (1.35 * dims.h / 941) * 1672 : 0
   const carDesktopLeft = showDesktopImages
     ? `${((0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2) / dims.w * 100).toFixed(2)}%`
     : '50%'
-  const carDesktopWidth = showDesktopImages
-    ? `${(0.519 * _renderedBgW / dims.w * 100).toFixed(2)}%`
-    : '230%'
+  const _rawCarW = showDesktopImages ? 0.519 * _renderedBgW : 0
+  const _carCenterX = showDesktopImages
+    ? 0.622 * _renderedBgW - (_renderedBgW - dims.w) / 2
+    : 0
+  // Max width so the car right edge stays within the viewport (2% breathing room)
+  const _maxCarW = showDesktopImages
+    ? Math.min((dims.w - _carCenterX) * 2 + dims.w * 0.02, dims.w * 0.98)
+    : 0
+  const _carScale = _rawCarW > 0 ? Math.min(1, _maxCarW / _rawCarW) : 1
+  const carDesktopWidth = showDesktopImages ? `${(_rawCarW * _carScale / dims.w * 100).toFixed(2)}%` : '230%'
+  const carDesktopHeight = showDesktopImages ? `${(88 * _carScale).toFixed(2)}%` : '150%'
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -391,7 +400,7 @@ function PageContent() {
               left: showDesktopImages ? carDesktopLeft : '50%',
               transform: 'translateX(-50%)',
               width: showDesktopImages ? carDesktopWidth : '230%',
-              height: showDesktopImages ? '88%' : '150%',
+              height: showDesktopImages ? carDesktopHeight : '150%',
               objectFit: 'contain',
               objectPosition: 'center bottom',
             }}
