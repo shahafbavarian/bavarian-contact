@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     siteName: 'Bavarian Motors Club',
     images: [
       {
-        url: 'https://contact.bavarian-motors.co.il/og-image.PNG',
+        url: 'https://contact.bavarian-motors.co.il/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Bavarian Motors Club',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Bavarian Motors Club',
     description: 'רכבי יוקרה וספורט 2026 ללא יד — מחכים לכם בבוואריאן מוטורס',
-    images: ['https://contact.bavarian-motors.co.il/og-image.PNG'],
+    images: ['https://contact.bavarian-motors.co.il/og-image.jpg'],
   },
 }
 
