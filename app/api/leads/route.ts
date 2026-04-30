@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, phone, message, utm_source, utm_campaign } = body
+    const { name, phone, message, utm_source, utm_campaign, device } = body
 
     if (!phone?.trim()) {
       return NextResponse.json({ error: 'טלפון הוא שדה חובה' }, { status: 400 })
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
       message: message?.trim() || null,
       utm_source: utm_source || null,
       utm_campaign: utm_campaign || null,
+      device: device || null,
     }).select()
 
     if (error) {

@@ -18,6 +18,18 @@ const PRESET_MESSAGES = [
   'היי, אני מתעניין ברכב מסוים, תחזרו אליי בבקשה!',
 ]
 
+function getDevice(): 'mobile' | 'desktop' {
+  return window.innerWidth < 1024 ? 'mobile' : 'desktop'
+}
+
+function trackEvent(type: string, utmSource?: string) {
+  fetch('/api/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, device: getDevice(), utm_source: utmSource || null }),
+  }).catch(() => {})
+}
+
 function FormModal({ onClose, utmSource, utmCampaign }: {
   onClose: () => void
   utmSource: string
@@ -48,7 +60,7 @@ function FormModal({ onClose, utmSource, utmCampaign }: {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign }),
+        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign, device: getDevice() }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -280,8 +292,10 @@ function PageContent() {
   }, [])
 
   useEffect(() => {
-    setUtmSource(searchParams.get('utm_source') ?? '')
+    const src = searchParams.get('utm_source') ?? ''
+    setUtmSource(src)
     setUtmCampaign(searchParams.get('utm_campaign') ?? '')
+    trackEvent('pageview', src || undefined)
   }, [searchParams])
 
   // Preload all car images before showing them
@@ -674,6 +688,7 @@ function PageContent() {
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackEvent('wa_click', utmSource)}
               className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] font-medium text-black transition-all active:scale-95"
               style={{ background: 'rgba(255,255,255,0.92)', animation: 'btnPulseWA 4s ease-in-out 0s infinite' }}
             >
@@ -687,6 +702,7 @@ function PageContent() {
             {/* Phone */}
             <a
               href={`tel:+972${PHONE_NUMBER}`}
+              onClick={() => trackEvent('phone_click', utmSource)}
               className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl font-inter text-[12px] text-white transition-all active:scale-95"
               style={{
                 background: 'rgba(255,255,255,0.08)',
@@ -761,7 +777,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign }),
+        body: JSON.stringify({ ...form, name: form.name.trim() || 'ללא שם', utm_source: utmSource, utm_campaign: utmCampaign, device: getDevice() }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -798,6 +814,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
       href={`https://wa.me/${WHATSAPP_NUMBER}`}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => trackEvent('wa_click', utmSource)}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
         padding: '13px 20px',

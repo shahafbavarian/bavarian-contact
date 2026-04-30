@@ -2,15 +2,7 @@
 
 import { useState } from 'react'
 import type { Lead } from '@/lib/supabase'
-
-const SOURCE_LABELS: Record<string, string> = {
-  'ins-portal': 'פורטל ביטוחי',
-}
-
-function sourceLabel(raw: string | null) {
-  if (!raw) return null
-  return SOURCE_LABELS[raw] ?? raw
-}
+import { sourceLabel } from './labels'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -157,6 +149,17 @@ export default function LeadsList({ initialLeads }: { initialLeads: Lead[] }) {
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
                     {formatDate(lead.created_at)}
                   </span>
+                  {lead.device && (
+                    <span style={{
+                      fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.05em',
+                      padding: '2px 7px', borderRadius: 4,
+                      background: lead.device === 'mobile' ? 'rgba(96,165,250,0.1)' : 'rgba(167,139,250,0.1)',
+                      border: `1px solid ${lead.device === 'mobile' ? 'rgba(96,165,250,0.25)' : 'rgba(167,139,250,0.25)'}`,
+                      color: lead.device === 'mobile' ? 'rgba(96,165,250,0.85)' : 'rgba(167,139,250,0.85)',
+                    }}>
+                      {lead.device === 'mobile' ? 'מובייל' : 'דסקטופ'}
+                    </span>
+                  )}
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
                     מקור: <span style={{ color: lead.utm_source ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)' }}>
                       {sourceLabel(lead.utm_source) ?? '—'}
