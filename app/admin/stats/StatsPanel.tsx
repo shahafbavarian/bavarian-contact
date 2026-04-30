@@ -4,10 +4,10 @@ import { useState, useMemo } from 'react'
 import type { Event } from '@/lib/supabase'
 import { sourceLabel } from '../labels'
 
-type Period = '7d' | '30d' | '365d' | 'all'
+type Period = '24h' | '30d' | '365d' | 'all'
 
 const PERIOD_LABELS: Record<Period, string> = {
-  '7d': 'שבוע אחרון',
+  '24h': '24 שעות',
   '30d': 'חודש אחרון',
   '365d': 'שנה אחרונה',
   'all': 'הכל',
@@ -16,7 +16,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 function cutoff(period: Period): Date | null {
   if (period === 'all') return null
   const d = new Date()
-  if (period === '7d') d.setDate(d.getDate() - 7)
+  if (period === '24h') d.setHours(d.getHours() - 24)
   else if (period === '30d') d.setDate(d.getDate() - 30)
   else if (period === '365d') d.setDate(d.getDate() - 365)
   return d
@@ -60,7 +60,7 @@ function BreakdownRow({ label, count, total }: { label: string; count: number; t
 }
 
 export default function StatsPanel({ events }: { events: Event[] }) {
-  const [period, setPeriod] = useState<Period>('30d')
+  const [period, setPeriod] = useState<Period>('24h')
 
   const filtered = useMemo(() => {
     const cut = cutoff(period)
