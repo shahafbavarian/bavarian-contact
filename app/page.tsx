@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import AccessibilityWidget from './components/AccessibilityWidget'
 
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
@@ -994,7 +995,7 @@ function DesktopSidebarCard({ utmSource, utmCampaign }: { utmSource: string; utm
                   className="sidebar-input"
                   style={{
                     ...inputStyle(!!phoneError),
-                    ...(!phoneError ? { animation: 'inputGlow 3s ease-in-out infinite' } : {}),
+                    ...(!form.phone && !phoneError ? { animation: 'inputGlow 3s ease-in-out infinite' } : {}),
                   }}
                 />
                 {phoneError && (
@@ -1161,8 +1162,11 @@ function DesktopPreviewOverlay({ onClose }: { onClose: () => void }) {
 
 export default function Home() {
   return (
-    <Suspense fallback={<div style={{ height: '100vh', background: '#000' }} />}>
-      <PageContent />
-    </Suspense>
+    <>
+      <Suspense fallback={<div style={{ height: '100vh', background: '#000' }} />}>
+        <PageContent />
+      </Suspense>
+      <AccessibilityWidget />
+    </>
   )
 }
