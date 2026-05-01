@@ -144,6 +144,9 @@ export default function PullToRefreshContainer({ children }: { children: React.R
         transform: `translateY(${pull}px)`,
         transition: isAnimating ? 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
         willChange: 'transform',
+        minHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         {children}
       </div>
