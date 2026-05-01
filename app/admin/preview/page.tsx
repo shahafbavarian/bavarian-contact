@@ -110,6 +110,7 @@ export default function PreviewPage() {
       }}>
         {ready && (
           <div style={{
+            position: 'relative',
             transformOrigin: 'center center',
             transform: `scale(${scale})`,
             width: screen.w,
@@ -125,6 +126,8 @@ export default function PreviewPage() {
               src="/"
               style={{ width: screen.w, height: screen.h, border: 'none', display: 'block' }}
             />
+            {/* Transparent overlay — lets touch events bubble up to pull-to-refresh */}
+            <div style={{ position: 'absolute', inset: 0, zIndex: 10 }} />
           </div>
         )}
       </div>
