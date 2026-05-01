@@ -1,5 +1,6 @@
 import React from 'react'
 import AdminNav from './AdminNav'
+import PullToRefreshContainer from './PullToRefresh'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,9 +13,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       direction: 'rtl',
     }}>
       <AdminNav />
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <PullToRefreshContainer>
         {children}
-      </div>
+      </PullToRefreshContainer>
     </div>
   )
 }
