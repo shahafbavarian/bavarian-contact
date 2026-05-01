@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 const THRESHOLD = 68
 const MAX_PULL = 90
@@ -13,6 +13,8 @@ type Phase = 'idle' | 'pulling' | 'ready' | 'refreshing' | 'returning'
 
 export default function PullToRefreshContainer({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const isPreview = pathname === '/admin/preview'
   const scrollRef = useRef<HTMLDivElement>(null)
   const startY = useRef(0)
   const dragging = useRef(false)
@@ -86,7 +88,7 @@ export default function PullToRefreshContainer({ children }: { children: React.R
   return (
     <div
       ref={scrollRef}
-      style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', position: 'relative' }}
+      style={{ flex: 1, minHeight: 0, overflowY: isPreview ? 'hidden' : 'auto', overscrollBehaviorY: 'contain', position: 'relative' }}
     >
       <style>{`@keyframes ptr-spin { to { transform: rotate(360deg); } }`}</style>
 
@@ -144,7 +146,7 @@ export default function PullToRefreshContainer({ children }: { children: React.R
         transform: `translateY(${pull}px)`,
         transition: isAnimating ? 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
         willChange: 'transform',
-        minHeight: '100%',
+        ...(isPreview ? { height: '100%' } : { minHeight: '100%' }),
         display: 'flex',
         flexDirection: 'column',
       }}>
