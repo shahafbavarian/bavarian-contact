@@ -8,46 +8,33 @@ export async function GET() {
 
   const headers = { tokenId: key, 'Content-Type': 'application/json' }
 
-  // Get the full field definition for originatinglead to find any referenced IDs
-  let fieldDef: Record<string, unknown> | null = null
-  let page = 1
-  while (page <= 20 && !fieldDef) {
-    const r = await fetch('https://api.powerlink.co.il/api/query/picklist', {
+  const [records, syslist, syslist2] = await Promise.allSettled([
+    // Query real account records — return only originatinglead field
+    fetch('https://api.powerlink.co.il/api/query/record', {
       method: 'POST', headers,
-      body: JSON.stringify({ objecttype: 1, PageNum: page }),
-    })
-    const j = await r.json()
-    const cols: Record<string, unknown>[] = j?.data?.Columns ?? []
-    fieldDef = cols.find(c => c.fieldname === 'originatinglead') ?? null
-    if (j?.data?.IsLastPage || cols.length === 0) break
-    page++
-  }
+      body: JSON.stringify({
+        objecttype: 1,
+        fields: ['accountid', 'accountname', 'originatinglead'],
+        top: 20,
+        filter: 'originatinglead <> null',
+      }),
+    }).then(r => r.json()),
 
-  // Try to get actual dropdown VALUES via multiple patterns
-  const [a, b, c, d] = await Promise.allSettled([
-    // Pattern 1: /api/picklist/{objecttype}/{fieldname}
-    fetch(`https://api.powerlink.co.il/api/picklist/1/originatinglead`, { headers }).then(r => r.json()),
-    // Pattern 2: /api/picklist/{refobjecttype} if field has one
-    fieldDef?.refobjecttype
-      ? fetch(`https://api.powerlink.co.il/api/picklist/${fieldDef.refobjecttype}`, { headers }).then(r => r.json())
-      : Promise.reject('no refobjecttype'),
-    // Pattern 3: query records of the referenced object type
-    fieldDef?.refobjecttype
-      ? fetch('https://api.powerlink.co.il/api/query/record', {
-          method: 'POST', headers,
-          body: JSON.stringify({ objecttype: fieldDef.refobjecttype, top: 200 }),
-        }).then(r => r.json())
-      : Promise.reject('no refobjecttype'),
-    // Pattern 4: /api/record/picklist/1 — some CRMs expose all picklists for objecttype
-    fetch(`https://api.powerlink.co.il/api/record/picklist/1`, { headers }).then(r => r.json()),
+    // SystemList by field name
+    fetch('https://api.powerlink.co.il/api/query/systemlist', {
+      method: 'POST', headers,
+      body: JSON.stringify({ fieldname: 'originatinglead', objecttype: 1 }),
+    }).then(r => r.json()),
+
+    // SystemList GET pattern
+    fetch('https://api.powerlink.co.il/api/record/systemlist?fieldname=originatinglead&objecttype=1', { headers })
+      .then(r => r.json()),
   ])
 
   const result = {
-    fieldDef,
-    patternA: a.status === 'fulfilled' ? a.value : String((a as PromiseRejectedResult).reason),
-    patternB: b.status === 'fulfilled' ? b.value : String((b as PromiseRejectedResult).reason),
-    patternC: c.status === 'fulfilled' ? c.value : String((c as PromiseRejectedResult).reason),
-    patternD: d.status === 'fulfilled' ? d.value : String((d as PromiseRejectedResult).reason),
+    records: records.status === 'fulfilled' ? records.value : String((records as PromiseRejectedResult).reason),
+    systemlist_post: syslist.status === 'fulfilled' ? syslist.value : String((syslist as PromiseRejectedResult).reason),
+    systemlist_get: syslist2.status === 'fulfilled' ? syslist2.value : String((syslist2 as PromiseRejectedResult).reason),
   }
 
   return NextResponse.json(result, { headers: { 'Content-Type': 'application/json; charset=utf-8' } })
