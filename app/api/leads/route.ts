@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { pushLeadToFireberry } from '@/lib/fireberry'
 
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_HOURS = 1
@@ -78,6 +79,10 @@ export async function POST(req: NextRequest) {
     }
 
     await recordRateLimit(ipHash)
+
+    // Push to Fireberry CRM — fire and forget, never blocks the response
+    pushLeadToFireberry({ name: base.name, phone: base.phone, message: base.message, utm_source: base.utm_source })
+      .catch(e => console.error('[fireberry]', e))
 
     return NextResponse.json({ ok: true, id: data[0].id }, { status: 201 })
   } catch (err) {
