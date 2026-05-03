@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const PICKLIST_TYPE = 'b4919f2e-2996-48e4-a03c-ba39fb64386c'
 
 export async function GET() {
