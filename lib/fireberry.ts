@@ -31,7 +31,7 @@ export async function pushLeadToFireberry(lead: {
 
   const payload: Record<string, unknown> = {
     accountname: lead.name?.trim() || 'ללא שם',
-    mobilephone: lead.phone.trim(),
+    telephone1: lead.phone.trim(),
     originatingleadcode: sourceCode,
   }
 

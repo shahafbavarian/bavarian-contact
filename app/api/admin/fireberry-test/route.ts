@@ -8,7 +8,7 @@ export async function GET() {
 
   const payload = {
     accountname: 'בדיקה - מחק',
-    mobilephone: '0500000000',
+    telephone1: '0500000000',
     originatingleadcode: 27,
     description: 'מקור הגעה: פורטל ביטוחי\nהודעה: בדיקה טכנית',
   }
