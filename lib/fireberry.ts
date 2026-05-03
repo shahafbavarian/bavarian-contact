@@ -35,7 +35,7 @@ export async function pushLeadToFireberry(lead: {
 
   const sourceCode = lead.utm_source ? SOURCE_CODE_MAP[lead.utm_source] : undefined
   if (sourceCode !== undefined) {
-    payload.originatingleadcod = sourceCode
+    payload.originatingleadcode = sourceCode
   }
 
   const res = await fetch(`${FIREBERRY_API}/record/1`, {
