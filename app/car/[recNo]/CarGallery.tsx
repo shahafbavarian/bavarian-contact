@@ -85,7 +85,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
       {/* Thumbnails */}
       {images.length >= 3 && (
         <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {images.map((src, i) => (
+          {images.map((src, i) => i === 0 ? null : (
             <button
               key={i}
               onClick={() => setIdx(i)}
