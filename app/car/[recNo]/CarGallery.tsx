@@ -36,6 +36,12 @@ export default function CarGallery({ images, name, priority }: { images: string[
           style={{ objectFit: 'cover' }}
           priority={idx === 0 && priority}
         />
+        {/* Subtle top fade — blends gallery into black page background */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '30%',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 100%)',
+          pointerEvents: 'none',
+        }} />
         {images.length > 1 && (
           <>
             <button

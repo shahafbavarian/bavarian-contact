@@ -27,7 +27,7 @@ const SEL = {
   detailName:   'h1, .carName, .car-title, [class*="title"] h1',
   detailPrice:  '.price, .carPrice, [class*="price"]',
   specRow:      'tr, .spec-row, .spec-item, [class*="spec"] li, dl dt',
-  specVal:      'td:last-child, .spec-value, [class*="value"], dl dd',
+  specVal:      'td, .spec-value, [class*="value"], dl dd',
   // Gallery: confirmed class prefix from live HTML
   gallery:      '.carSlider img, .slick-slide img, [class*="carSlider"] img, .gallery img, [class*="photo"] img',
   description:  '.description, [class*="description"] p, .about p, .carDesc',

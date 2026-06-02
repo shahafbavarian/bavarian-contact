@@ -108,13 +108,19 @@ export default function SlideshowPage() {
           position: fixed;
           inset: 0;
           background: #000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           overflow: hidden;
         }
 
+        /* 16:9 content box — fills screen on landscape, letterboxed on portrait */
         #sw-root {
           position: relative;
-          width: 100%;
-          height: 100%;
+          flex-shrink: 0;
+          width: min(100vw, calc(100vh * 16 / 9));
+          aspect-ratio: 16 / 9;
+          z-index: 1;
         }
 
         @keyframes swProgress {
@@ -124,6 +130,29 @@ export default function SlideshowPage() {
       `}</style>
 
       <div id="sw-outer">
+
+        {/* Background image — fills full viewport (height-fitted, sides may bleed) */}
+        {!loading && currentCar && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={currentCar.recNo}
+            src={currentCar.imageUrl}
+            alt=""
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%', objectFit: 'cover',
+              opacity: fading ? 0 : 1,
+              transition: 'opacity 0.7s ease-in-out',
+            }}
+          />
+        )}
+
+        {/* Side fades — blend image edge into black letterbox bars */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '18%', pointerEvents: 'none', zIndex: 2,
+          background: 'linear-gradient(to right, rgba(0,0,0,0.8) 0%, transparent 100%)' }} />
+        <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: '18%', pointerEvents: 'none', zIndex: 2,
+          background: 'linear-gradient(to left, rgba(0,0,0,0.8) 0%, transparent 100%)' }} />
+
         <div id="sw-root">
 
           {/* ── Loading ── */}
@@ -157,36 +186,16 @@ export default function SlideshowPage() {
           {/* ── Slide ── */}
           {!loading && currentCar && (
             <>
-              {/* Background image */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                key={currentCar.recNo}
-                src={currentCar.imageUrl}
-                alt=""
-                style={{
-                  position: 'absolute', inset: 0,
-                  width: '100%', height: '100%', objectFit: 'cover',
-                  opacity: fading ? 0 : 1,
-                  transition: 'opacity 0.7s ease-in-out',
-                }}
-              />
-
-              {/* Bottom gradient — darkens lower portion for text legibility */}
+              {/* Bottom gradient — inside 16:9 box for text legibility */}
               <div style={{
                 position: 'absolute', inset: 0, pointerEvents: 'none',
                 background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)',
               }} />
 
-              {/* Left side fade — blends image into dark area behind car info */}
+              {/* Left fade — behind car info text */}
               <div style={{
-                position: 'absolute', top: 0, bottom: 0, left: 0, width: '45%', pointerEvents: 'none',
-                background: 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, transparent 100%)',
-              }} />
-
-              {/* Right side fade — blends image edge with background */}
-              <div style={{
-                position: 'absolute', top: 0, bottom: 0, right: 0, width: '25%', pointerEvents: 'none',
-                background: 'linear-gradient(to left, rgba(0,0,0,0.6) 0%, transparent 100%)',
+                position: 'absolute', top: 0, bottom: 0, left: 0, width: '50%', pointerEvents: 'none',
+                background: 'linear-gradient(to right, rgba(0,0,0,0.6) 0%, transparent 100%)',
               }} />
 
               {/* Slide counter — top left */}
