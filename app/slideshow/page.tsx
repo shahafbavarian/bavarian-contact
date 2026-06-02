@@ -191,7 +191,7 @@ export default function SlideshowPage() {
               {/* Logo — top right */}
               <div style={{ position: 'absolute', top: '4%', right: '3%' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 'clamp(28px, 5%, 52px)', opacity: 0.85 }} />
+                <img src="/LOGO.webp" alt="Bavarian Motors" style={{ width: 'min(11%, 110px)', height: 'auto', opacity: 0.85, display: 'block' }} />
               </div>
 
               {/* Slide counter — top left */}
