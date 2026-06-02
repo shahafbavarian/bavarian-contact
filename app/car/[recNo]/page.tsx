@@ -136,7 +136,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
   return (
-    <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84, display: 'flex', flexDirection: 'column' }}>
+    <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', display: 'flex', flexDirection: 'column' }}>
 
       {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
       <div style={{
@@ -260,6 +260,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           safetyLevel={detail?.safetyLevel ?? null}
         />
       </div>
+
+      {/* Spacer so flex:1 above excludes the CTA zone */}
+      <div style={{ height: 84, flexShrink: 0 }} />
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
     </main>
