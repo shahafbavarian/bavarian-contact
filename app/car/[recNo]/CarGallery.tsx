@@ -24,7 +24,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
     <div style={{ direction: 'ltr' }}>
       {/* Main image */}
       <div
-        style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#111', overflow: 'hidden' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#111', overflow: 'hidden' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

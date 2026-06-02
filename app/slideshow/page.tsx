@@ -114,12 +114,12 @@ export default function SlideshowPage() {
           overflow: hidden;
         }
 
-        /* 16:9 content box — fills screen on landscape, letterboxed on portrait */
+        /* 3:2 content box — fills screen on landscape, letterboxed on portrait */
         #sw-root {
           position: relative;
           flex-shrink: 0;
-          width: min(100vw, calc(100vh * 16 / 9));
-          aspect-ratio: 16 / 9;
+          width: min(100vw, calc(100vh * 3 / 2));
+          aspect-ratio: 3 / 2;
           z-index: 1;
         }
 
