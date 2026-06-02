@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 
-export default function CarGallery({ images, name }: { images: string[]; name: string }) {
+export default function CarGallery({ images, name, priority }: { images: string[]; name: string; priority?: boolean }) {
   const [idx, setIdx] = useState(0)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
 
@@ -34,7 +34,7 @@ export default function CarGallery({ images, name }: { images: string[]; name: s
           fill
           sizes="100vw"
           style={{ objectFit: 'cover' }}
-          priority={idx === 0}
+          priority={idx === 0 && priority}
         />
         {images.length > 1 && (
           <>

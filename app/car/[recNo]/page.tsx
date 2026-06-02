@@ -87,13 +87,11 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     )
   }
 
-  // Hero image always comes from the list summary (data-img attr = the car's
-  // designated main photo). Gallery supplements with detail page images.
-  const heroImage = summary.imageUrl
-
-  const galleryImages = (detail?.images?.length ?? 0) > 0
-    ? detail!.images
-    : (summary.imageUrl ? [summary.imageUrl] : [])
+  // Hero image first, then remaining gallery images (deduplicated)
+  const allImages = [
+    ...(summary.imageUrl ? [summary.imageUrl] : []),
+    ...(detail?.images ?? []).filter(img => img !== summary.imageUrl),
+  ]
 
   // Core specs from summary (always reliable)
   const specItems = [
@@ -110,72 +108,31 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
 
-      {/* ─── Hero / main image ─── */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#111' }}>
-        {heroImage ? (
-          <Image
-            src={heroImage}
-            alt={summary.name}
-            fill
-            sizes="100vw"
-            style={{ objectFit: 'cover' }}
-            priority
-          />
-        ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src="/LOGO.webp" alt="Bavarian Motors"
-            style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', height: 60, opacity: 0.2 }} />
-        )}
-        {/* Bottom fade */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.05) 55%, transparent 100%)',
-        }} />
-        {/* Name + price overlay */}
-        <div style={{ position: 'absolute', bottom: 0, right: 0, left: 0, padding: '16px 18px 18px' }}>
-          <h1 style={{
-            fontFamily: 'var(--font-heebo)', fontWeight: 900,
-            fontSize: 'clamp(17px, 4.5vw, 24px)',
-            color: '#fff', margin: '0 0 6px', lineHeight: 1.2,
-            textShadow: '0 2px 12px rgba(0,0,0,0.9)',
-          }}>
-            {summary.name}
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            {summary.price && (
-              <span style={{
-                fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                fontSize: 'clamp(15px, 3.5vw, 20px)', color: GOLD,
-                textShadow: '0 1px 8px rgba(0,0,0,0.8)',
-              }}>
-                {summary.price}
-              </span>
-            )}
-            {summary.monthlyPrice && (
-              <span style={{
-                fontFamily: 'var(--font-inter)', fontSize: 12,
-                color: 'rgba(255,255,255,0.55)',
-                textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-              }}>
-                {summary.monthlyPrice}
-              </span>
-            )}
-          </div>
-        </div>
-        {/* Logo top-right */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/LOGO.webp" alt="" style={{
-          position: 'absolute', top: 14, right: 14,
-          height: 28, opacity: 0.7, pointerEvents: 'none',
-        }} />
-      </div>
+      {/* ─── Gallery — first image is always the main photo ─── */}
+      <CarGallery images={allImages} name={summary.name} priority />
 
-      {/* ─── Gallery (remaining images) ─── */}
-      {galleryImages.length > 1 && (
-        <div style={{ padding: '12px 16px 0' }}>
-          <CarGallery images={galleryImages} name={summary.name} />
+      {/* ─── Name + price ─── */}
+      <div style={{ padding: '14px 18px 0', maxWidth: 560, margin: '0 auto' }}>
+        <h1 style={{
+          fontFamily: 'var(--font-heebo)', fontWeight: 900,
+          fontSize: 'clamp(18px, 5vw, 26px)',
+          color: '#fff', margin: '0 0 8px', lineHeight: 1.2,
+        }}>
+          {summary.name}
+        </h1>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          {summary.price && (
+            <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
+              {summary.price}
+            </span>
+          )}
+          {summary.monthlyPrice && (
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+              {summary.monthlyPrice}
+            </span>
+          )}
         </div>
-      )}
+      </div>
 
       {/* ─── Specs ─── */}
       <div style={{ padding: '20px 16px 0', maxWidth: 560, margin: '0 auto' }}>
