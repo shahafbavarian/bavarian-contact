@@ -4,24 +4,34 @@ import type { AnyNode } from 'domhandler'
 const BASE = 'https://www.bavarian-motors.co.il'
 
 // ─── SELECTORS ─────────────────────────────────────────────────────────────
-// Confirmed from /api/admin/scrape-debug analysis
+// Confirmed from /api/admin/scrape-debug analysis of live HTML
 const SEL = {
-  // /He/Available_Cars — confirmed class from live HTML
+  // /He/Available_Cars
   carItem:    '.carBtn',
-  recNoAttr:  'data-recno',
-  recNoHref:  /[?&]recNo=(\d+)/i,
-  carName:    '.carName, .car-name, .title, h2, h3, [class*="name"], [class*="title"], strong',
-  carPrice:   '.price, .carPrice, .car-price, [class*="price"]',
-  carImg:     'img',
 
-  // /He/Car?recNo=XXX — update after seeing car HTML
+  // data-* attrs on .carBtn (all confirmed from live HTML)
+  attrRecNo:       'data-prev_recno',
+  attrManufacturer:'data-manufacturer',
+  attrModel:       'data-model',
+  attrTitle:       'data-title',       // trim of variant/edition
+  attrImg:         'data-img',
+  attrRegisterDt:  'data-register_dt', // "4/2024"
+  attrKm:          'data-km',
+  attrPrice:       'data-our_price',   // "628000.00"
+  attrCarType:     'data-car_type',
+  attrEngineType:  'data-engine_type',
+  attrStatus:      'data-car_status',  // "במלאי"
+  attrMonthly:     'data-funding_monthly_price',
+
+  // /He/Car?recNo=XXX — car detail page
   detailName:   'h1, .carName, .car-title, [class*="title"] h1',
   detailPrice:  '.price, .carPrice, [class*="price"]',
   specRow:      'tr, .spec-row, .spec-item, [class*="spec"] li, dl dt',
   specVal:      'td:last-child, .spec-value, [class*="value"], dl dd',
-  gallery:      '.fancybox, [data-fancybox] img, .gallery img, .slick-slide img, [class*="photo"] img, [class*="gallery"] img',
+  // Gallery: confirmed class prefix from live HTML
+  gallery:      '.carSlider img, .slick-slide img, [class*="carSlider"] img, .gallery img, [class*="photo"] img',
   description:  '.description, [class*="description"] p, .about p, .carDesc',
-  soldIndicator: '.sold, [class*="sold"], .not-available',
+  soldIndicator:'.sold, [class*="sold"], .not-available',
 }
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -32,27 +42,31 @@ const FETCH_HEADERS = {
 }
 
 export type CarSummary = {
-  recNo: string
-  name: string
-  price: string
-  imageUrl: string
+  recNo:        string
+  name:         string
+  price:        string
+  monthlyPrice: string
+  imageUrl:     string
+  year:         string
+  mileage:      string
+  engine:       string
+  carType:      string
+  status:       string
 }
 
 export type CarDetail = CarSummary & {
-  year: string | null
-  mileage: string | null
-  engine: string | null
-  color: string | null
+  color:        string | null
   transmission: string | null
-  bodyType: string | null
-  description: string | null
-  images: string[]
-  sourceUrl: string
-  specs: Record<string, string>
+  bodyType:     string | null
+  description:  string | null
+  images:       string[]
+  sourceUrl:    string
+  specs:        Record<string, string>
 }
 
 function toAbsolute(src: string): string {
   if (!src || src.startsWith('data:')) return ''
+  if (src.startsWith('http://') || src.startsWith('https://')) return src
   try {
     return new URL(src, BASE).href
   } catch {
@@ -60,16 +74,20 @@ function toAbsolute(src: string): string {
   }
 }
 
-function extractRecNo(el: AnyNode, $: cheerio.CheerioAPI): string | null {
-  const recnoAttr = $(el).attr(SEL.recNoAttr) ?? $(el).find(`[${SEL.recNoAttr}]`).first().attr(SEL.recNoAttr)
-  if (recnoAttr) return recnoAttr
+function formatPrice(raw: string): string {
+  const n = parseFloat(raw)
+  if (isNaN(n)) return raw
+  return n.toLocaleString('he-IL') + ' ₪'
+}
 
-  // Try href of the element or its child links
-  const href = $(el).attr('href') ?? $(el).find('a[href*="recNo"]').first().attr('href') ?? ''
-  const match = href.match(SEL.recNoHref)
-  if (match) return match[1]
-
-  return null
+function buildName(el: cheerio.Cheerio<AnyNode>): string {
+  const manufacturer = el.attr(SEL.attrManufacturer) ?? ''
+  const model        = el.attr(SEL.attrModel) ?? ''
+  const title        = el.attr(SEL.attrTitle) ?? ''
+  const parts = [manufacturer, model, title].map(s => s.trim()).filter(Boolean)
+  if (parts.length > 0) return parts.join(' ')
+  // Fallback: h5 child text (confirmed from live HTML)
+  return el.find('h5').first().text().trim()
 }
 
 export async function fetchCarList(): Promise<CarSummary[]> {
@@ -81,17 +99,42 @@ export async function fetchCarList(): Promise<CarSummary[]> {
   const cars: CarSummary[] = []
 
   $(SEL.carItem).each((_, el) => {
-    const recNo = extractRecNo(el, $)
+    const $el = $(el)
+
+    // recNo: prefer data-prev_recno, fallback to href query param
+    let recNo = $el.attr(SEL.attrRecNo) ?? ''
+    if (!recNo) {
+      const href = $el.attr('href') ?? ''
+      const m = href.match(/[?&]recNo=(\d+)/i)
+      if (m) recNo = m[1]
+    }
     if (!recNo) return
 
-    const name = $(el).find(SEL.carName).first().text().trim() || $(el).attr('title') || ''
-    const price = $(el).find(SEL.carPrice).first().text().trim()
-    const imgSrc = $(el).find(SEL.carImg).first().attr('src') ?? $(el).find(SEL.carImg).first().attr('data-src') ?? ''
-    const imageUrl = toAbsolute(imgSrc)
+    const name = buildName($el)
+    if (!name) return
 
-    if (recNo && name) {
-      cars.push({ recNo, name, price, imageUrl })
-    }
+    // Image: data-img is relative path, img[src] may already be absolute
+    const imgData = $el.attr(SEL.attrImg) ?? ''
+    const imgSrc  = $el.find('img').first().attr('src') ?? ''
+    const imageUrl = toAbsolute(imgData || imgSrc)
+
+    const rawPrice   = $el.attr(SEL.attrPrice) ?? ''
+    const price      = rawPrice ? formatPrice(rawPrice) : ''
+    const rawMonthly = $el.attr(SEL.attrMonthly) ?? ''
+    const monthlyPrice = rawMonthly ? rawMonthly.replace(/[^\d,]/g, '') + ' ₪/חודש' : ''
+
+    cars.push({
+      recNo,
+      name,
+      price,
+      monthlyPrice,
+      imageUrl,
+      year:    $el.attr(SEL.attrRegisterDt) ?? '',
+      mileage: $el.attr(SEL.attrKm) ?? '',
+      engine:  $el.attr(SEL.attrEngineType) ?? '',
+      carType: $el.attr(SEL.attrCarType) ?? '',
+      status:  $el.attr(SEL.attrStatus) ?? '',
+    })
   })
 
   // Deduplicate by recNo
@@ -113,23 +156,27 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
   const html = await res.text()
   const $ = cheerio.load(html)
 
-  // Check if sold
+  // Check if sold / not found
   if ($(SEL.soldIndicator).length > 0) return null
+
+  // If the detail page returns an error page, inline script often contains currPage:'err404'
+  if (html.includes("currPage: 'err404'") || html.includes('currPage:"err404"')) return null
 
   const name = $(SEL.detailName).first().text().trim()
   if (!name) return null
 
   const price = $(SEL.detailPrice).first().text().trim()
 
-  // Collect all images
+  // Gallery images
   const images: string[] = []
   $(SEL.gallery).each((_, img) => {
     const src = $(img).attr('src') ?? $(img).attr('data-src') ?? $(img).attr('data-lazy') ?? ''
+    if (!src || src.includes('spinner') || src.includes('placeholder') || src.includes('loading')) return
     const abs = toAbsolute(src)
     if (abs && !images.includes(abs)) images.push(abs)
   })
 
-  // Collect specs as key→value pairs
+  // Collect specs as key→value pairs from table rows
   const specs: Record<string, string> = {}
   $(SEL.specRow).each((_, row) => {
     const cells = $(row).find(SEL.specVal)
@@ -138,7 +185,6 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
       const val = cells.eq(1).text().trim()
       if (key && val) specs[key] = val
     } else {
-      // dt/dd style — key is the row itself, value is next sibling
       const key = $(row).text().trim()
       const val = $(row).next().text().trim()
       if (key && val) specs[key] = val
@@ -147,7 +193,6 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
 
   const description = $(SEL.description).first().text().trim() || null
 
-  // Pull common fields from specs map
   const findSpec = (...keys: string[]) => {
     for (const k of Object.keys(specs)) {
       if (keys.some(key => k.includes(key))) return specs[k]
@@ -159,13 +204,16 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
     recNo,
     name,
     price,
+    monthlyPrice: '',
     imageUrl: images[0] ?? '',
-    year: findSpec('שנה', 'year', 'שנת'),
-    mileage: findSpec('ק"מ', 'קילומטר', 'mileage', 'km'),
-    engine: findSpec('מנוע', 'engine', 'נפח'),
-    color: findSpec('צבע', 'color'),
+    year:         findSpec('שנה', 'year', 'שנת') ?? '',
+    mileage:      findSpec('ק"מ', 'קילומטר', 'mileage', 'km') ?? '',
+    engine:       findSpec('מנוע', 'engine', 'נפח') ?? '',
+    carType:      findSpec('סוג', 'גוף', 'body') ?? '',
+    status:       '',
+    color:        findSpec('צבע', 'color'),
     transmission: findSpec('תיבת', 'הילוכים', 'גיר', 'transmission'),
-    bodyType: findSpec('סוג', 'גוף', 'body'),
+    bodyType:     findSpec('סוג', 'גוף', 'body'),
     description,
     images,
     sourceUrl,
@@ -173,9 +221,18 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
   }
 }
 
+/**
+ * Fetch car summary from the list page by recNo.
+ * More reliable than detail page for structured fields (uses data-* attrs).
+ */
+export async function fetchCarSummaryByRecNo(recNo: string): Promise<CarSummary | null> {
+  const list = await fetchCarList()
+  return list.find(c => c.recNo === recNo) ?? null
+}
+
 export async function fetchRawHtml(): Promise<{ listUrl: string; listHtml: string; sampleCarUrl: string; sampleCarHtml: string }> {
   const listUrl = `${BASE}/He/Available_Cars`
-  const sampleCarUrl = `${BASE}/He/Car?recNo=1258`
+  const sampleCarUrl = `${BASE}/He/Car?recNo=3159`
 
   const [listRes, carRes] = await Promise.allSettled([
     fetch(listUrl, { headers: FETCH_HEADERS }),

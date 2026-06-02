@@ -1,7 +1,6 @@
-import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import type { Metadata } from 'next'
-import { fetchCarDetail } from '@/lib/scraper'
+import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 
@@ -14,10 +13,11 @@ const GOLD_BORDER = 'rgba(200,169,110,0.15)'
 
 export async function generateMetadata({ params }: { params: { recNo: string } }): Promise<Metadata> {
   const car = await fetchCarDetail(params.recNo)
-  if (!car) return { title: 'בוואריאן מוטורס' }
+  const summary = car ?? await fetchCarSummaryByRecNo(params.recNo)
+  if (!summary) return { title: 'בוואריאן מוטורס' }
   return {
-    title: `${car.name} | בוואריאן מוטורס`,
-    openGraph: { images: car.imageUrl ? [car.imageUrl] : [] },
+    title: `${summary.name} | בוואריאן מוטורס`,
+    openGraph: { images: summary.imageUrl ? [summary.imageUrl] : [] },
   }
 }
 
@@ -60,9 +60,13 @@ function SpecGrid({ specs }: { specs: Record<string, string> }) {
 }
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  const car = await fetchCarDetail(params.recNo)
+  const [car, summary] = await Promise.all([
+    fetchCarDetail(params.recNo),
+    fetchCarSummaryByRecNo(params.recNo),
+  ])
 
-  if (!car) {
+  // Car is sold only when both detail page AND list both don't have it
+  if (!car && !summary) {
     return (
       <main style={{
         minHeight: '100vh', background: '#000',
@@ -96,15 +100,24 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     )
   }
 
-  // Build main spec items (only non-null)
+  // Use summary data to fill in gaps when detail page doesn't have them
+  const displayCar = car ?? {
+    ...summary!,
+    color: null, transmission: null, bodyType: null,
+    description: null, images: summary!.imageUrl ? [summary!.imageUrl] : [],
+    sourceUrl: `https://www.bavarian-motors.co.il/He/Car?recNo=${params.recNo}`,
+    specs: {},
+  }
+
+  // Build main spec items (only non-null / non-empty)
   const mainSpecItems = MAIN_SPECS
-    .map(s => ({ label: s.label, value: car[s.key] as string | null }))
+    .map(s => ({ label: s.label, value: displayCar[s.key] as string | null }))
     .filter(s => s.value)
 
   // Additional specs from scraper (exclude already shown fields)
   const shownKeys = new Set(['שנה', 'שנת', 'ק"מ', 'קילומטר', 'מנוע', 'נפח', 'גיר', 'תיבת', 'הילוכים', 'צבע', 'סוג', 'גוף'])
   const extraSpecs = Object.fromEntries(
-    Object.entries(car.specs).filter(([k]) => !Array.from(shownKeys).some(s => k.includes(s)))
+    Object.entries(displayCar.specs).filter(([k]) => !Array.from(shownKeys).some(s => k.includes(s)))
   )
 
   return (
@@ -122,16 +135,16 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 28, width: 'auto', opacity: 0.85 }} />
         <div style={{ width: 1, height: 18, background: GOLD_BORDER }} />
         <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {car.name}
+          {displayCar.name}
         </span>
       </header>
 
       {/* ─── Hero image ─── */}
-      {car.imageUrl && (
+      {displayCar.imageUrl && (
         <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#111' }}>
           <Image
-            src={car.imageUrl}
-            alt={car.name}
+            src={displayCar.imageUrl}
+            alt={displayCar.name}
             fill
             sizes="100vw"
             style={{ objectFit: 'cover' }}
@@ -150,7 +163,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               color: '#fff', margin: 0, lineHeight: 1.2,
               textShadow: '0 2px 12px rgba(0,0,0,0.8)',
             }}>
-              {car.name}
+              {displayCar.name}
             </h1>
           </div>
         </div>
@@ -159,17 +172,17 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       <div style={{ padding: '0 16px', maxWidth: 600, margin: '0 auto' }}>
 
         {/* ─── No hero fallback title ─── */}
-        {!car.imageUrl && (
+        {!displayCar.imageUrl && (
           <h1 style={{
             fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 24,
             color: '#fff', padding: '24px 0 8px', margin: 0,
           }}>
-            {car.name}
+            {displayCar.name}
           </h1>
         )}
 
         {/* ─── Price ─── */}
-        {car.price && (
+        {displayCar.price && (
           <div style={{
             margin: '16px 0',
             padding: '16px 18px',
@@ -182,13 +195,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               fontFamily: 'var(--font-heebo)', fontWeight: 900,
               fontSize: 28, color: GOLD, lineHeight: 1,
             }}>
-              {car.price}
+              {displayCar.price}
             </span>
           </div>
         )}
 
         {/* ─── Gallery ─── */}
-        {car.images.length > 0 && (
+        {displayCar.images.length > 0 && (
           <div style={{ margin: '16px 0' }}>
             <div style={{
               fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.2em',
@@ -196,7 +209,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             }}>
               גלריה
             </div>
-            <CarGallery images={car.images} name={car.name} />
+            <CarGallery images={displayCar.images} name={displayCar.name} />
           </div>
         )}
 
@@ -245,7 +258,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         )}
 
         {/* ─── Description ─── */}
-        {car.description && (
+        {displayCar.description && (
           <div style={{
             margin: '20px 0',
             padding: '16px 18px',
@@ -263,7 +276,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               fontFamily: 'var(--font-heebo)', fontSize: 14,
               color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, margin: 0,
             }}>
-              {car.description}
+              {displayCar.description}
             </p>
           </div>
         )}
@@ -271,7 +284,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         {/* ─── Source link ─── */}
         <div style={{ margin: '24px 0 8px', textAlign: 'center' }}>
           <a
-            href={car.sourceUrl}
+            href={displayCar.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -287,7 +300,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Sticky CTA ─── */}
-      <CarCTA carName={car.name} recNo={params.recNo} />
+      <CarCTA carName={displayCar.name} recNo={params.recNo} />
 
     </main>
   )
