@@ -139,7 +139,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
 
       {/* ─── Top nav ─── */}
-      <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px 0', display: 'flex', alignItems: 'center' }}>
         <Link href="/cars" style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.5)',
@@ -150,13 +150,11 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           </svg>
           כל הרכבים
         </Link>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 22, opacity: 0.45 }} />
       </div>
 
       {/* ─── Hero title — overlaps gallery top via negative margin ─── */}
       <div style={{
-        padding: '8px 18px 48px',
+        padding: '4px 18px 48px',
         position: 'relative', zIndex: 2,
         background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
         direction: 'ltr', textAlign: 'left',
