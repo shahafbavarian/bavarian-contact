@@ -87,7 +87,10 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     )
   }
 
-  // Gallery: prefer detail page images (full carousel), fall back to summary image
+  // Hero image always comes from the list summary (data-img attr = the car's
+  // designated main photo). Gallery supplements with detail page images.
+  const heroImage = summary.imageUrl
+
   const galleryImages = (detail?.images?.length ?? 0) > 0
     ? detail!.images
     : (summary.imageUrl ? [summary.imageUrl] : [])
@@ -109,9 +112,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
       {/* ─── Hero / main image ─── */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#111' }}>
-        {galleryImages[0] ? (
+        {heroImage ? (
           <Image
-            src={galleryImages[0]}
+            src={heroImage}
             alt={summary.name}
             fill
             sizes="100vw"
