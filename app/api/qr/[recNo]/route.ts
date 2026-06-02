@@ -7,7 +7,7 @@ import fs from 'fs'
 export const dynamic = 'force-dynamic'
 
 const QR_SIZE = 400
-const LOGO_RATIO = 0.22
+const LOGO_RATIO = 0.30
 
 export async function GET(
   _req: NextRequest,

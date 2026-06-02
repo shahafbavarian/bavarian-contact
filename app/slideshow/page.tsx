@@ -188,12 +188,6 @@ export default function SlideshowPage() {
                 background: 'linear-gradient(to right, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%)',
               }} />
 
-              {/* Logo — top right */}
-              <div style={{ position: 'absolute', top: '4%', right: '3%' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/LOGO.webp" alt="Bavarian Motors" style={{ width: 'min(11%, 110px)', height: 'auto', opacity: 0.85, display: 'block' }} />
-              </div>
-
               {/* Slide counter — top left */}
               <div style={{
                 position: 'absolute', top: '5%', left: '3%',
