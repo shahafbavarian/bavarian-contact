@@ -138,27 +138,25 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
 
-      {/* ─── Top nav ─── */}
-      <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px 0', display: 'flex', alignItems: 'center' }}>
+      {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
+      <div style={{
+        padding: '12px 18px 48px',
+        position: 'relative', zIndex: 10,
+        background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
+      }}>
+        {/* Back link */}
         <Link href="/cars" style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.5)',
-          textDecoration: 'none', direction: 'rtl',
+          textDecoration: 'none', direction: 'rtl', marginBottom: 6,
         }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           כל הרכבים
         </Link>
-      </div>
 
-      {/* ─── Hero title — overlaps gallery top via negative margin ─── */}
-      <div style={{
-        padding: '4px 18px 48px',
-        position: 'relative', zIndex: 2,
-        background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
-        direction: 'ltr', textAlign: 'left',
-      }}>
+        <div style={{ direction: 'ltr', textAlign: 'left' }}>
         <h1 style={{
           fontFamily: 'var(--font-heebo)', fontWeight: 900,
           fontSize: 'clamp(24px, 7vw, 38px)',
@@ -187,7 +185,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             </span>
           )}
         </div>
-      </div>
+        </div>{/* end direction:ltr */}
+      </div>{/* end nav+title block */}
 
       {/* ─── Gallery — pulls up under the title overlap ─── */}
       <div style={{ marginTop: -50, position: 'relative', zIndex: 1 }}>

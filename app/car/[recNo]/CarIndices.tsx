@@ -33,18 +33,9 @@ function IndexBar({
 
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, direction: 'rtl' }}>
+      <div style={{ marginBottom: 8, direction: 'rtl' }}>
         <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 13, fontWeight: 500, color: 'rgba(30,30,30,0.9)' }}>
           {label}
-        </span>
-        <span style={{
-          background: activeColor, color: '#fff',
-          fontFamily: 'var(--font-inter)', fontWeight: 700, fontSize: 13,
-          borderRadius: 5, padding: '2px 8px',
-          boxShadow: `0 0 8px ${activeColor}88`,
-          minWidth: 22, textAlign: 'center',
-        }}>
-          {value}
         </span>
       </div>
 
