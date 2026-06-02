@@ -93,16 +93,27 @@ export default function SlideshowPage() {
           background: #000;
         }
 
-        /* ── Portrait mobile → rotate to landscape ── */
+        /* All root styles in CSS so the media query can override them */
+        #sw-root {
+          position: fixed;
+          top: 0; left: 0;
+          right: 0; bottom: 0;
+          width: 100vw; height: 100vh;
+          background: #000;
+          overflow: hidden;
+        }
+
+        /* Portrait mobile → rotate to landscape */
         @media screen and (orientation: portrait) and (max-width: 1023px) {
           #sw-root {
-            position: fixed !important;
-            width: 100vh !important;
-            height: 100vw !important;
-            top: calc(50vh - 50vw) !important;
-            left: calc(50vw - 50vh) !important;
-            transform: rotate(90deg) !important;
-            transform-origin: 50% 50% !important;
+            width: 100vh;
+            height: 100vw;
+            top: calc(50vh - 50vw);
+            left: calc(50vw - 50vh);
+            right: auto;
+            bottom: auto;
+            transform: rotate(90deg);
+            transform-origin: 50% 50%;
           }
         }
 
@@ -112,11 +123,7 @@ export default function SlideshowPage() {
         }
       `}</style>
 
-      <div id="sw-root" style={{
-        position: 'fixed', inset: 0,
-        width: '100vw', height: '100vh',
-        background: '#000', overflow: 'hidden',
-      }}>
+      <div id="sw-root">
 
         {/* ── Loading ── */}
         {loading && !error && (
