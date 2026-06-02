@@ -93,14 +93,32 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     ...(detail?.images ?? []).filter(img => img !== summary.imageUrl),
   ]
 
-  // Core specs from summary (always reliable)
+  const getSpec = (...keys: string[]) => {
+    if (!detail?.specs) return null
+    for (const [k, v] of Object.entries(detail.specs)) {
+      if (keys.some(key => k.includes(key))) return v
+    }
+    return null
+  }
+
+  const listPrice = (() => {
+    if (!detail?.specs) return null
+    for (const [k, v] of Object.entries(detail.specs)) {
+      if (k.includes('מחיר') && !k.includes('שלנו')) return v
+    }
+    return null
+  })()
+
   const specItems = [
-    summary.year     && { label: 'שנת עלייה', value: summary.year },
-    summary.mileage  && { label: 'קילומטרז\'',  value: displayMileage(summary.mileage) },
-    summary.engine   && { label: 'מנוע',        value: displayEngine(summary.engine) },
-    summary.carType  && { label: 'סוג רכב',     value: summary.carType },
-    detail?.color        && { label: 'צבע',             value: detail.color },
-    detail?.transmission && { label: 'תיבת הילוכים',    value: detail.transmission },
+    getSpec('יד')                      && { label: 'יד',         value: getSpec('יד')! },
+    (getSpec('מועד', 'שנת', 'שנה') ?? summary.year)
+                                        && { label: 'שנה',        value: getSpec('מועד', 'שנת', 'שנה') ?? summary.year },
+    summary.mileage                    && { label: 'קילומטר',    value: displayMileage(summary.mileage) },
+    getSpec('נפח')                     && { label: 'נפח מנוע',   value: getSpec('נפח')! },
+    getSpec('הספק', 'כוח סוס')        && { label: 'כוח סוס',    value: getSpec('הספק', 'כוח סוס')! },
+    summary.engine                     && { label: 'סוג מנוע',   value: displayEngine(summary.engine) },
+    listPrice                          && { label: 'מחירון',     value: listPrice },
+    summary.price                      && { label: 'המחיר שלנו', value: summary.price },
   ].filter(Boolean) as { label: string; value: string }[]
 
   const sourceUrl = `https://www.bavarian-motors.co.il/He/Car?recNo=${params.recNo}`
@@ -108,11 +126,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
 
-      {/* ─── Gallery — first image is always the main photo ─── */}
-      <CarGallery images={allImages} name={summary.name} priority />
-
-      {/* ─── Name + price ─── */}
-      <div style={{ padding: '14px 18px 0', maxWidth: 560, margin: '0 auto' }}>
+      {/* ─── Name + price — above gallery ─── */}
+      <div style={{ padding: '16px 18px 12px', maxWidth: 560, margin: '0 auto' }}>
         <h1 style={{
           fontFamily: 'var(--font-heebo)', fontWeight: 900,
           fontSize: 'clamp(18px, 5vw, 26px)',
@@ -133,6 +148,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           )}
         </div>
       </div>
+
+      {/* ─── Gallery ─── */}
+      <CarGallery images={allImages} name={summary.name} priority />
 
       {/* ─── Specs ─── */}
       <div style={{ padding: '20px 16px 0', maxWidth: 560, margin: '0 auto' }}>
@@ -164,34 +182,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             </div>
           </>
         )}
-
-        {/* Extra specs from detail page */}
-        {detail && Object.keys(detail.specs).length > 0 && (() => {
-          const shownLabels = new Set(specItems.map(s => s.label))
-          const extra = Object.entries(detail.specs).filter(([k]) =>
-            !Array.from(shownLabels).some(l => k.includes(l)) &&
-            !['שנה', 'שנת', 'ק"מ', 'קילומטר', 'מנוע', 'נפח', 'גיר', 'תיבת', 'הילוכים', 'צבע', 'סוג', 'גוף', 'price', 'מחיר', 'יד'].some(s => k.includes(s))
-          )
-          if (extra.length === 0) return null
-          return (
-            <div style={{ marginTop: 16 }}>
-              <p style={{
-                fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em',
-                color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 10px',
-              }}>
-                מאפיינים נוספים
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, border: `1px solid ${GOLD_BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
-                {extra.map(([key, val]) => (
-                  <div key={key} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)' }}>
-                    <div style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: GOLD_DIM, marginBottom: 3 }}>{key}</div>
-                    <div style={{ fontFamily: 'var(--font-heebo)', fontSize: 13, color: '#fff' }}>{val}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })()}
 
         {/* Description */}
         {detail?.description && (

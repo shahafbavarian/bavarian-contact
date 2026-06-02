@@ -104,24 +104,17 @@ export default function SlideshowPage() {
       <style>{`
         html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
 
-        /* Full-screen black canvas */
         #sw-outer {
           position: fixed;
           inset: 0;
           background: #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          overflow: hidden;
         }
 
-        /* 16:9 content box — fills screen on landscape TV,
-           letterboxed on portrait mobile (like YouTube) */
         #sw-root {
           position: relative;
-          overflow: hidden;
-          flex-shrink: 0;
-          width: min(100vw, calc(100vh * 16 / 9));
-          aspect-ratio: 16 / 9;
+          width: 100%;
+          height: 100%;
         }
 
         @keyframes swProgress {
@@ -178,14 +171,22 @@ export default function SlideshowPage() {
                 }}
               />
 
-              {/* Gradients */}
+              {/* Bottom gradient — darkens lower portion for text legibility */}
               <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 45%, rgba(0,0,0,0.05) 100%)',
+                position: 'absolute', inset: 0, pointerEvents: 'none',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)',
               }} />
+
+              {/* Left side fade — blends image into dark area behind car info */}
               <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to right, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%)',
+                position: 'absolute', top: 0, bottom: 0, left: 0, width: '45%', pointerEvents: 'none',
+                background: 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, transparent 100%)',
+              }} />
+
+              {/* Right side fade — blends image edge with background */}
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0, right: 0, width: '25%', pointerEvents: 'none',
+                background: 'linear-gradient(to left, rgba(0,0,0,0.6) 0%, transparent 100%)',
               }} />
 
               {/* Slide counter — top left */}
@@ -197,11 +198,11 @@ export default function SlideshowPage() {
                 {slidePos + 1} / {order.length}
               </div>
 
-              {/* Car info — bottom right */}
+              {/* Car info — bottom LEFT, LTR (English names) */}
               <div style={{
-                position: 'absolute', bottom: '7%', right: '3.5%',
-                direction: 'rtl', textAlign: 'right',
-                maxWidth: '55%',
+                position: 'absolute', bottom: '7%', left: '3.5%',
+                direction: 'ltr', textAlign: 'left',
+                maxWidth: '65%',
                 opacity: fading ? 0 : 1,
                 transition: 'opacity 0.7s ease-in-out',
               }}>
@@ -215,13 +216,14 @@ export default function SlideshowPage() {
                   {make}
                 </h1>
 
-                {/* Model — same size, not bold */}
+                {/* Model — same size, not bold, max 2 lines */}
                 {model && (
                   <h2 style={{
                     fontFamily: 'var(--font-heebo)', fontWeight: 300,
                     fontSize: 'clamp(18px, 3.2vw, 52px)',
-                    color: 'rgba(255,255,255,0.88)', margin: '0 0 10px', lineHeight: 1.1,
+                    color: 'rgba(255,255,255,0.88)', margin: '0 0 10px', lineHeight: 1.15,
                     textShadow: '0 2px 20px rgba(0,0,0,0.7)',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>
                     {model}
                   </h2>
@@ -248,9 +250,9 @@ export default function SlideshowPage() {
                 )}
               </div>
 
-              {/* QR — bottom left */}
+              {/* QR — bottom RIGHT */}
               <div style={{
-                position: 'absolute', bottom: '6%', left: '3%',
+                position: 'absolute', bottom: '6%', right: '3%',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
                 opacity: fading ? 0 : 1,
                 transition: 'opacity 0.7s ease-in-out',
