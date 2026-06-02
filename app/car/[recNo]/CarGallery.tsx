@@ -36,10 +36,10 @@ export default function CarGallery({ images, name, priority }: { images: string[
           style={{ objectFit: 'cover' }}
           priority={idx === 0 && priority}
         />
-        {/* Subtle top fade — blends gallery into black page background */}
+        {/* Stronger top fade — covers the title overlap zone */}
         <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '30%',
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 100%)',
+          position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 55%, transparent 100%)',
           pointerEvents: 'none',
         }} />
         {images.length > 1 && (

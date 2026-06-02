@@ -136,7 +136,7 @@ export async function fetchCarList(): Promise<CarSummary[]> {
     const rawMonthly = $el.attr(SEL.attrMonthly) ?? ''
     const monthlyNum = parseFloat(rawMonthly)
     const monthlyPrice = (!isNaN(monthlyNum) && monthlyNum > 0)
-      ? monthlyNum.toLocaleString('he-IL') + ' ₪/חודש'
+      ? 'החל מ-' + monthlyNum.toLocaleString('he-IL') + ' ₪/חודש'
       : ''
 
     cars.push({
@@ -195,14 +195,27 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
   // Collect specs as key→value pairs from table rows
   const specs: Record<string, string> = {}
   $(SEL.specRow).each((_, row) => {
-    const cells = $(row).find(SEL.specVal)
-    if (cells.length >= 2) {
-      const key = cells.eq(0).text().trim()
-      const val = cells.eq(1).text().trim()
+    const $row = $(row)
+    // <tr><td>key</td><td>val</td></tr> — use direct children to avoid nested-table pollution
+    const tds = $row.children('td')
+    if (tds.length >= 2) {
+      const key = tds.eq(0).text().trim()
+      const val = tds.eq(1).text().trim()
       if (key && val) specs[key] = val
-    } else {
-      const key = $(row).text().trim()
-      const val = $(row).next().text().trim()
+      return
+    }
+    // <dl><dt>key</dt><dd>val</dd></dl>
+    if ($row.is('dt')) {
+      const key = $row.text().trim()
+      const val = $row.next('dd').text().trim()
+      if (key && val) specs[key] = val
+      return
+    }
+    // Generic .spec-row / .spec-item with .spec-value child
+    const valEl = $row.find('.spec-value, [class*="value"]').first()
+    if (valEl.length) {
+      const key = $row.clone().find('.spec-value, [class*="value"]').remove().end().text().trim()
+      const val = valEl.text().trim()
       if (key && val) specs[key] = val
     }
   })

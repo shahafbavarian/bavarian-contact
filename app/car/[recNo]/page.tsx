@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import Link from 'next/link'
 import type { Metadata } from 'next'
 import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
@@ -11,27 +11,30 @@ const GOLD = 'rgba(200,169,110,0.9)'
 const GOLD_DIM = 'rgba(200,169,110,0.5)'
 const GOLD_BORDER = 'rgba(200,169,110,0.15)'
 
-// ─── Display helpers ────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const ENGINE_LABELS: Record<string, string> = {
-  petrol: 'בנזין',
-  diesel: 'דיזל',
-  bev:    'חשמלי',
-  phev:   'היברידי (PHEV)',
-  hev:    'היברידי (HEV)',
-  mhev:   'מיקרו-היברידי',
+  petrol: 'בנזין', diesel: 'דיזל', bev: 'חשמלי',
+  phev: 'היברידי (PHEV)', hev: 'היברידי (HEV)', mhev: 'מיקרו-היברידי',
 }
-
-function displayEngine(raw: string): string {
-  return ENGINE_LABELS[raw.toLowerCase()] ?? raw
-}
+function displayEngine(raw: string): string { return ENGINE_LABELS[raw.toLowerCase()] ?? raw }
 
 function displayMileage(raw: string): string {
   if (!raw) return ''
   const n = parseInt(raw.replace(/[^\d]/g, ''), 10)
-  if (isNaN(n)) return raw          // "רכב חדש" etc — pass through
+  if (isNaN(n)) return raw
   if (n === 0) return 'רכב חדש'
   return n.toLocaleString('he-IL') + ' ק"מ'
+}
+
+function splitCarName(name: string): [string, string] {
+  const words = name.trim().split(' ')
+  if (words.length <= 1) return [name, '']
+  const twoWord = ['Land Rover', 'Rolls-Royce', 'Aston Martin', 'Alfa Romeo']
+  for (const m of twoWord) {
+    if (name.startsWith(m)) return [m, name.slice(m.length).trim()]
+  }
+  return [words[0], words.slice(1).join(' ')]
 }
 
 // ─── Metadata ───────────────────────────────────────────────────────────────
@@ -45,11 +48,29 @@ export async function generateMetadata({ params }: { params: { recNo: string } }
   }
 }
 
+// ─── Spec cell ───────────────────────────────────────────────────────────────
+
+function SpecCell({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div style={{
+      padding: '10px 12px',
+      background: 'rgba(255,255,255,0.03)',
+      border: `1px solid ${GOLD_BORDER}`,
+      borderRadius: 10,
+    }}>
+      <div style={{ fontFamily: 'var(--font-inter)', fontSize: 9, color: GOLD_DIM, marginBottom: 3, letterSpacing: '0.08em', direction: 'rtl' }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, color: value ? '#fff' : 'rgba(255,255,255,0.2)', fontWeight: 500, direction: 'ltr', textAlign: 'left' }}>
+        {value || '—'}
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  // Summary (from data-* attrs) is always authoritative for name/price/specs.
-  // Detail page is optional — supplements with gallery + description only.
   const [summary, detail] = await Promise.all([
     fetchCarSummaryByRecNo(params.recNo),
     fetchCarDetail(params.recNo),
@@ -70,24 +91,19 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 32, lineHeight: 1.7 }}>
           הרכב שחיפשת כבר מצא בית חדש.<br />בואו נמצא לך את הבא!
         </p>
-        <a
-          href="https://www.bavarian-motors.co.il/He/Available_Cars"
-          target="_blank" rel="noopener noreferrer"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '14px 28px', borderRadius: 12,
-            background: GOLD, color: '#000',
-            fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15,
-            textDecoration: 'none',
-          }}
-        >
+        <Link href="/cars" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '14px 28px', borderRadius: 12,
+          background: GOLD, color: '#000',
+          fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15,
+          textDecoration: 'none',
+        }}>
           לכל הרכבים הזמינים
-        </a>
+        </Link>
       </main>
     )
   }
 
-  // Hero image first, then remaining gallery images (deduplicated)
   const allImages = [
     ...(summary.imageUrl ? [summary.imageUrl] : []),
     ...(detail?.images ?? []).filter(img => img !== summary.imageUrl),
@@ -109,84 +125,109 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     return null
   })()
 
-  const specItems = [
-    getSpec('יד')                      && { label: 'יד',         value: getSpec('יד')! },
-    (getSpec('מועד', 'שנת', 'שנה') ?? summary.year)
-                                        && { label: 'שנה',        value: getSpec('מועד', 'שנת', 'שנה') ?? summary.year },
-    summary.mileage                    && { label: 'קילומטר',    value: displayMileage(summary.mileage) },
-    getSpec('נפח')                     && { label: 'נפח מנוע',   value: getSpec('נפח')! },
-    getSpec('הספק', 'כוח סוס')        && { label: 'כוח סוס',    value: getSpec('הספק', 'כוח סוס')! },
-    summary.engine                     && { label: 'סוג מנוע',   value: displayEngine(summary.engine) },
-    listPrice                          && { label: 'מחירון',     value: listPrice },
-    summary.price                      && { label: 'המחיר שלנו', value: summary.price },
-  ].filter(Boolean) as { label: string; value: string }[]
+  const [make, model] = splitCarName(summary.name)
 
-  const sourceUrl = `https://www.bavarian-motors.co.il/He/Car?recNo=${params.recNo}`
+  const yearValue  = getSpec('מועד', 'שנת', 'שנה') ?? summary.year ?? null
+  const yad        = getSpec('יד')
+  const km         = summary.mileage ? displayMileage(summary.mileage) : null
+  const engineVol  = getSpec('נפח')
+  const hp         = getSpec('הספק', 'כוח סוס')
+  const engineType = summary.engine ? displayEngine(summary.engine) : null
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
 
-      {/* ─── Name + price — above gallery ─── */}
-      <div style={{ padding: '16px 18px 12px', maxWidth: 560, margin: '0 auto' }}>
+      {/* ─── Top nav ─── */}
+      <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href="/cars" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.5)',
+          textDecoration: 'none', direction: 'rtl',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          כל הרכבים
+        </Link>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 22, opacity: 0.45 }} />
+      </div>
+
+      {/* ─── Hero title — overlaps gallery top via negative margin ─── */}
+      <div style={{
+        padding: '12px 18px 58px',
+        position: 'relative', zIndex: 2,
+        background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
+        direction: 'ltr', textAlign: 'left',
+      }}>
         <h1 style={{
           fontFamily: 'var(--font-heebo)', fontWeight: 900,
-          fontSize: 'clamp(18px, 5vw, 26px)',
-          color: '#fff', margin: '0 0 8px', lineHeight: 1.2,
+          fontSize: 'clamp(34px, 9vw, 54px)',
+          color: '#fff', margin: 0, lineHeight: 1.0,
         }}>
-          {summary.name}
+          {make}
         </h1>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+        {model && (
+          <h2 style={{
+            fontFamily: 'var(--font-heebo)', fontWeight: 300,
+            fontSize: 'clamp(26px, 7vw, 42px)',
+            color: 'rgba(255,255,255,0.8)', margin: '3px 0 0', lineHeight: 1.0,
+          }}>
+            {model}
+          </h2>
+        )}
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           {summary.price && (
             <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
               {summary.price}
             </span>
           )}
           {summary.monthlyPrice && (
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>
               {summary.monthlyPrice}
             </span>
           )}
         </div>
       </div>
 
-      {/* ─── Gallery ─── */}
-      <CarGallery images={allImages} name={summary.name} priority />
+      {/* ─── Gallery — pulls up under the title overlap ─── */}
+      <div style={{ marginTop: -52, position: 'relative', zIndex: 1 }}>
+        <CarGallery images={allImages} name={summary.name} priority />
+      </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ padding: '20px 16px 0', maxWidth: 560, margin: '0 auto' }}>
+      <div style={{ padding: '20px 14px 0' }}>
+        <p style={{
+          fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em',
+          color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 10px', textAlign: 'right',
+        }}>
+          פרטי הרכב
+        </p>
 
-        {specItems.length > 0 && (
-          <>
-            <p style={{
-              fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em',
-              color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 10px',
-            }}>
-              פרטי הרכב
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {specItems.map(({ label, value }) => (
-                <div key={label} style={{
-                  padding: '12px 14px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${GOLD_BORDER}`,
-                  borderRadius: 10,
-                }}>
-                  <div style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: GOLD_DIM, marginBottom: 4, letterSpacing: '0.08em' }}>
-                    {label}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-heebo)', fontSize: 15, color: '#fff', fontWeight: 500 }}>
-                    {value}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Row 1: יד / שנה / קילומטר */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <SpecCell label="יד" value={yad} />
+          <SpecCell label="שנה" value={yearValue} />
+          <SpecCell label='קילומטר' value={km} />
+        </div>
+
+        {/* Row 2: נפח מנוע / כ"ס / סוג מנוע */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
+          <SpecCell label="נפח מנוע" value={engineVol} />
+          <SpecCell label='כ"ס' value={hp} />
+          <SpecCell label="סוג מנוע" value={engineType} />
+        </div>
+
+        {/* Row 3: מחירון / המחיר שלנו */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 6 }}>
+          <SpecCell label="מחירון" value={listPrice} />
+          <SpecCell label="המחיר שלנו" value={summary.price || null} />
+        </div>
 
         {/* Description */}
         {detail?.description && (
           <div style={{
-            marginTop: 16,
+            marginTop: 14,
             padding: '14px 16px',
             background: 'rgba(255,255,255,0.02)',
             border: `1px solid ${GOLD_BORDER}`,
@@ -200,14 +241,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             </p>
           </div>
         )}
-
-        {/* Source link */}
-        <div style={{ marginTop: 20, marginBottom: 8, textAlign: 'center' }}>
-          <a href={sourceUrl} target="_blank" rel="noopener noreferrer"
-            style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.2)', textDecoration: 'none', letterSpacing: '0.05em' }}>
-            צפה במודעה המקורית ←
-          </a>
-        </div>
       </div>
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
