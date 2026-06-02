@@ -136,7 +136,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
   return (
-    <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
+    <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84, display: 'flex', flexDirection: 'column' }}>
 
       {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
       <div style={{
@@ -254,7 +254,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 0' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <CarIndices
           pollutionGrade={detail?.pollutionGrade ?? null}
           safetyLevel={detail?.safetyLevel ?? null}
