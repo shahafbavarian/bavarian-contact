@@ -193,11 +193,23 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
   })
 
   // Collect specs as key→value pairs from table rows
+  // Confirmed structure: <tr><th>key1</th><td>val1</td><th>key2</th><td>val2</td></tr>
   const specs: Record<string, string> = {}
   $(SEL.specRow).each((_, row) => {
     const $row = $(row)
-    // <tr><td>key</td><td>val</td></tr> — use direct children to avoid nested-table pollution
+    const ths = $row.children('th')
     const tds = $row.children('td')
+
+    if (ths.length >= 1 && tds.length >= 1) {
+      // Handle 1 or 2 key-value pairs per row
+      for (let i = 0; i < Math.min(ths.length, tds.length); i++) {
+        const key = ths.eq(i).text().trim()
+        const val = tds.eq(i).text().trim()
+        if (key && val) specs[key] = val
+      }
+      return
+    }
+    // <tr><td>key</td><td>val</td></tr> fallback
     if (tds.length >= 2) {
       const key = tds.eq(0).text().trim()
       const val = tds.eq(1).text().trim()
