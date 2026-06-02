@@ -93,7 +93,20 @@ function IndexBar({
                 border: isActive ? '2px solid rgba(255,255,255,0.85)' : '2px solid transparent',
                 boxSizing: 'border-box',
                 boxShadow: isActive ? `0 0 6px ${color}` : 'none',
-              }} />
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: 7,
+                  fontWeight: 700,
+                  color: '#fff',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.7)',
+                  lineHeight: 1,
+                  userSelect: 'none',
+                }}>
+                  {v}
+                </span>
+              </div>
             )
           })}
         </div>
