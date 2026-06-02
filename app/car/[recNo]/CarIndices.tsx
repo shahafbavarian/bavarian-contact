@@ -139,22 +139,19 @@ export default function CarIndices({
       <button
         onClick={() => setOpen(true)}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-          gap: 5, width: '100%',
-          padding: '8px 14px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 3, width: '100%',
+          padding: '10px 14px',
           background: 'none', border: 'none', cursor: 'pointer',
-          direction: 'rtl',
         }}
       >
         <span style={{
           fontFamily: 'var(--font-heebo)', fontSize: 12,
           color: GOLD_DIM,
-          borderBottom: '1px solid rgba(200,169,110,0.2)',
-          paddingBottom: 1,
         }}>
           מדדי בטיחות וזיהום אוויר
         </span>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: GOLD_DIM, flexShrink: 0 }}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: GOLD_DIM }}>
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>

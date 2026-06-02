@@ -197,7 +197,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ padding: '12px 14px 0', position: 'relative' }}>
+      <div style={{ padding: '12px 14px 12px', position: 'relative' }}>
         {/* Watermark logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -257,10 +257,12 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         )}
       </div>
 
-      <CarIndices
-        pollutionGrade={detail?.pollutionGrade ?? null}
-        safetyLevel={detail?.safetyLevel ?? null}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 0' }}>
+        <CarIndices
+          pollutionGrade={detail?.pollutionGrade ?? null}
+          safetyLevel={detail?.safetyLevel ?? null}
+        />
+      </div>
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
     </main>
