@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
+import CarIndices from './CarIndices'
 
 export const revalidate = 300
 export const dynamicParams = true
@@ -255,6 +256,11 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           </div>
         )}
       </div>
+
+      <CarIndices
+        pollutionGrade={detail?.pollutionGrade ?? null}
+        safetyLevel={detail?.safetyLevel ?? null}
+      />
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
     </main>

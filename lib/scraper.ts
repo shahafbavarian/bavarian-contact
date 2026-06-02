@@ -55,13 +55,26 @@ export type CarSummary = {
 }
 
 export type CarDetail = CarSummary & {
-  color:        string | null
-  transmission: string | null
-  bodyType:     string | null
-  description:  string | null
-  images:       string[]
-  sourceUrl:    string
-  specs:        Record<string, string>
+  color:          string | null
+  transmission:   string | null
+  bodyType:       string | null
+  description:    string | null
+  images:         string[]
+  sourceUrl:      string
+  specs:          Record<string, string>
+  pollutionGrade: number | null
+  safetyLevel:    number | null
+}
+
+function extractIndexValue(html: string, keyword: RegExp, min: number, max: number): number | null {
+  const idx = html.search(keyword)
+  if (idx < 0) return null
+  // Strip HTML tags from the next 500 chars, then find first standalone number in range
+  const ctx = html.slice(idx, idx + 500).replace(/<[^>]+>/g, ' ').replace(/&[^;]+;/g, ' ')
+  const m = ctx.match(/\b(\d{1,2})\b/)
+  if (!m) return null
+  const n = parseInt(m[1], 10)
+  return (n >= min && n <= max) ? n : null
 }
 
 function toAbsolute(src: string): string {
@@ -259,6 +272,17 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
     images,
     sourceUrl,
     specs,
+    // Try spec table first, then HTML regex (these appear in a separate section below the main table)
+    pollutionGrade: (() => {
+      const s = findSpec('דרגת זיהום', 'זיהום אוויר')
+      if (s) { const n = parseInt(s); if (n >= 1 && n <= 15) return n }
+      return extractIndexValue(html, /דרגת\s*זיהום/i, 1, 15)
+    })(),
+    safetyLevel: (() => {
+      const s = findSpec('דרגת אבזור', 'רמת אבזור', 'אבזור בטיחות')
+      if (s) { const n = parseInt(s); if (n >= 0 && n <= 8) return n }
+      return extractIndexValue(html, /(?:דרגת|רמת)\s*אבזור/i, 0, 8)
+    })(),
   }
 }
 
