@@ -72,10 +72,42 @@ async function analyzeHtml(url: string) {
     if (txt || cls) carBtnChildren.push(`[${child.type}${cls ? '.' + cls.split(' ').join('.') : ''}]: ${txt.slice(0, 80)}`)
   })
 
+  // Extract HTML around spec keywords to understand table structure
+  const specKeywords = ['נפח', 'הספק', 'קילומטר', 'מועד', 'יד', 'בעלות', 'צבע']
+  const specAreas: string[] = []
+  for (const kw of specKeywords) {
+    const idx = html.indexOf(kw)
+    if (idx >= 0) {
+      specAreas.push(`[${kw}]: ...${html.slice(Math.max(0, idx - 200), idx + 300)}...`)
+    }
+  }
+
+  // All tables on the page - show their structure
+  const tables: string[] = []
+  $('table').each((i, el) => {
+    if (i < 5) tables.push($(el).toString().slice(0, 1000))
+  })
+
+  // All dl elements
+  const dls: string[] = []
+  $('dl').each((i, el) => {
+    if (i < 3) dls.push($(el).toString().slice(0, 1000))
+  })
+
+  // Elements with class containing "spec" or "detail" or "info"
+  const specEls: string[] = []
+  $('[class*="spec"], [class*="detail"], [class*="Spec"], [class*="Detail"]').each((i, el) => {
+    if (i < 5) specEls.push(`${$(el).attr('class')}: ${$(el).toString().slice(0, 500)}`)
+  })
+
   return {
     url,
     statusCode: res.status,
     totalLength: html.length,
+    specAreas,
+    tables,
+    dls,
+    specEls,
     bodyStart: bodyHtml,
     htmlEnd,
     scripts,

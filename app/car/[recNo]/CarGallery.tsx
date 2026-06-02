@@ -82,22 +82,21 @@ export default function CarGallery({ images, name, priority }: { images: string[
         )}
       </div>
 
-      {/* Thumbnails — shown only if 3+ images */}
+      {/* Thumbnails */}
       {images.length >= 3 && (
-        <div style={{ display: 'flex', gap: 4, padding: '6px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {images.map((src, i) => (
             <button
               key={i}
               onClick={() => setIdx(i)}
               style={{
-                flexShrink: 0,
-                width: 60, height: 40,
-                borderRadius: 6, overflow: 'hidden',
+                flexShrink: 0, width: 52, height: 34,
+                borderRadius: 5, overflow: 'hidden',
                 border: `2px solid ${i === idx ? 'rgba(200,169,110,0.8)' : 'transparent'}`,
                 padding: 0, cursor: 'pointer', position: 'relative',
               }}
             >
-              <Image src={src} alt="" fill sizes="60px" style={{ objectFit: 'cover' }} />
+              <Image src={src} alt="" fill sizes="52px" style={{ objectFit: 'cover' }} />
             </button>
           ))}
         </div>

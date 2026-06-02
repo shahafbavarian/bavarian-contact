@@ -23,8 +23,8 @@ function displayMileage(raw: string): string {
   if (!raw) return ''
   const n = parseInt(raw.replace(/[^\d]/g, ''), 10)
   if (isNaN(n)) return raw
-  if (n === 0) return 'רכב חדש'
-  return n.toLocaleString('he-IL') + ' ק"מ'
+  if (n === 0) return 'חדש'
+  return n.toLocaleString('he-IL')
 }
 
 function splitCarName(name: string): [string, string] {
@@ -53,15 +53,15 @@ export async function generateMetadata({ params }: { params: { recNo: string } }
 function SpecCell({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div style={{
-      padding: '10px 12px',
+      padding: '7px 10px',
       background: 'rgba(255,255,255,0.03)',
       border: `1px solid ${GOLD_BORDER}`,
-      borderRadius: 10,
+      borderRadius: 8,
     }}>
       <div style={{ fontFamily: 'var(--font-inter)', fontSize: 9, color: GOLD_DIM, marginBottom: 3, letterSpacing: '0.08em', direction: 'rtl' }}>
         {label}
       </div>
-      <div style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, color: value ? '#fff' : 'rgba(255,255,255,0.2)', fontWeight: 500, direction: 'ltr', textAlign: 'left' }}>
+      <div style={{ fontFamily: 'var(--font-heebo)', fontSize: 13, color: value ? '#fff' : 'rgba(255,255,255,0.2)', fontWeight: 500, direction: 'ltr', textAlign: 'left' }}>
         {value || '—'}
       </div>
     </div>
@@ -155,14 +155,14 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
       {/* ─── Hero title — overlaps gallery top via negative margin ─── */}
       <div style={{
-        padding: '12px 18px 90px',
+        padding: '8px 18px 48px',
         position: 'relative', zIndex: 2,
         background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
         direction: 'ltr', textAlign: 'left',
       }}>
         <h1 style={{
           fontFamily: 'var(--font-heebo)', fontWeight: 900,
-          fontSize: 'clamp(34px, 9vw, 54px)',
+          fontSize: 'clamp(24px, 7vw, 38px)',
           color: '#fff', margin: 0, lineHeight: 1.0,
         }}>
           {make}
@@ -170,13 +170,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         {model && (
           <h2 style={{
             fontFamily: 'var(--font-heebo)', fontWeight: 300,
-            fontSize: 'clamp(26px, 7vw, 42px)',
-            color: 'rgba(255,255,255,0.8)', margin: '3px 0 0', lineHeight: 1.0,
+            fontSize: 'clamp(18px, 5.5vw, 30px)',
+            color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.0,
           }}>
             {model}
           </h2>
         )}
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           {summary.price && (
             <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
               {summary.price}
@@ -191,12 +191,12 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Gallery — pulls up under the title overlap ─── */}
-      <div style={{ marginTop: -85, position: 'relative', zIndex: 1 }}>
+      <div style={{ marginTop: -50, position: 'relative', zIndex: 1 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ padding: '20px 14px 0' }}>
+      <div style={{ padding: '12px 14px 0' }}>
         <p style={{
           fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em',
           color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 10px', textAlign: 'right',
