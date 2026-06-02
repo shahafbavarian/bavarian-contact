@@ -6,6 +6,11 @@ export function middleware(req: NextRequest) {
   // If no password is set, admin is open (dev mode)
   if (!adminPassword) return NextResponse.next()
 
+  // Protect /admin/* pages AND DELETE requests to /api/leads (lead deletion)
+  const isAdminRoute = req.nextUrl.pathname.startsWith('/admin')
+  const isLeadsDelete = req.method === 'DELETE' && req.nextUrl.pathname.startsWith('/api/leads')
+  if (!isAdminRoute && !isLeadsDelete) return NextResponse.next()
+
   const authHeader = req.headers.get('authorization')
 
   if (authHeader?.startsWith('Basic ')) {
@@ -22,5 +27,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: '/admin/:path*',
+  matcher: ['/admin/:path*', '/api/leads', '/api/leads/:id*'],
 }

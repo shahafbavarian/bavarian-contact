@@ -9,7 +9,7 @@ export default async function AdminPage() {
   noStore()
   const { data: leads, error } = await getSupabaseAdmin()
     .from('leads')
-    .select('id, name, phone, message, utm_source, utm_campaign, created_at')
+    .select('id, name, phone, message, utm_source, utm_campaign, device, created_at')
     .order('created_at', { ascending: false })
 
   return (
