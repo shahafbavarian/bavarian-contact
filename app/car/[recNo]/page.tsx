@@ -155,7 +155,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
       {/* ─── Hero title — overlaps gallery top via negative margin ─── */}
       <div style={{
-        padding: '12px 18px 58px',
+        padding: '12px 18px 90px',
         position: 'relative', zIndex: 2,
         background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
         direction: 'ltr', textAlign: 'left',
@@ -191,7 +191,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Gallery — pulls up under the title overlap ─── */}
-      <div style={{ marginTop: -52, position: 'relative', zIndex: 1 }}>
+      <div style={{ marginTop: -85, position: 'relative', zIndex: 1 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
