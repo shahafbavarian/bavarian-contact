@@ -58,6 +58,15 @@ export default function CarsPage() {
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', paddingBottom: 32 }}>
+      <style>{`
+        html, body {
+          overflow: auto !important;
+          position: static !important;
+          height: auto !important;
+          touch-action: auto !important;
+          overscroll-behavior: auto !important;
+        }
+      `}</style>
 
       {/* Header */}
       <div style={{ padding: '16px 18px 0', position: 'sticky', top: 0, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(8px)', zIndex: 20, borderBottom: `1px solid ${GOLD_BORDER}` }}>

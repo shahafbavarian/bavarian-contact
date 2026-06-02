@@ -136,6 +136,15 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
+      <style>{`
+        html, body {
+          overflow: auto !important;
+          position: static !important;
+          height: auto !important;
+          touch-action: auto !important;
+          overscroll-behavior: auto !important;
+        }
+      `}</style>
 
       {/* ─── Top nav ─── */}
       <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
