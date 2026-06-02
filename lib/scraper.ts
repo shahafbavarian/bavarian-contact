@@ -76,7 +76,7 @@ function toAbsolute(src: string): string {
 
 function formatPrice(raw: string): string {
   const n = parseFloat(raw)
-  if (isNaN(n)) return raw
+  if (isNaN(n) || n === 0) return ''
   return n.toLocaleString('he-IL') + ' ₪'
 }
 
@@ -121,7 +121,10 @@ export async function fetchCarList(): Promise<CarSummary[]> {
     const rawPrice   = $el.attr(SEL.attrPrice) ?? ''
     const price      = rawPrice ? formatPrice(rawPrice) : ''
     const rawMonthly = $el.attr(SEL.attrMonthly) ?? ''
-    const monthlyPrice = rawMonthly ? rawMonthly.replace(/[^\d,]/g, '') + ' ₪/חודש' : ''
+    const monthlyNum = parseFloat(rawMonthly)
+    const monthlyPrice = (!isNaN(monthlyNum) && monthlyNum > 0)
+      ? monthlyNum.toLocaleString('he-IL') + ' ₪/חודש'
+      : ''
 
     cars.push({
       recNo,
