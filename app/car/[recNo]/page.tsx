@@ -216,13 +216,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             zIndex: 0,
           }}
         />
-        <p style={{ position: 'relative', zIndex: 1,
-          fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em',
-          color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 10px', textAlign: 'right',
-        }}>
-          פרטי הרכב
-        </p>
-
         {/* Row 1: יד / שנה / קילומטר */}
         <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           <SpecCell label="יד" value={yad} />
