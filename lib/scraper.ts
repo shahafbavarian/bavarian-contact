@@ -4,24 +4,24 @@ import type { AnyNode } from 'domhandler'
 const BASE = 'https://www.bavarian-motors.co.il'
 
 // ─── SELECTORS ─────────────────────────────────────────────────────────────
-// Update these after first Vercel deploy using /api/admin/scrape-debug
+// Confirmed from /api/admin/scrape-debug analysis
 const SEL = {
-  // /He/Available_Cars — car list items
-  carItem:    '.vehicle-item, .car-item, .vehicle-card, .listing-item, [class*="vehicle"], [class*="car-"], li[data-recno], div[data-recno], a[href*="recNo"]',
+  // /He/Available_Cars — confirmed class from live HTML
+  carItem:    '.carBtn',
   recNoAttr:  'data-recno',
   recNoHref:  /[?&]recNo=(\d+)/i,
-  carName:    '.vehicle-name, .car-name, .title, h2, h3, [class*="name"], [class*="title"]',
-  carPrice:   '.price, .vehicle-price, .car-price, [class*="price"]',
+  carName:    '.carName, .car-name, .title, h2, h3, [class*="name"], [class*="title"], strong',
+  carPrice:   '.price, .carPrice, .car-price, [class*="price"]',
   carImg:     'img',
 
-  // /He/Car?recNo=XXX — car detail page
-  detailName:   'h1, .vehicle-title, .car-title, [class*="title"] h1, [class*="header"] h1',
-  detailPrice:  '.price, .vehicle-price, [class*="price"]',
+  // /He/Car?recNo=XXX — update after seeing car HTML
+  detailName:   'h1, .carName, .car-title, [class*="title"] h1',
+  detailPrice:  '.price, .carPrice, [class*="price"]',
   specRow:      'tr, .spec-row, .spec-item, [class*="spec"] li, dl dt',
-  specVal:      'td, .spec-value, [class*="value"], dl dd',
-  gallery:      '.gallery img, .carousel img, .slider img, [class*="photo"] img, [class*="gallery"] img, [class*="image"] img',
-  description:  '.description, .vehicle-description, [class*="description"] p, .about p',
-  soldIndicator: '.sold, .not-available, [class*="sold"], [class*="unavailable"]',
+  specVal:      'td:last-child, .spec-value, [class*="value"], dl dd',
+  gallery:      '.fancybox, [data-fancybox] img, .gallery img, .slick-slide img, [class*="photo"] img, [class*="gallery"] img',
+  description:  '.description, [class*="description"] p, .about p, .carDesc',
+  soldIndicator: '.sold, [class*="sold"], .not-available',
 }
 // ───────────────────────────────────────────────────────────────────────────
 

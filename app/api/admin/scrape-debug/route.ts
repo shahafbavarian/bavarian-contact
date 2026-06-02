@@ -55,6 +55,23 @@ async function analyzeHtml(url: string) {
   // Last 3000 chars of HTML (often where data/scripts are)
   const htmlEnd = html.slice(-3000)
 
+  // Sample .carBtn HTML to understand structure
+  const firstCarBtn = $('.carBtn').first().toString().slice(0, 3000)
+  const carBtnCount = $('.carBtn').length
+  const carBtnAttrs: Record<string, string> = {}
+  const firstEl = $('.carBtn').first()
+  ;['data-recno', 'href', 'class', 'id'].forEach(a => {
+    const v = firstEl.attr(a)
+    if (v) carBtnAttrs[a] = v
+  })
+  // All child text/classes inside first carBtn
+  const carBtnChildren: string[] = []
+  firstEl.find('*').each((_, child) => {
+    const cls = $(child).attr('class') ?? ''
+    const txt = $(child).clone().children().remove().end().text().trim()
+    if (txt || cls) carBtnChildren.push(`[${child.type}${cls ? '.' + cls.split(' ').join('.') : ''}]: ${txt.slice(0, 80)}`)
+  })
+
   return {
     url,
     statusCode: res.status,
@@ -66,20 +83,26 @@ async function analyzeHtml(url: string) {
     recNoMatches,
     apiUrls,
     containerClasses: containerClasses.slice(0, 30),
+    carBtnCount,
+    carBtnAttrs,
+    firstCarBtn,
+    carBtnChildren: carBtnChildren.slice(0, 50),
   }
 }
 
 export async function GET() {
   try {
-    const [listResult, carResult] = await Promise.allSettled([
+    const [listResult, carResult, printResult] = await Promise.allSettled([
       analyzeHtml(`${BASE}/He/Available_Cars`),
-      analyzeHtml(`${BASE}/He/Car?recNo=1210`),
+      analyzeHtml(`${BASE}/He/Car?recNo=3159`),
+      analyzeHtml(`${BASE}/He/CarForPrint?recNo=3159`),
     ])
 
     return NextResponse.json(
       {
         list: listResult.status === 'fulfilled' ? listResult.value : String((listResult as PromiseRejectedResult).reason),
         car: carResult.status === 'fulfilled' ? carResult.value : String((carResult as PromiseRejectedResult).reason),
+        print: printResult.status === 'fulfilled' ? printResult.value : String((printResult as PromiseRejectedResult).reason),
       },
       { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
     )
