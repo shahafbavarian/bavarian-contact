@@ -136,15 +136,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
-      <style>{`
-        html, body {
-          overflow: auto !important;
-          position: static !important;
-          height: auto !important;
-          touch-action: auto !important;
-          overscroll-behavior: auto !important;
-        }
-      `}</style>
 
       {/* ─── Top nav ─── */}
       <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -174,7 +165,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           fontSize: 'clamp(24px, 7vw, 38px)',
           color: '#fff', margin: 0, lineHeight: 1.0,
         }}>
-          {make}
+          {make.toUpperCase()}
         </h1>
         {model && (
           <h2 style={{
@@ -205,8 +196,27 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ padding: '12px 14px 0' }}>
-        <p style={{
+      <div style={{ padding: '12px 14px 0', position: 'relative' }}>
+        {/* Watermark logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/LOGO.webp"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '95%',
+            maxWidth: 360,
+            opacity: 0.055,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            zIndex: 0,
+          }}
+        />
+        <p style={{ position: 'relative', zIndex: 1,
           fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em',
           color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 10px', textAlign: 'right',
         }}>
@@ -214,21 +224,21 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </p>
 
         {/* Row 1: יד / שנה / קילומטר */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           <SpecCell label="יד" value={yad} />
           <SpecCell label="שנה" value={yearValue} />
           <SpecCell label='קילומטר' value={km} />
         </div>
 
         {/* Row 2: נפח מנוע / כ"ס / סוג מנוע */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
           <SpecCell label="נפח מנוע" value={engineVol} />
           <SpecCell label='כ"ס' value={hp} />
           <SpecCell label="סוג מנוע" value={engineType} />
         </div>
 
         {/* Row 3: מחירון / המחיר שלנו */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 6 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 6 }}>
           <SpecCell label="מחירון" value={listPrice} />
           <SpecCell label="המחיר שלנו" value={summary.price || null} />
         </div>
@@ -236,6 +246,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         {/* Description */}
         {detail?.description && (
           <div style={{
+            position: 'relative', zIndex: 1,
             marginTop: 14,
             padding: '14px 16px',
             background: 'rgba(255,255,255,0.02)',
