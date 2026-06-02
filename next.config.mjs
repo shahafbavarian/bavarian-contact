@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [{ hostname: 'www.bavarian-motors.co.il' }],
+    remotePatterns: [
+      { hostname: 'www.bavarian-motors.co.il' },
+      { hostname: 'bavarian-motors.co.il' },
+    ],
   },
   async redirects() {
     return [

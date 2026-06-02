@@ -66,11 +66,23 @@ export type CarDetail = CarSummary & {
 
 function toAbsolute(src: string): string {
   if (!src || src.startsWith('data:')) return ''
-  if (src.startsWith('http://') || src.startsWith('https://')) return src
+  let url: string
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    url = src
+  } else {
+    try { url = new URL(src, BASE).href } catch { return src }
+  }
+  // Normalize to www hostname so next/image remotePatterns always match
   try {
-    return new URL(src, BASE).href
+    const u = new URL(url)
+    if (u.hostname === 'bavarian-motors.co.il') u.hostname = 'www.bavarian-motors.co.il'
+    // Strip duplicate leading slashes in path
+    u.pathname = u.pathname.replace(/\/\/+/, '/')
+    // Strip noisy ?v= cache-busters that vary between requests
+    u.search = ''
+    return u.href
   } catch {
-    return src
+    return url
   }
 }
 
@@ -113,10 +125,11 @@ export async function fetchCarList(): Promise<CarSummary[]> {
     const name = buildName($el)
     if (!name) return
 
-    // Image: data-img is relative path, img[src] may already be absolute
-    const imgData = $el.attr(SEL.attrImg) ?? ''
+    // Prefer the actual img[src] (already absolute with correct hostname);
+    // fall back to data-img relative path
     const imgSrc  = $el.find('img').first().attr('src') ?? ''
-    const imageUrl = toAbsolute(imgData || imgSrc)
+    const imgData = $el.attr(SEL.attrImg) ?? ''
+    const imageUrl = toAbsolute(imgSrc || imgData)
 
     const rawPrice   = $el.attr(SEL.attrPrice) ?? ''
     const price      = rawPrice ? formatPrice(rawPrice) : ''
