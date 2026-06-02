@@ -110,6 +110,42 @@ export async function GET(req: NextRequest) {
     .filter(l => l.length > 2 && l.length < 80 && /[֐-׿]/.test(l))
     .slice(0, 60)
 
+  // ── 9. All data-* attributes on .carBtn from Available_Cars ─────────────────
+  const listUrl = 'https://www.bavarian-motors.co.il/He/Available_Cars'
+  const listRes = await fetch(listUrl, { headers: HEADERS, cache: 'no-store' })
+  const listHtml = await listRes.text()
+  const $list = cheerio.load(listHtml)
+  const firstCarBtnAttrs: Record<string, string> = {}
+  const carBtnEl = $list('.carBtn').first()
+  if (carBtnEl.length) {
+    const attribs = (carBtnEl[0] as { attribs?: Record<string, string> }).attribs ?? {}
+    Object.keys(attribs).forEach(k => { firstCarBtnAttrs[k] = attribs[k] })
+  }
+  // All unique data-* attribute names across all .carBtn elements
+  const allDataAttrs = new Set<string>()
+  $list('.carBtn').each((_, el) => {
+    const attribs = (el as { attribs?: Record<string, string> }).attribs ?? {}
+    Object.keys(attribs).filter(k => k.startsWith('data-')).forEach(k => allDataAttrs.add(k))
+  })
+
+  // ── 10. Pollution/safety keywords in car detail HTML ─────────────────────
+  const pollutionKeywords = ['זיהום', 'בטיחות', 'מדד', 'pollution', 'safety', 'environ', 'star', 'כוכב', 'ירוק', 'אדום', 'דירוג', 'rating', 'score', 'green', 'ncap', 'euro']
+  const pollutionSnippets: Record<string, string> = {}
+  for (const kw of pollutionKeywords) {
+    const idx = html.toLowerCase().indexOf(kw.toLowerCase())
+    if (idx >= 0) {
+      pollutionSnippets[kw] = html.slice(Math.max(0, idx - 200), idx + 400)
+    }
+  }
+  // Also check list HTML
+  const pollutionListSnippets: Record<string, string> = {}
+  for (const kw of pollutionKeywords) {
+    const idx = listHtml.toLowerCase().indexOf(kw.toLowerCase())
+    if (idx >= 0) {
+      pollutionListSnippets[kw] = listHtml.slice(Math.max(0, idx - 200), idx + 400)
+    }
+  }
+
   return NextResponse.json({
     recNo,
     url,
@@ -124,5 +160,10 @@ export async function GET(req: NextRequest) {
     hebrewLisSample: hebrewLis.slice(0, 20),
     scriptData,
     specLikeLines,
+    // New: pollution/safety investigation
+    firstCarBtnAttrs,
+    allDataAttrNames: Array.from(allDataAttrs).sort(),
+    pollutionSnippetsInCarDetail: pollutionSnippets,
+    pollutionSnippetsInListPage: pollutionListSnippets,
   }, { headers: { 'Content-Type': 'application/json; charset=utf-8' } })
 }
