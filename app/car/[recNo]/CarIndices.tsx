@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
-const GOLD = 'rgba(200,169,110,0.9)'
 const GOLD_DIM = 'rgba(200,169,110,0.5)'
 
 // Index 0 = grade 1 (best, dark green) → index 14 = grade 15 (worst, dark red)
@@ -19,26 +18,14 @@ const SAFETY_COLORS = [
 ]
 
 function IndexBar({
-  label,
-  value,
-  colors,
-  displayHigh,
-  displayLow,
-  lowLabel,
-  highLabel,
-  colorOffset,
+  label, value, colors, displayHigh, displayLow,
+  lowLabel, highLabel, colorOffset,
 }: {
-  label: string
-  value: number | null
-  colors: string[]
-  displayHigh: number
-  displayLow: number
-  lowLabel: string
-  highLabel: string
-  colorOffset: number
+  label: string; value: number | null; colors: string[]
+  displayHigh: number; displayLow: number
+  lowLabel: string; highLabel: string; colorOffset: number
 }) {
   if (value === null) return null
-
   const count = displayHigh - displayLow + 1
   const activePos = displayHigh - value
   const arrowPct = ((activePos + 0.5) / count * 100).toFixed(2)
@@ -47,15 +34,11 @@ function IndexBar({
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, direction: 'rtl' }}>
-        <span style={{
-          fontFamily: 'var(--font-heebo)', fontSize: 13, fontWeight: 500,
-          color: 'rgba(255,255,255,0.85)',
-        }}>
+        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 13, fontWeight: 500, color: 'rgba(30,30,30,0.9)' }}>
           {label}
         </span>
         <span style={{
-          background: activeColor,
-          color: '#fff',
+          background: activeColor, color: '#fff',
           fontFamily: 'var(--font-inter)', fontWeight: 700, fontSize: 13,
           borderRadius: 5, padding: '2px 8px',
           boxShadow: `0 0 8px ${activeColor}88`,
@@ -67,12 +50,10 @@ function IndexBar({
 
       <div style={{ position: 'relative', paddingTop: 12 }}>
         <div style={{
-          position: 'absolute', top: 0,
-          left: `${arrowPct}%`,
+          position: 'absolute', top: 0, left: `${arrowPct}%`,
           transform: 'translateX(-50%)',
           width: 0, height: 0,
-          borderLeft: '5px solid transparent',
-          borderRight: '5px solid transparent',
+          borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
           borderTop: `8px solid ${activeColor}`,
           filter: `drop-shadow(0 0 3px ${activeColor})`,
         }} />
@@ -84,25 +65,18 @@ function IndexBar({
             const color = colors[v + colorOffset] ?? '#888'
             return (
               <div key={pos} style={{
-                flex: 1,
-                height: isActive ? 26 : 20,
-                alignSelf: 'flex-end',
-                background: color,
-                borderRadius: 4,
-                opacity: isActive ? 1 : 0.38,
+                flex: 1, height: isActive ? 26 : 20,
+                alignSelf: 'flex-end', background: color, borderRadius: 4,
+                opacity: isActive ? 1 : 0.42,
                 border: isActive ? '2px solid rgba(255,255,255,0.85)' : '2px solid transparent',
                 boxSizing: 'border-box',
                 boxShadow: isActive ? `0 0 6px ${color}` : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <span style={{
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: 7,
-                  fontWeight: 700,
-                  color: '#fff',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.7)',
-                  lineHeight: 1,
-                  userSelect: 'none',
+                  fontFamily: 'var(--font-inter)', fontSize: 7, fontWeight: 700,
+                  color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.7)',
+                  lineHeight: 1, userSelect: 'none',
                 }}>
                   {v}
                 </span>
@@ -112,12 +86,8 @@ function IndexBar({
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, direction: 'ltr' }}>
-          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
-            {highLabel}
-          </span>
-          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
-            {lowLabel}
-          </span>
+          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(30,30,30,0.45)' }}>{highLabel}</span>
+          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(30,30,30,0.45)' }}>{lowLabel}</span>
         </div>
       </div>
     </div>
@@ -125,108 +95,162 @@ function IndexBar({
 }
 
 export default function CarIndices({
-  pollutionGrade,
-  safetyLevel,
+  pollutionGrade, safetyLevel,
 }: {
   pollutionGrade: number | null
   safetyLevel: number | null
 }) {
   const [open, setOpen] = useState(false)
+  const [dragY, setDragY] = useState(0)
+  const [isClosing, setIsClosing] = useState(false)
+  const touchStartY = useRef(0)
+  const touchStartTime = useRef(0)
+  const latestDragY = useRef(0)
 
   if (pollutionGrade === null && safetyLevel === null) return null
+
+  const pollColor = pollutionGrade !== null ? POLLUTION_COLORS[pollutionGrade - 1] : '#888'
+  const safeColor = safetyLevel !== null ? SAFETY_COLORS[safetyLevel] : '#888'
+
+  function triggerClose() {
+    setIsClosing(true)
+    setTimeout(() => { setOpen(false); setIsClosing(false); setDragY(0); latestDragY.current = 0 }, 300)
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY
+    touchStartTime.current = Date.now()
+    latestDragY.current = 0
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    const dy = e.touches[0].clientY - touchStartY.current
+    if (dy > 0) { latestDragY.current = dy; setDragY(dy) }
+  }
+
+  function handleTouchEnd() {
+    const elapsed = Math.max(1, Date.now() - touchStartTime.current)
+    const velocity = latestDragY.current / elapsed // px/ms
+    if (latestDragY.current > 90 || velocity > 0.4) {
+      triggerClose()
+    } else {
+      setDragY(0)
+      latestDragY.current = 0
+    }
+  }
+
+  const isDragging = dragY > 0 && !isClosing
+  const backdropAlpha = isClosing ? 0 : Math.max(0, 0.72 * (1 - dragY / 300))
 
   return (
     <>
       <style>{`
-        @keyframes ciSlideUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
-        }
-        @keyframes ciFadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
+        @keyframes ciSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes ciFadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
-      {/* Trigger */}
+      {/* ── Trigger: grade badges always visible (legal compliance) ── */}
       <button
         onClick={() => setOpen(true)}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          gap: 3, width: '100%',
-          padding: '10px 14px',
+          gap: 5, width: '100%', padding: '10px 14px',
           background: 'none', border: 'none', cursor: 'pointer',
         }}
       >
-        <span style={{
-          fontFamily: 'var(--font-heebo)', fontSize: 12,
-          color: GOLD_DIM,
-        }}>
-          מדדי בטיחות וזיהום אוויר
-        </span>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: GOLD_DIM }}>
-          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, direction: 'rtl' }}>
+          {pollutionGrade !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: GOLD_DIM }}>
+                זיהום אוויר
+              </span>
+              <span style={{
+                background: pollColor, color: '#fff',
+                fontFamily: 'var(--font-inter)', fontWeight: 700, fontSize: 12,
+                borderRadius: 4, padding: '2px 7px',
+                boxShadow: `0 0 6px ${pollColor}99`,
+              }}>
+                {pollutionGrade}
+              </span>
+            </div>
+          )}
+          {safetyLevel !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: GOLD_DIM }}>
+                אבזור בטיחות
+              </span>
+              <span style={{
+                background: safeColor, color: '#fff',
+                fontFamily: 'var(--font-inter)', fontWeight: 700, fontSize: 12,
+                borderRadius: 4, padding: '2px 7px',
+                boxShadow: `0 0 6px ${safeColor}99`,
+              }}>
+                {safetyLevel}
+              </span>
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.3)' }}>
+            לפרטים נוספים
+          </span>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ color: 'rgba(200,169,110,0.3)' }}>
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
       </button>
 
-      {/* Bottom sheet */}
+      {/* ── Bottom sheet ── */}
       {open && (
         <>
           {/* Backdrop */}
           <div
-            onClick={() => setOpen(false)}
+            onClick={triggerClose}
             style={{
               position: 'fixed', inset: 0, zIndex: 60,
-              background: 'rgba(0,0,0,0.72)',
-              animation: 'ciFadeIn 0.22s ease-out',
+              background: `rgba(0,0,0,${backdropAlpha})`,
+              transition: isDragging ? 'none' : 'background 0.3s ease',
+              animation: isDragging ? 'none' : 'ciFadeIn 0.22s ease-out',
             }}
           />
 
-          {/* Sheet */}
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            zIndex: 61,
-            background: '#0d0d0d',
-            borderTop: '1px solid rgba(200,169,110,0.18)',
-            borderRadius: '18px 18px 0 0',
-            padding: '0 20px',
-            paddingBottom: 'max(28px, env(safe-area-inset-bottom))',
-            animation: 'ciSlideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
-          }}>
-            {/* Handle */}
+          {/* Sheet — light background per legal requirement */}
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
+              background: '#f4f2ef',
+              borderRadius: '18px 18px 0 0',
+              borderTop: '1px solid rgba(0,0,0,0.08)',
+              padding: '0 20px',
+              paddingBottom: 'max(28px, env(safe-area-inset-bottom))',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.35)',
+              transform: isClosing ? 'translateY(100%)' : `translateY(${dragY}px)`,
+              transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+              animation: (dragY === 0 && !isClosing) ? 'ciSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+              touchAction: 'none',
+              userSelect: 'none',
+            }}
+          >
+            {/* Drag handle */}
             <div style={{
-              width: 40, height: 4,
-              background: 'rgba(255,255,255,0.15)',
-              borderRadius: 2,
-              margin: '12px auto 0',
+              width: 40, height: 4, background: 'rgba(0,0,0,0.18)',
+              borderRadius: 2, margin: '12px auto 0',
             }} />
 
             {/* Header */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 0 18px', direction: 'rtl',
+              padding: '14px 0 16px', direction: 'rtl', textAlign: 'right',
             }}>
               <span style={{
                 fontFamily: 'var(--font-inter)', fontSize: 10,
                 letterSpacing: '0.22em', textTransform: 'uppercase',
-                color: GOLD,
+                color: 'rgba(30,30,30,0.5)',
               }}>
                 מדדי זיהום ובטיחות
               </span>
-              <button
-                onClick={() => setOpen(false)}
-                style={{
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '50%', width: 28, height: 28,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'rgba(255,255,255,0.6)',
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
             </div>
 
             <IndexBar
@@ -234,8 +258,7 @@ export default function CarIndices({
               value={pollutionGrade}
               colors={POLLUTION_COLORS}
               displayHigh={15} displayLow={1}
-              highLabel="זיהום מרבי"
-              lowLabel="זיהום מזערי"
+              highLabel="זיהום מרבי" lowLabel="זיהום מזערי"
               colorOffset={-1}
             />
             <IndexBar
@@ -243,16 +266,14 @@ export default function CarIndices({
               value={safetyLevel}
               colors={SAFETY_COLORS}
               displayHigh={8} displayLow={0}
-              highLabel="בטיחות גבוהה"
-              lowLabel="בטיחות נמוכה"
+              highLabel="בטיחות גבוהה" lowLabel="בטיחות נמוכה"
               colorOffset={0}
             />
 
             <p style={{
-              fontFamily: 'var(--font-heebo)', fontSize: 9,
-              color: 'rgba(255,255,255,0.22)', lineHeight: 1.6,
-              direction: 'rtl', textAlign: 'right',
-              margin: '4px 0 0',
+              fontFamily: 'var(--font-heebo)', fontSize: 10,
+              color: 'rgba(30,30,30,0.4)', lineHeight: 1.65,
+              direction: 'rtl', textAlign: 'right', margin: '4px 0 0',
             }}>
               *נתוני היצרן, ע&quot;פי בדיקות מעבדה תקן EU 2017/1151<br />
               **הדרגה מחושבת לפי תקנות &quot;אוויר נקי&quot; (גילוי נתוני זיהום אוויר מרכב מנועי בפרסומת) התשס&quot;ט 2009
