@@ -15,13 +15,28 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+/** Split "Mercedes-Benz GT 43 AMG Edition" → ["Mercedes-Benz", "GT 43 AMG Edition"] */
+function splitName(name: string): [string, string] {
+  const words = name.trim().split(' ')
+  if (words.length <= 1) return [name, '']
+  // Manufacturer is typically 1 word, except hyphenated ones (Mercedes-Benz, Land Rover, etc.)
+  // Heuristic: if first word contains '-' or second word is short (<= 5 chars and has no digits), treat both as manufacturer
+  const first = words[0]
+  const second = words[1]
+  const twoWordMakers = ['Land Rover', 'Rolls-Royce', 'Aston Martin', 'Alfa Romeo']
+  for (const m of twoWordMakers) {
+    if (name.startsWith(m)) return [m, name.slice(m.length).trim()]
+  }
+  return [first, words.slice(1).join(' ')]
+}
+
 export default function SlideshowPage() {
-  const [cars, setCars]       = useState<CarSummary[]>([])
-  const [order, setOrder]     = useState<number[]>([])
+  const [cars, setCars]         = useState<CarSummary[]>([])
+  const [order, setOrder]       = useState<number[]>([])
   const [slidePos, setSlidePos] = useState(0)
-  const [fading, setFading]   = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
+  const [fading, setFading]     = useState(false)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentCar = cars[order[slidePos] ?? 0] ?? null
@@ -45,7 +60,6 @@ export default function SlideshowPage() {
       const res = await fetch('/api/cars')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { cars: newCars }: { cars: CarSummary[] } = await res.json()
-      // Only show cars that are in stock or at least have an image
       const visible = newCars.filter(c => c.imageUrl)
       if (visible.length === 0) { if (isFirst) setError('אין רכבים זמינים'); return }
 
@@ -55,7 +69,7 @@ export default function SlideshowPage() {
           setLoading(false)
           return visible
         }
-        const newSet = new Set(visible.map(c => c.recNo))
+        const newSet  = new Set(visible.map(c => c.recNo))
         const prevSet = new Set(prev.map(c => c.recNo))
         const changed = visible.some(c => !prevSet.has(c.recNo)) || prev.some(c => !newSet.has(c.recNo))
         if (!changed) return prev
@@ -75,7 +89,6 @@ export default function SlideshowPage() {
     return () => clearInterval(id)
   }, [fetchCars])
 
-  // Preload next 2 images
   useEffect(() => {
     if (cars.length === 0) return
     for (let i = 1; i <= 2; i++) {
@@ -84,37 +97,31 @@ export default function SlideshowPage() {
     }
   }, [slidePos, cars, order])
 
+  const [make, model] = currentCar ? splitName(currentCar.name) : ['', '']
+
   return (
     <>
       <style>{`
-        html, body {
-          margin: 0; padding: 0;
-          overflow: hidden;
-          background: #000;
-        }
+        html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
 
-        /* All root styles in CSS so the media query can override them */
-        #sw-root {
+        /* Full-screen black canvas */
+        #sw-outer {
           position: fixed;
-          top: 0; left: 0;
-          right: 0; bottom: 0;
-          width: 100vw; height: 100vh;
+          inset: 0;
           background: #000;
-          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        /* Portrait mobile → rotate to landscape */
-        @media screen and (orientation: portrait) and (max-width: 1023px) {
-          #sw-root {
-            width: 100vh;
-            height: 100vw;
-            top: calc(50vh - 50vw);
-            left: calc(50vw - 50vh);
-            right: auto;
-            bottom: auto;
-            transform: rotate(90deg);
-            transform-origin: 50% 50%;
-          }
+        /* 16:9 content box — fills screen on landscape TV,
+           letterboxed on portrait mobile (like YouTube) */
+        #sw-root {
+          position: relative;
+          overflow: hidden;
+          flex-shrink: 0;
+          width: min(100vw, calc(100vh * 16 / 9));
+          aspect-ratio: 16 / 9;
         }
 
         @keyframes swProgress {
@@ -123,169 +130,175 @@ export default function SlideshowPage() {
         }
       `}</style>
 
-      <div id="sw-root">
+      <div id="sw-outer">
+        <div id="sw-root">
 
-        {/* ── Loading ── */}
-        {loading && !error && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20,
-          }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 64, opacity: 0.6 }} />
+          {/* ── Loading ── */}
+          {loading && !error && (
             <div style={{
-              width: 180, height: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden',
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20,
             }}>
-              <div style={{
-                height: '100%', background: 'rgba(200,169,110,0.6)',
-                animation: 'swProgress 2s ease-in-out infinite',
-              }} />
-            </div>
-          </div>
-        )}
-
-        {/* ── Error ── */}
-        {error && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
-          }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 56, opacity: 0.4 }} />
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-              {error}
-            </p>
-          </div>
-        )}
-
-        {/* ── Slide ── */}
-        {!loading && currentCar && (
-          <>
-            {/* Background image */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={currentCar.recNo}
-              src={currentCar.imageUrl}
-              alt=""
-              style={{
-                position: 'absolute', inset: 0,
-                width: '100%', height: '100%', objectFit: 'cover',
-                opacity: fading ? 0 : 1,
-                transition: 'opacity 0.7s ease-in-out',
-              }}
-            />
-
-            {/* Gradients */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 45%, rgba(0,0,0,0.08) 100%)',
-            }} />
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to right, rgba(0,0,0,0) 55%, rgba(0,0,0,0.7) 100%)',
-            }} />
-
-            {/* Logo — top right */}
-            <div style={{ position: 'absolute', top: 28, right: 36 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 46, opacity: 0.85 }} />
+              <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 64, opacity: 0.6 }} />
+              <div style={{ width: 180, height: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: 'rgba(200,169,110,0.6)', animation: 'swProgress 2s ease-in-out infinite' }} />
+              </div>
             </div>
+          )}
 
-            {/* Slide counter — top left */}
+          {/* ── Error ── */}
+          {error && (
             <div style={{
-              position: 'absolute', top: 32, left: 36,
-              fontFamily: 'var(--font-inter)', fontSize: 12,
-              color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em',
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
             }}>
-              {slidePos + 1} / {order.length}
-            </div>
-
-            {/* Car info — bottom right */}
-            <div style={{
-              position: 'absolute', bottom: 36, right: 40,
-              direction: 'rtl', textAlign: 'right',
-              maxWidth: '55%',
-              opacity: fading ? 0 : 1,
-              transition: 'opacity 0.7s ease-in-out',
-            }}>
-              <p style={{
-                fontFamily: 'var(--font-inter)', fontSize: 10,
-                letterSpacing: '0.22em', textTransform: 'uppercase',
-                color: 'rgba(200,169,110,0.65)', margin: '0 0 8px',
-              }}>
-                בוואריאן מוטורס
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 56, opacity: 0.4 }} />
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                {error}
               </p>
-              <h1 style={{
-                fontFamily: 'var(--font-heebo)', fontWeight: 900,
-                fontSize: 'clamp(22px, 3.2vw, 48px)',
-                color: '#fff', margin: '0 0 10px', lineHeight: 1.15,
-                textShadow: '0 2px 20px rgba(0,0,0,0.7)',
-              }}>
-                {currentCar.name}
-              </h1>
-              {currentCar.price && (
-                <p style={{
-                  fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                  fontSize: 'clamp(16px, 2vw, 28px)',
-                  color: 'rgba(200,169,110,0.9)', margin: '0 0 4px',
-                  textShadow: '0 1px 10px rgba(0,0,0,0.6)',
-                }}>
-                  {currentCar.price}
-                </p>
-              )}
-              {currentCar.monthlyPrice && (
-                <p style={{
-                  fontFamily: 'var(--font-inter)', fontSize: 'clamp(11px, 1.1vw, 16px)',
-                  color: 'rgba(255,255,255,0.5)', margin: 0,
-                }}>
-                  {currentCar.monthlyPrice}
-                </p>
-              )}
             </div>
+          )}
 
-            {/* QR — bottom left */}
-            <div style={{
-              position: 'absolute', bottom: 32, left: 36,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-              opacity: fading ? 0 : 1,
-              transition: 'opacity 0.7s ease-in-out',
-            }}>
+          {/* ── Slide ── */}
+          {!loading && currentCar && (
+            <>
+              {/* Background image */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/api/qr/${currentCar.recNo}`}
-                alt="QR"
+                key={currentCar.recNo}
+                src={currentCar.imageUrl}
+                alt=""
                 style={{
-                  width: 'clamp(110px, 11vw, 180px)',
-                  height: 'clamp(110px, 11vw, 180px)',
-                  borderRadius: 10,
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.8)',
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%', objectFit: 'cover',
+                  opacity: fading ? 0 : 1,
+                  transition: 'opacity 0.7s ease-in-out',
                 }}
               />
-              <p style={{
-                fontFamily: 'var(--font-inter)', fontSize: 10,
-                color: 'rgba(255,255,255,0.45)', margin: 0,
-                letterSpacing: '0.05em', textAlign: 'center',
-              }}>
-                סרוק לפרטים נוספים
-              </p>
-            </div>
 
-            {/* Progress bar */}
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-              background: 'rgba(255,255,255,0.08)',
-            }}>
-              <div
-                key={`${currentCar.recNo}-bar`}
-                style={{
-                  height: '100%',
-                  background: 'rgba(200,169,110,0.7)',
-                  animation: `swProgress ${SLIDE_DURATION}ms linear forwards`,
-                }}
-              />
-            </div>
-          </>
-        )}
+              {/* Gradients */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 45%, rgba(0,0,0,0.05) 100%)',
+              }} />
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to right, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%)',
+              }} />
+
+              {/* Logo — top right */}
+              <div style={{ position: 'absolute', top: '4%', right: '3%' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 'clamp(28px, 5%, 52px)', opacity: 0.85 }} />
+              </div>
+
+              {/* Slide counter — top left */}
+              <div style={{
+                position: 'absolute', top: '5%', left: '3%',
+                fontFamily: 'var(--font-inter)', fontSize: 'clamp(10px, 1.1vw, 14px)',
+                color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em',
+              }}>
+                {slidePos + 1} / {order.length}
+              </div>
+
+              {/* Car info — bottom right */}
+              <div style={{
+                position: 'absolute', bottom: '7%', right: '3.5%',
+                direction: 'rtl', textAlign: 'right',
+                maxWidth: '55%',
+                opacity: fading ? 0 : 1,
+                transition: 'opacity 0.7s ease-in-out',
+              }}>
+                {/* Manufacturer — bold */}
+                <h1 style={{
+                  fontFamily: 'var(--font-heebo)', fontWeight: 900,
+                  fontSize: 'clamp(18px, 3.2vw, 52px)',
+                  color: '#fff', margin: 0, lineHeight: 1.1,
+                  textShadow: '0 2px 20px rgba(0,0,0,0.7)',
+                }}>
+                  {make}
+                </h1>
+
+                {/* Model — same size, not bold */}
+                {model && (
+                  <h2 style={{
+                    fontFamily: 'var(--font-heebo)', fontWeight: 300,
+                    fontSize: 'clamp(18px, 3.2vw, 52px)',
+                    color: 'rgba(255,255,255,0.88)', margin: '0 0 10px', lineHeight: 1.1,
+                    textShadow: '0 2px 20px rgba(0,0,0,0.7)',
+                  }}>
+                    {model}
+                  </h2>
+                )}
+
+                {/* Price */}
+                {currentCar.price && (
+                  <p style={{
+                    fontFamily: 'var(--font-heebo)', fontWeight: 700,
+                    fontSize: 'clamp(13px, 1.8vw, 28px)',
+                    color: 'rgba(200,169,110,0.9)', margin: '0 0 3px',
+                    textShadow: '0 1px 10px rgba(0,0,0,0.6)',
+                  }}>
+                    {currentCar.price}
+                  </p>
+                )}
+                {currentCar.monthlyPrice && (
+                  <p style={{
+                    fontFamily: 'var(--font-inter)', fontSize: 'clamp(10px, 1vw, 15px)',
+                    color: 'rgba(255,255,255,0.5)', margin: 0,
+                  }}>
+                    {currentCar.monthlyPrice}
+                  </p>
+                )}
+              </div>
+
+              {/* QR — bottom left */}
+              <div style={{
+                position: 'absolute', bottom: '6%', left: '3%',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                opacity: fading ? 0 : 1,
+                transition: 'opacity 0.7s ease-in-out',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/qr/${currentCar.recNo}`}
+                  alt="QR"
+                  style={{
+                    width: 'clamp(80px, 10vw, 170px)',
+                    height: 'clamp(80px, 10vw, 170px)',
+                    borderRadius: 10,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.8)',
+                  }}
+                />
+                <p style={{
+                  fontFamily: 'var(--font-inter)', fontSize: 'clamp(8px, 0.85vw, 11px)',
+                  color: 'rgba(255,255,255,0.45)', margin: 0,
+                  letterSpacing: '0.05em', textAlign: 'center',
+                }}>
+                  סרוק לפרטים נוספים
+                </p>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+                background: 'rgba(255,255,255,0.08)',
+              }}>
+                <div
+                  key={`${currentCar.recNo}-bar`}
+                  style={{
+                    height: '100%',
+                    background: 'rgba(200,169,110,0.7)',
+                    animation: `swProgress ${SLIDE_DURATION}ms linear forwards`,
+                  }}
+                />
+              </div>
+            </>
+          )}
+
+        </div>
       </div>
     </>
   )
