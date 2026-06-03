@@ -25,7 +25,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div style={{ direction: 'ltr' }}>
+    <div style={{ direction: 'ltr', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Preload hints for adjacent images */}
       {images.length > 1 && (
         <>
@@ -35,7 +35,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
       )}
       {/* Main image */}
       <div
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -95,7 +95,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
 
       {/* Thumbnails */}
       {images.length >= 3 && (
-        <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
           {images.map((src, i) => i === 0 ? null : (
             <button
               key={i}

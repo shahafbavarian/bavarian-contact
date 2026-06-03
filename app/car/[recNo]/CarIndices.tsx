@@ -97,22 +97,12 @@ export default function CarIndices({
   const touchStartY = useRef(0)
   const touchStartTime = useRef(0)
   const latestDragY = useRef(0)
-  const sheetRef = useRef<HTMLDivElement>(null)
-
   if (pollutionGrade === null && safetyLevel === null) return null
 
   const pollColor = pollutionGrade !== null ? POLLUTION_COLORS[pollutionGrade - 1] : '#888'
   const safeColor = safetyLevel !== null ? SAFETY_COLORS[safetyLevel] : '#888'
 
   function triggerClose() {
-    // Synchronous DOM mutation — happens before the next paint frame so iOS
-    // immediately sees a transparent element at bottom:0 and re-adopts the
-    // html background (#000) for the safe-area / URL-bar region.
-    if (sheetRef.current) {
-      sheetRef.current.style.background = 'transparent'
-      sheetRef.current.style.boxShadow = 'none'
-      sheetRef.current.style.borderTop = 'none'
-    }
     setIsClosing(true)
     setTimeout(() => { setOpen(false); setIsClosing(false); setDragY(0); latestDragY.current = 0 }, 420)
   }
@@ -214,20 +204,17 @@ export default function CarIndices({
             }}
           />
 
-          {/* Sheet */}
+          {/* Sheet — transparent outer wrapper owns all animation.
+              The beige fill div at the bottom travels WITH the wrapper so as
+              translateY grows the fill physically exits the safe-area region
+              within ~17 ms (first animation frame). iOS then re-adopts the
+              black page background before the animation visually completes. */}
           <div
-            ref={sheetRef}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
-              background: '#f5f3f0',
-              borderRadius: '18px 18px 0 0',
-              borderTop: '1px solid rgba(0,0,0,0.08)',
-              padding: '0 16px',
-              paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
               opacity: isClosing ? 0 : 1,
               transform: isClosing ? 'translateY(100vh)' : `translateY(${dragY}px)`,
               transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease',
@@ -236,48 +223,61 @@ export default function CarIndices({
               userSelect: 'none',
             }}
           >
-            {/* Drag handle */}
+            {/* Visible beige panel — background stops at safe-area boundary */}
             <div style={{
-              width: 40, height: 4, background: 'rgba(0,0,0,0.12)',
-              borderRadius: 2, margin: '12px auto 0',
-            }} />
-
-            {/* Header */}
-            <div style={{ padding: '12px 0 10px', direction: 'rtl', textAlign: 'right' }}>
-              <span style={{
-                fontFamily: 'var(--font-inter)', fontSize: 10,
-                letterSpacing: '0.22em', textTransform: 'uppercase',
-                color: 'rgba(200,169,110,0.9)',
-              }}>
-                מדדי זיהום ובטיחות
-              </span>
-            </div>
-
-            <IndexBar
-              label="דרגת זיהום אוויר"
-              value={pollutionGrade}
-              colors={POLLUTION_COLORS}
-              displayHigh={15} displayLow={1}
-              highLabel="זיהום מרבי" lowLabel="זיהום מזערי"
-              colorOffset={-1}
-            />
-            <IndexBar
-              label="רמת אבזור בטיחותי"
-              value={safetyLevel}
-              colors={SAFETY_COLORS}
-              displayHigh={8} displayLow={0}
-              highLabel="בטיחות גבוהה" lowLabel="בטיחות נמוכה"
-              colorOffset={0}
-            />
-
-            <p style={{
-              fontFamily: 'var(--font-heebo)', fontSize: 9,
-              color: 'rgba(30,30,30,0.45)', lineHeight: 1.65,
-              direction: 'rtl', textAlign: 'right', margin: '10px 0 0',
+              background: '#f5f3f0',
+              borderRadius: '18px 18px 0 0',
+              borderTop: '1px solid rgba(0,0,0,0.08)',
+              padding: '0 16px 20px',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
             }}>
-              * נתוני זיהום האוויר מבוססים על נתוני היצרן על פי בדיקות מעבדה בהתאם לתקנות EU 2017/1151. הדרגה מחושבת לפי תקנות אוויר נקי (גילוי נתוני זיהום אוויר מרכב מנועי בפרסומת), התשס&quot;ט-2009.<br />
-              ** רמת האבזור הבטיחותי מחושבת לפי הוראת נוהל מספר 03/13 של משרד התחבורה.
-            </p>
+              {/* Drag handle */}
+              <div style={{
+                width: 40, height: 4, background: 'rgba(0,0,0,0.12)',
+                borderRadius: 2, margin: '12px auto 0',
+              }} />
+
+              {/* Header */}
+              <div style={{ padding: '12px 0 10px', direction: 'rtl', textAlign: 'right' }}>
+                <span style={{
+                  fontFamily: 'var(--font-inter)', fontSize: 10,
+                  letterSpacing: '0.22em', textTransform: 'uppercase',
+                  color: 'rgba(200,169,110,0.9)',
+                }}>
+                  מדדי זיהום ובטיחות
+                </span>
+              </div>
+
+              <IndexBar
+                label="דרגת זיהום אוויר"
+                value={pollutionGrade}
+                colors={POLLUTION_COLORS}
+                displayHigh={15} displayLow={1}
+                highLabel="זיהום מרבי" lowLabel="זיהום מזערי"
+                colorOffset={-1}
+              />
+              <IndexBar
+                label="רמת אבזור בטיחותי"
+                value={safetyLevel}
+                colors={SAFETY_COLORS}
+                displayHigh={8} displayLow={0}
+                highLabel="בטיחות גבוהה" lowLabel="בטיחות נמוכה"
+                colorOffset={0}
+              />
+
+              <p style={{
+                fontFamily: 'var(--font-heebo)', fontSize: 9,
+                color: 'rgba(30,30,30,0.45)', lineHeight: 1.65,
+                direction: 'rtl', textAlign: 'right', margin: '10px 0 0',
+              }}>
+                * נתוני זיהום האוויר מבוססים על נתוני היצרן על פי בדיקות מעבדה בהתאם לתקנות EU 2017/1151. הדרגה מחושבת לפי תקנות אוויר נקי (גילוי נתוני זיהום אוויר מרכב מנועי בפרסומת), התשס&quot;ט-2009.<br />
+                ** רמת האבזור הבטיחותי מחושבת לפי הוראת נוהל מספר 03/13 של משרד התחבורה.
+              </p>
+            </div>
+            {/* Safe-area fill — slides away with the sheet so iOS sees the
+                black page background in the safe-area region on the first
+                animation frame and immediately re-adopts it. */}
+            <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: '#f5f3f0' }} />
           </div>
         </>
       )}

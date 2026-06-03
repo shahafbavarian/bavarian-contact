@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: { params: { recNo: string } }
 function SpecCell({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div style={{
-      padding: '7px 10px',
+      padding: 'clamp(4px,0.8vh,7px) 10px',
       background: 'rgba(255,255,255,0.03)',
       border: `1px solid ${GOLD_BORDER}`,
       borderRadius: 8,
@@ -138,19 +138,20 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   return (
     <main style={{
       height: '100dvh',
-      overflowY: 'auto',
-      overscrollBehavior: 'contain',
-      touchAction: 'pan-y',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
       background: '#000',
       direction: 'rtl',
-      paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
+      paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
     }}>
 
-      {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
+      {/* ─── Top nav + title ─── */}
       <div style={{
-        padding: '12px 18px 48px',
+        flexShrink: 0,
+        padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,12px)',
         position: 'relative', zIndex: 10,
-        background: 'linear-gradient(to bottom, #000 52%, rgba(0,0,0,0) 100%)',
+        background: '#000',
       }}>
         {/* Back link */}
         <Link href="/cars" style={{
@@ -196,13 +197,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>{/* end direction:ltr */}
       </div>{/* end nav+title block */}
 
-      {/* ─── Gallery — pulls up under the title overlap ─── */}
-      <div style={{ marginTop: -50, position: 'relative', zIndex: 1 }}>
+      {/* ─── Gallery — fills remaining vertical space ─── */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ padding: '12px 14px 8px', position: 'relative' }}>
+      <div style={{ flexShrink: 0, padding: 'clamp(4px,0.8vh,12px) 14px 0', position: 'relative' }}>
         {/* Watermark logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -223,51 +224,33 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           }}
         />
         {/* Row 1: יד / שנה / קילומטר */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
           <SpecCell label="יד" value={yad} />
           <SpecCell label="שנה" value={yearValue} />
           <SpecCell label='קילומטר' value={km} />
         </div>
 
         {/* Row 2: נפח מנוע / כ"ס / סוג מנוע */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginTop: 4 }}>
           <SpecCell label="נפח מנוע" value={engineVol} />
           <SpecCell label='כ"ס' value={hp} />
           <SpecCell label="סוג מנוע" value={engineType} />
         </div>
 
         {/* Row 3: מחירון / המחיר שלנו */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 6 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, marginTop: 4 }}>
           <SpecCell label="מחירון" value={listPrice} />
           <SpecCell label="המחיר שלנו" value={summary.price || null} />
         </div>
       </div>
 
-      {/* ─── Pollution / safety indices — tight below specs, above CTA ─── */}
-      <div style={{ padding: '12px 0 0' }}>
+      {/* ─── Pollution / safety indices ─── */}
+      <div style={{ flexShrink: 0 }}>
         <CarIndices
           pollutionGrade={detail?.pollutionGrade ?? null}
           safetyLevel={detail?.safetyLevel ?? null}
         />
       </div>
-
-      {/* Description — supplementary, may be hidden on very small screens */}
-      {detail?.description && (
-        <div style={{
-          margin: '8px 14px 0',
-          padding: '14px 16px',
-          background: 'rgba(255,255,255,0.02)',
-          border: `1px solid ${GOLD_BORDER}`,
-          borderRadius: 10,
-        }}>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em', color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 8px' }}>
-            תיאור
-          </p>
-          <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.75, margin: 0 }}>
-            {detail.description}
-          </p>
-        </div>
-      )}
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
     </main>
