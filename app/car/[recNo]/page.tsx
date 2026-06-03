@@ -4,7 +4,6 @@ import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
-import CarScrollEnable from './CarScrollEnable'
 
 export const revalidate = 300
 export const dynamicParams = true
@@ -138,7 +137,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
-      <CarScrollEnable />
 
       {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
       <div style={{
@@ -196,7 +194,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ padding: '12px 14px 12px', position: 'relative' }}>
+      <div style={{ padding: '12px 14px 8px', position: 'relative' }}>
         {/* Watermark logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -235,33 +233,33 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           <SpecCell label="מחירון" value={listPrice} />
           <SpecCell label="המחיר שלנו" value={summary.price || null} />
         </div>
-
-        {/* Description */}
-        {detail?.description && (
-          <div style={{
-            position: 'relative', zIndex: 1,
-            marginTop: 14,
-            padding: '14px 16px',
-            background: 'rgba(255,255,255,0.02)',
-            border: `1px solid ${GOLD_BORDER}`,
-            borderRadius: 10,
-          }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em', color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 8px' }}>
-              תיאור
-            </p>
-            <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.75, margin: 0 }}>
-              {detail.description}
-            </p>
-          </div>
-        )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+      {/* ─── Pollution / safety indices — tight below specs, above CTA ─── */}
+      <div style={{ padding: '2px 0 0' }}>
         <CarIndices
           pollutionGrade={detail?.pollutionGrade ?? null}
           safetyLevel={detail?.safetyLevel ?? null}
         />
       </div>
+
+      {/* Description — supplementary, may be hidden on very small screens */}
+      {detail?.description && (
+        <div style={{
+          margin: '8px 14px 0',
+          padding: '14px 16px',
+          background: 'rgba(255,255,255,0.02)',
+          border: `1px solid ${GOLD_BORDER}`,
+          borderRadius: 10,
+        }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.22em', color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 8px' }}>
+            תיאור
+          </p>
+          <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.75, margin: 0 }}>
+            {detail.description}
+          </p>
+        </div>
+      )}
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
     </main>

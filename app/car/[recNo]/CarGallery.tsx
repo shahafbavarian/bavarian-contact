@@ -35,7 +35,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
       )}
       {/* Main image */}
       <div
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

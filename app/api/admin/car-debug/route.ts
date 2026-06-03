@@ -121,12 +121,24 @@ export async function GET(req: NextRequest) {
     const attribs = (carBtnEl[0] as { attribs?: Record<string, string> }).attribs ?? {}
     Object.keys(attribs).forEach(k => { firstCarBtnAttrs[k] = attribs[k] })
   }
+  // Inner HTML of first carBtn (for diagnosing text/element structure)
+  const firstCarBtnHtml = carBtnEl.length ? carBtnEl.toString().slice(0, 3000) : ''
+  // First carBtn rendered text (all visible text)
+  const firstCarBtnText = carBtnEl.length ? carBtnEl.text().replace(/\s+/g, ' ').trim() : ''
+
   // All unique data-* attribute names across all .carBtn elements
   const allDataAttrs = new Set<string>()
   $list('.carBtn').each((_, el) => {
     const attribs = (el as { attribs?: Record<string, string> }).attribs ?? {}
     Object.keys(attribs).filter(k => k.startsWith('data-')).forEach(k => allDataAttrs.add(k))
   })
+
+  // Search for יד / בעלות in list HTML context
+  const yadListContext: Record<string, string> = {}
+  for (const kw of ['יד', 'בעלות', 'ownership', 'hand']) {
+    const idx = listHtml.indexOf(kw)
+    if (idx >= 0) yadListContext[kw] = listHtml.slice(Math.max(0, idx - 200), idx + 300)
+  }
 
   // ── 10. Pollution/safety keywords in car detail HTML ─────────────────────
   const pollutionKeywords = ['זיהום', 'בטיחות', 'מדד', 'pollution', 'safety', 'environ', 'star', 'כוכב', 'ירוק', 'אדום', 'דירוג', 'rating', 'score', 'green', 'ncap', 'euro']
@@ -162,7 +174,10 @@ export async function GET(req: NextRequest) {
     specLikeLines,
     // New: pollution/safety investigation
     firstCarBtnAttrs,
+    firstCarBtnHtml,
+    firstCarBtnText,
     allDataAttrNames: Array.from(allDataAttrs).sort(),
+    yadListContext,
     pollutionSnippetsInCarDetail: pollutionSnippets,
     pollutionSnippetsInListPage: pollutionListSnippets,
   }, { headers: { 'Content-Type': 'application/json; charset=utf-8' } })
