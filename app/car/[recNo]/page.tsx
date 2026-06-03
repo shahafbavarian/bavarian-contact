@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
+import { fetchGovIndices } from '@/lib/gov-data'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
@@ -76,6 +77,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     fetchCarSummaryByRecNo(params.recNo),
     fetchCarDetail(params.recNo),
   ])
+
+  // Gov.il preferred; fall back to detail-page scraping
+  const gov = summary
+    ? await fetchGovIndices(summary.name, summary.year, summary.engine)
+    : { pollutionGrade: null, safetyLevel: null }
+  const pollutionGrade = gov.pollutionGrade ?? detail?.pollutionGrade ?? null
+  const safetyLevel    = gov.safetyLevel    ?? detail?.safetyLevel    ?? null
 
   if (!summary) {
     return (
@@ -250,8 +258,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       {/* ─── Pollution / safety indices ─── */}
       <div style={{ flexShrink: 0 }}>
         <CarIndices
-          pollutionGrade={detail?.pollutionGrade ?? null}
-          safetyLevel={detail?.safetyLevel ?? null}
+          pollutionGrade={pollutionGrade}
+          safetyLevel={safetyLevel}
         />
       </div>
 
