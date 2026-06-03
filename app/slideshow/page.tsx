@@ -173,7 +173,7 @@ export default function SlideshowPage() {
 
                 {/* ── Left: info panel ── */}
                 <div style={{
-                  width: '38%', flexShrink: 0,
+                  width: '44%', flexShrink: 0,
                   display: 'flex', flexDirection: 'column',
                   padding: '5% 4% 4% 5%',
                   /* Semi-transparent so the warm blurred backdrop bleeds through */
