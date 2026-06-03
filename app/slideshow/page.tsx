@@ -89,17 +89,13 @@ export default function SlideshowPage() {
       <style>{`
         html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
 
-        /*
-          sw-outer: fills entire viewport, centers the 16:9 box.
-          Black outside the box is intentional — this runs on a 16:9 TV.
-        */
         #sw-outer {
           position: fixed; inset: 0;
           display: flex; align-items: center; justify-content: center;
           background: #000;
         }
 
-        /* 16:9 box. On a matching monitor it fills the screen. */
+        /* 16:9 box — fills a matching TV, letterboxed on other screens */
         #sw-root {
           width: min(100vw, calc(100vh * 16 / 9));
           aspect-ratio: 16 / 9;
@@ -143,47 +139,72 @@ export default function SlideshowPage() {
             </div>
           )}
 
-          {/* ── Slide: split layout ── */}
+          {/* ── Slide ── */}
           {!loading && currentCar && (
             <>
               {/*
-                Two-column layout:
-                  LEFT  36% — info (make/model/price) + QR at bottom
-                  RIGHT 64% — car image (contain, never cropped)
-                The left panel is a solid dark surface so QR is
-                completely separate from the car image.
+                Layer 0 — Full-bleed blurred backdrop across the ENTIRE stage.
+                This fills the top/bottom margins of the contained car image
+                on the right, so there are no black bars anywhere.
               */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+              <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentCar.imageUrl} alt=""
+                  style={{
+                    position: 'absolute', top: '-6%', left: '-6%',
+                    width: '112%', height: '112%',
+                    objectFit: 'cover',
+                    filter: 'blur(24px)',
+                    opacity: fading ? 0 : 1,
+                    transition: 'opacity 0.7s ease-in-out',
+                  }}
+                />
+                {/* Global darkening so backdrop doesn't overwhelm content */}
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+              </div>
+
+              {/*
+                Layer 1 — Two-column split layout.
+                LEFT  38%: info panel (dark overlay on backdrop)
+                RIGHT 62%: sharp car image (objectFit:contain, backdrop fills margins)
+              */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
 
                 {/* ── Left: info panel ── */}
                 <div style={{
-                  width: '36%', flexShrink: 0,
+                  width: '38%', flexShrink: 0,
                   display: 'flex', flexDirection: 'column',
                   padding: '5% 4% 4% 5%',
-                  background: '#0c0c0c',
-                  borderRight: '1px solid rgba(200,169,110,0.08)',
+                  /* Semi-transparent so the warm blurred backdrop bleeds through */
+                  background: 'rgba(5,5,5,0.72)',
+                  borderRight: '1px solid rgba(200,169,110,0.1)',
                   opacity: fading ? 0 : 1,
                   transition: 'opacity 0.7s ease-in-out',
                 }}>
 
                   {/* Slide counter + logo */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6%', flexShrink: 0 }}>
                     <span style={{
                       fontFamily: 'var(--font-inter)', fontSize: 'clamp(8px,0.85vw,13px)',
-                      color: 'rgba(255,255,255,0.22)', letterSpacing: '0.12em',
+                      color: 'rgba(255,255,255,0.25)', letterSpacing: '0.12em',
                     }}>
                       {slidePos + 1} / {order.length}
                     </span>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/LOGO.webp" alt="" aria-hidden="true"
-                      style={{ height: 'clamp(14px,2vw,28px)', opacity: 0.3 }} />
+                      style={{ height: 'clamp(14px,2vw,28px)', opacity: 0.32 }} />
                   </div>
 
-                  {/* Car name + price — anchored to top, flex: 1 pushes QR to bottom */}
-                  <div style={{ direction: 'ltr', textAlign: 'left', flex: 1 }}>
+                  {/*
+                    Car name + price.
+                    flex:1 + minHeight:0 lets this section expand to fill available
+                    space without pushing the QR code off screen on long names.
+                  */}
+                  <div style={{ direction: 'ltr', textAlign: 'left', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                     <h1 style={{
                       fontFamily: 'var(--font-heebo)', fontWeight: 900,
-                      fontSize: 'clamp(20px,4.2vw,68px)',
+                      fontSize: 'clamp(18px,3.6vw,58px)',
                       color: '#fff', margin: 0, lineHeight: 1.0,
                     }}>
                       {make}
@@ -191,9 +212,10 @@ export default function SlideshowPage() {
                     {model && (
                       <h2 style={{
                         fontFamily: 'var(--font-heebo)', fontWeight: 300,
-                        fontSize: 'clamp(16px,3.4vw,55px)',
-                        color: 'rgba(255,255,255,0.8)', margin: '2px 0 0', lineHeight: 1.1,
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        fontSize: 'clamp(14px,2.9vw,47px)',
+                        color: 'rgba(255,255,255,0.82)', margin: '2px 0 0', lineHeight: 1.15,
+                        /* Up to 3 lines so long model names fit */
+                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                       }}>
                         {model}
                       </h2>
@@ -201,15 +223,15 @@ export default function SlideshowPage() {
                     {currentCar.price && (
                       <p style={{
                         fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                        fontSize: 'clamp(13px,2.1vw,34px)',
-                        color: 'rgba(200,169,110,0.95)', margin: '7% 0 0',
+                        fontSize: 'clamp(13px,2.0vw,33px)',
+                        color: 'rgba(200,169,110,0.95)', margin: '6% 0 0',
                       }}>
                         {currentCar.price}
                       </p>
                     )}
                     {currentCar.monthlyPrice && (
                       <p style={{
-                        fontFamily: 'var(--font-inter)', fontSize: 'clamp(9px,0.9vw,15px)',
+                        fontFamily: 'var(--font-inter)', fontSize: 'clamp(9px,0.85vw,14px)',
                         color: 'rgba(255,255,255,0.38)', margin: '3px 0 0',
                       }}>
                         {currentCar.monthlyPrice}
@@ -217,51 +239,36 @@ export default function SlideshowPage() {
                     )}
                   </div>
 
-                  {/* QR code — bottom of info panel, never near the car image */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+                  {/* QR code — pinned to bottom of info panel, never near the car image */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, flexShrink: 0, marginTop: 'clamp(20px, 5%, 64px)' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/qr/${currentCar.recNo}`}
                       alt="QR"
                       style={{
-                        width: 'clamp(52px,7.5vw,110px)',
-                        height: 'clamp(52px,7.5vw,110px)',
+                        width: 'clamp(52px,7.5vw,108px)',
+                        height: 'clamp(52px,7.5vw,108px)',
                         borderRadius: 8, background: '#fff', padding: 4,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.8)',
                       }}
                     />
                     <p style={{
                       fontFamily: 'var(--font-inter)', fontSize: 'clamp(7px,0.7vw,11px)',
-                      color: 'rgba(255,255,255,0.28)', margin: 0, letterSpacing: '0.06em',
+                      color: 'rgba(255,255,255,0.3)', margin: 0, letterSpacing: '0.06em',
                     }}>
                       סרוק לפרטים נוספים
                     </p>
                   </div>
                 </div>
 
-                {/* ── Right: car image ── */}
+                {/* ── Right: sharp car image ── */}
+                {/*
+                  The global blurred backdrop (layer 0) fills the top/bottom
+                  margins that objectFit:contain leaves — no black bars.
+                */}
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-
-                  {/* Blurred backdrop fills the right panel so objectFit:contain has no bare black areas */}
-                  <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={currentCar.imageUrl} alt=""
-                      style={{
-                        position: 'absolute', top: '-6%', left: '-6%',
-                        width: '112%', height: '112%',
-                        objectFit: 'cover',
-                        filter: 'blur(22px)',
-                        opacity: fading ? 0 : 0.38,
-                        transition: 'opacity 0.7s ease-in-out',
-                      }}
-                    />
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
-                  </div>
-
-                  {/* Main car image — objectFit:contain, never cropped */}
                   <div style={{
-                    position: 'absolute', inset: 0, zIndex: 1,
+                    position: 'absolute', inset: 0,
                     opacity: fading ? 0 : 1,
                     transition: 'opacity 0.7s ease-in-out',
                   }}>
@@ -270,7 +277,7 @@ export default function SlideshowPage() {
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
                       fill
-                      sizes="64vw"
+                      sizes="62vw"
                       style={{ objectFit: 'contain' }}
                       priority
                     />
@@ -278,7 +285,7 @@ export default function SlideshowPage() {
                 </div>
               </div>
 
-              {/* Progress bar — spans full width at bottom */}
+              {/* Progress bar */}
               <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: 'rgba(255,255,255,0.07)', zIndex: 10 }}>
                 <div
                   key={`bar-${currentCar.recNo}`}
