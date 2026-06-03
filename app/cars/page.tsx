@@ -161,14 +161,22 @@ export default function CarsPage() {
 
                   {/* Info */}
                   <div style={{ padding: '9px 10px 10px' }}>
-                    <div style={{
-                      fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                      fontSize: 13, color: '#fff', lineHeight: 1.25,
-                      marginBottom: 5, direction: 'ltr', textAlign: 'left',
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                    }}>
-                      {car.name}
-                    </div>
+                    {(() => {
+                      const make = getMake(car.name)
+                      const model = car.name.slice(make.length).trim()
+                      return (
+                        <div style={{ marginBottom: 5, direction: 'ltr', textAlign: 'left', overflow: 'hidden' }}>
+                          <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 13, color: '#fff', lineHeight: 1.2 }}>
+                            {make}
+                          </div>
+                          {model && (
+                            <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 400, fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {model}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     {car.price && (
                       <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 14, color: GOLD }}>
@@ -185,6 +193,11 @@ export default function CarsPage() {
                       {car.mileage && (
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
                           {formatMileage(car.mileage)}
+                        </span>
+                      )}
+                      {car.yad && (
+                        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                          יד {car.yad}
                         </span>
                       )}
                     </div>

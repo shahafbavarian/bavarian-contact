@@ -22,6 +22,7 @@ const SEL = {
   attrEngineType:  'data-engine_type',
   attrStatus:      'data-car_status',  // "במלאי"
   attrMonthly:     'data-funding_monthly_price',
+  attrYad:         'data-yad',         // owner hand — verify via /api/admin/car-debug
 
   // /He/Car?recNo=XXX — car detail page
   detailName:   'h1, .carName, .car-title, [class*="title"] h1',
@@ -52,6 +53,7 @@ export type CarSummary = {
   engine:       string
   carType:      string
   status:       string
+  yad:          string
 }
 
 export type CarDetail = CarSummary & {
@@ -163,6 +165,7 @@ export async function fetchCarList(): Promise<CarSummary[]> {
       engine:  $el.attr(SEL.attrEngineType) ?? '',
       carType: $el.attr(SEL.attrCarType) ?? '',
       status:  $el.attr(SEL.attrStatus) ?? '',
+      yad:     $el.attr(SEL.attrYad) ?? '',
     })
   })
 
@@ -265,6 +268,7 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
     engine:       findSpec('מנוע', 'engine', 'נפח') ?? '',
     carType:      findSpec('סוג', 'גוף', 'body') ?? '',
     status:       '',
+    yad:          findSpec('יד') ?? '',
     color:        findSpec('צבע', 'color'),
     transmission: findSpec('תיבת', 'הילוכים', 'גיר', 'transmission'),
     bodyType:     findSpec('סוג', 'גוף', 'body'),

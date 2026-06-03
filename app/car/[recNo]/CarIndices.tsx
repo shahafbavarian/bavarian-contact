@@ -205,20 +205,20 @@ export default function CarIndices({
             }}
           />
 
-          {/* Sheet — dark outer, light inner card (legal white-bg requirement) */}
+          {/* Sheet */}
           <div
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
-              background: '#0d0d0d',
+              background: '#f5f3f0',
               borderRadius: '18px 18px 0 0',
-              borderTop: '1px solid rgba(200,169,110,0.15)',
+              borderTop: '1px solid rgba(0,0,0,0.08)',
               padding: '0 16px',
               paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
-              transform: isClosing ? 'translateY(100%)' : `translateY(${dragY}px)`,
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+              transform: isClosing ? 'translateY(calc(100% + 60px))' : `translateY(${dragY}px)`,
               transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
               animation: (dragY === 0 && !isClosing) ? 'ciSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
               touchAction: 'none',
@@ -227,7 +227,7 @@ export default function CarIndices({
           >
             {/* Drag handle */}
             <div style={{
-              width: 40, height: 4, background: 'rgba(255,255,255,0.15)',
+              width: 40, height: 4, background: 'rgba(0,0,0,0.12)',
               borderRadius: 2, margin: '12px auto 0',
             }} />
 
@@ -236,38 +236,32 @@ export default function CarIndices({
               <span style={{
                 fontFamily: 'var(--font-inter)', fontSize: 10,
                 letterSpacing: '0.22em', textTransform: 'uppercase',
-                color: 'rgba(200,169,110,0.6)',
+                color: 'rgba(200,169,110,0.9)',
               }}>
                 מדדי זיהום ובטיחות
               </span>
             </div>
 
-            {/* White card — satisfies legal white-background requirement */}
-            <div style={{
-              background: '#f5f3f0', borderRadius: 14,
-              padding: '16px 14px 12px',
-            }}>
-              <IndexBar
-                label="דרגת זיהום אוויר"
-                value={pollutionGrade}
-                colors={POLLUTION_COLORS}
-                displayHigh={15} displayLow={1}
-                highLabel="זיהום מרבי" lowLabel="זיהום מזערי"
-                colorOffset={-1}
-              />
-              <IndexBar
-                label="רמת אבזור בטיחותי"
-                value={safetyLevel}
-                colors={SAFETY_COLORS}
-                displayHigh={8} displayLow={0}
-                highLabel="בטיחות גבוהה" lowLabel="בטיחות נמוכה"
-                colorOffset={0}
-              />
-            </div>
+            <IndexBar
+              label="דרגת זיהום אוויר"
+              value={pollutionGrade}
+              colors={POLLUTION_COLORS}
+              displayHigh={15} displayLow={1}
+              highLabel="זיהום מרבי" lowLabel="זיהום מזערי"
+              colorOffset={-1}
+            />
+            <IndexBar
+              label="רמת אבזור בטיחותי"
+              value={safetyLevel}
+              colors={SAFETY_COLORS}
+              displayHigh={8} displayLow={0}
+              highLabel="בטיחות גבוהה" lowLabel="בטיחות נמוכה"
+              colorOffset={0}
+            />
 
             <p style={{
               fontFamily: 'var(--font-heebo)', fontSize: 9,
-              color: 'rgba(255,255,255,0.2)', lineHeight: 1.65,
+              color: 'rgba(30,30,30,0.45)', lineHeight: 1.65,
               direction: 'rtl', textAlign: 'right', margin: '10px 0 0',
             }}>
               * נתוני זיהום האוויר מבוססים על נתוני היצרן על פי בדיקות מעבדה בהתאם לתקנות EU 2017/1151. הדרגה מחושבת לפי תקנות אוויר נקי (גילוי נתוני זיהום אוויר מרכב מנועי בפרסומת), התשס&quot;ט-2009.<br />
