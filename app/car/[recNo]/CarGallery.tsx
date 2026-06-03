@@ -24,7 +24,8 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+    <div style={{ direction: 'ltr' }}>
+      {/* Preload adjacent images for instant swipe */}
       {images.length > 1 && (
         <>
           <link rel="preload" as="image" href={images[nextIdx]} />
@@ -32,72 +33,106 @@ export default function CarGallery({ images, name, priority }: { images: string[
         </>
       )}
 
-      {/* Blurred backdrop */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true">
-        <Image
-          src={images[idx]}
-          alt=""
-          fill
-          sizes="100vw"
-          style={{ objectFit: 'cover', filter: 'blur(18px)', transform: 'scale(1.1)', opacity: 0.6 }}
-        />
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
-      </div>
-
-      {/* Main image — never cropped */}
+      {/* 16:9 frame */}
       <div
-        style={{ position: 'absolute', inset: 0, zIndex: 1, touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#0d0d0d', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <Image
-          src={images[idx]}
-          alt={`${name} תמונה ${idx + 1}`}
-          fill
-          sizes="100vw"
-          style={{ objectFit: 'contain' }}
-          priority={idx === 0 && priority}
-        />
+        {/*
+          Backdrop — same image, blurred + darkened, fills the narrow side-bands that
+          appear when a 3:2 photo sits inside a 16:9 frame.
+          Uses Next.js <Image> (proxied server-side) so hotlinking protection on the
+          source domain doesn't block the backdrop the way a plain <img> tag would.
+        */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true">
+          <Image
+            src={images[idx]}
+            alt=""
+            fill
+            sizes="100vw"
+            style={{ objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.08)', opacity: 0.65 }}
+          />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.38)' }} />
+        </div>
+
+        {/* Main image — objectFit contain so the car is never cropped */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <Image
+            src={images[idx]}
+            alt={`${name} תמונה ${idx + 1}`}
+            fill
+            sizes="100vw"
+            style={{ objectFit: 'contain' }}
+            priority={idx === 0 && priority}
+          />
+        </div>
+
+        {/* Top fade — blends into the title overlap zone above */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '36%', zIndex: 2,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)',
+          pointerEvents: 'none',
+        }} />
+
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              style={{
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 3,
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)',
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              onClick={next}
+              style={{
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 3,
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)',
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            <div style={{
+              position: 'absolute', bottom: 10, right: 12, zIndex: 3,
+              fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.65)',
+              background: 'rgba(0,0,0,0.48)', padding: '3px 8px', borderRadius: 10,
+            }}>
+              {idx + 1} / {images.length}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Prev / next */}
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={prev}
-            style={{
-              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 4,
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.52)', border: '1px solid rgba(255,255,255,0.14)',
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            onClick={next}
-            style={{
-              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 4,
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.52)', border: '1px solid rgba(255,255,255,0.14)',
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          <div style={{
-            position: 'absolute', bottom: 12, right: 12, zIndex: 4,
-            fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.65)',
-            background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: 10,
-          }}>
-            {idx + 1} / {images.length}
-          </div>
-        </>
+      {/* Thumbnails */}
+      {images.length >= 3 && (
+        <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {images.map((src, i) => i === 0 ? null : (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              style={{
+                flexShrink: 0, width: 52, height: 34,
+                borderRadius: 5, overflow: 'hidden',
+                border: `2px solid ${i === idx ? 'rgba(200,169,110,0.8)' : 'transparent'}`,
+                padding: 0, cursor: 'pointer', position: 'relative',
+              }}
+            >
+              <Image src={src} alt="" fill sizes="52px" style={{ objectFit: 'cover' }} />
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
