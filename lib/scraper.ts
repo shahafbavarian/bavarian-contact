@@ -43,17 +43,19 @@ const FETCH_HEADERS = {
 }
 
 export type CarSummary = {
-  recNo:        string
-  name:         string
-  price:        string
-  monthlyPrice: string
-  imageUrl:     string
-  year:         string
-  mileage:      string
-  engine:       string
-  carType:      string
-  status:       string
-  yad:          string
+  recNo:          string
+  name:           string
+  price:          string
+  monthlyPrice:   string
+  imageUrl:       string
+  year:           string
+  mileage:        string
+  engine:         string
+  carType:        string
+  status:         string
+  yad:            string
+  pollutionGrade: number | null
+  safetyLevel:    number | null
 }
 
 export type CarDetail = CarSummary & {
@@ -160,12 +162,14 @@ export async function fetchCarList(): Promise<CarSummary[]> {
       price,
       monthlyPrice,
       imageUrl,
-      year:    $el.attr(SEL.attrRegisterDt) ?? '',
-      mileage: $el.attr(SEL.attrKm) ?? '',
-      engine:  $el.attr(SEL.attrEngineType) ?? '',
-      carType: $el.attr(SEL.attrCarType) ?? '',
-      status:  $el.attr(SEL.attrStatus) ?? '',
-      yad:     $el.attr('data-yad') ?? '',  // enriched via fetchCarDetail in /api/cars
+      year:           $el.attr(SEL.attrRegisterDt) ?? '',
+      mileage:        $el.attr(SEL.attrKm) ?? '',
+      engine:         $el.attr(SEL.attrEngineType) ?? '',
+      carType:        $el.attr(SEL.attrCarType) ?? '',
+      status:         $el.attr(SEL.attrStatus) ?? '',
+      yad:            $el.attr('data-yad') ?? '',
+      pollutionGrade: null,  // enriched via fetchCarDetail in /api/cars
+      safetyLevel:    null,  // enriched via fetchCarDetail in /api/cars
     })
   })
 

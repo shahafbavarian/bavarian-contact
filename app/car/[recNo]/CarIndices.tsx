@@ -204,50 +204,50 @@ export default function CarIndices({
             }}
           />
 
-          {/* Sheet — transparent outer wrapper owns all animation.
-              The beige fill div at the bottom travels WITH the wrapper so as
-              translateY grows the fill physically exits the safe-area region
-              within ~17 ms (first animation frame). iOS then re-adopts the
-              black page background before the animation visually completes. */}
+          {/* Sheet — black background matches page so iOS always shows black in safe area */}
           <div
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
+              background: '#000',
+              borderRadius: '18px 18px 0 0',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
               opacity: isClosing ? 0 : 1,
               transform: isClosing ? 'translateY(100vh)' : `translateY(${dragY}px)`,
               transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease',
               animation: (dragY === 0 && !isClosing) ? 'ciSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
               touchAction: 'none',
               userSelect: 'none',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           >
-            {/* Visible beige panel — background stops at safe-area boundary */}
+            {/* Drag handle */}
             <div style={{
+              width: 40, height: 4, background: 'rgba(255,255,255,0.15)',
+              borderRadius: 2, margin: '12px auto 0',
+            }} />
+
+            {/* Header */}
+            <div style={{ padding: '12px 16px 10px', direction: 'rtl', textAlign: 'right' }}>
+              <span style={{
+                fontFamily: 'var(--font-inter)', fontSize: 10,
+                letterSpacing: '0.22em', textTransform: 'uppercase',
+                color: 'rgba(200,169,110,0.9)',
+              }}>
+                מדדי זיהום ובטיחות
+              </span>
+            </div>
+
+            {/* White frame for index data */}
+            <div style={{
+              margin: '0 16px 16px',
               background: '#f5f3f0',
-              borderRadius: '18px 18px 0 0',
-              borderTop: '1px solid rgba(0,0,0,0.08)',
-              padding: '0 16px 20px',
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+              borderRadius: 12,
+              padding: '14px 14px 6px',
             }}>
-              {/* Drag handle */}
-              <div style={{
-                width: 40, height: 4, background: 'rgba(0,0,0,0.12)',
-                borderRadius: 2, margin: '12px auto 0',
-              }} />
-
-              {/* Header */}
-              <div style={{ padding: '12px 0 10px', direction: 'rtl', textAlign: 'right' }}>
-                <span style={{
-                  fontFamily: 'var(--font-inter)', fontSize: 10,
-                  letterSpacing: '0.22em', textTransform: 'uppercase',
-                  color: 'rgba(200,169,110,0.9)',
-                }}>
-                  מדדי זיהום ובטיחות
-                </span>
-              </div>
-
               <IndexBar
                 label="דרגת זיהום אוויר"
                 value={pollutionGrade}
@@ -268,16 +268,12 @@ export default function CarIndices({
               <p style={{
                 fontFamily: 'var(--font-heebo)', fontSize: 9,
                 color: 'rgba(30,30,30,0.45)', lineHeight: 1.65,
-                direction: 'rtl', textAlign: 'right', margin: '10px 0 0',
+                direction: 'rtl', textAlign: 'right', margin: '10px 0 8px',
               }}>
                 * נתוני זיהום האוויר מבוססים על נתוני היצרן על פי בדיקות מעבדה בהתאם לתקנות EU 2017/1151. הדרגה מחושבת לפי תקנות אוויר נקי (גילוי נתוני זיהום אוויר מרכב מנועי בפרסומת), התשס&quot;ט-2009.<br />
                 ** רמת האבזור הבטיחותי מחושבת לפי הוראת נוהל מספר 03/13 של משרד התחבורה.
               </p>
             </div>
-            {/* Safe-area fill — slides away with the sheet so iOS sees the
-                black page background in the safe-area region on the first
-                animation frame and immediately re-adopts it. */}
-            <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: '#f5f3f0' }} />
           </div>
         </>
       )}

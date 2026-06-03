@@ -7,6 +7,16 @@ import type { CarSummary } from '@/lib/scraper'
 const SLIDE_DURATION = 8000
 const POLL_INTERVAL  = 5 * 60 * 1000
 
+const POLLUTION_COLORS = [
+  '#1a6b1a', '#2a8b2a', '#3ea030', '#68be1a', '#90cc00',
+  '#c0d400', '#e0d800', '#f0bc00', '#f08c00', '#e85800',
+  '#d02800', '#b81000', '#980800', '#740404', '#520000',
+]
+const SAFETY_COLORS = [
+  '#520000', '#980800', '#d02800', '#f08c00', '#e0d800',
+  '#68be1a', '#2a8b2a', '#1060c8', '#003690',
+]
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -255,6 +265,38 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                       }}>
                         {currentCar.monthlyPrice}
                       </p>
+                    )}
+
+                    {/* Pollution / safety — legally required disclosure */}
+                    {(currentCar.pollutionGrade !== null || currentCar.safetyLevel !== null) && (
+                      <div style={{ display: 'flex', gap: 'clamp(6px,0.8vw,12px)', marginTop: 'clamp(8px,1.2vw,18px)', direction: 'rtl', flexWrap: 'wrap' }}>
+                        {currentCar.pollutionGrade !== null && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.35)' }}>זיהום אוויר</span>
+                            <span style={{
+                              background: POLLUTION_COLORS[currentCar.pollutionGrade - 1],
+                              color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
+                              fontSize: 'clamp(8px,0.75vw,12px)', borderRadius: 3, padding: '1px 5px',
+                              boxShadow: `0 0 5px ${POLLUTION_COLORS[currentCar.pollutionGrade - 1]}88`,
+                            }}>
+                              {currentCar.pollutionGrade}
+                            </span>
+                          </div>
+                        )}
+                        {currentCar.safetyLevel !== null && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.35)' }}>אבזור בטיחות</span>
+                            <span style={{
+                              background: SAFETY_COLORS[currentCar.safetyLevel],
+                              color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
+                              fontSize: 'clamp(8px,0.75vw,12px)', borderRadius: 3, padding: '1px 5px',
+                              boxShadow: `0 0 5px ${SAFETY_COLORS[currentCar.safetyLevel]}88`,
+                            }}>
+                              {currentCar.safetyLevel}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 

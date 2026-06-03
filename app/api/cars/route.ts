@@ -22,11 +22,15 @@ async function pLimit<T>(
   return results
 }
 
-async function enrichYad(car: CarSummary): Promise<CarSummary> {
-  if (car.yad) return car
+async function enrichCar(car: CarSummary): Promise<CarSummary> {
   try {
     const detail = await fetchCarDetail(car.recNo)
-    return { ...car, yad: detail?.yad ?? '' }
+    return {
+      ...car,
+      yad:            car.yad || (detail?.yad ?? ''),
+      pollutionGrade: detail?.pollutionGrade ?? null,
+      safetyLevel:    detail?.safetyLevel ?? null,
+    }
   } catch {
     return car
   }
@@ -38,7 +42,7 @@ export async function GET(req: Request) {
     const filter = searchParams.get('filter') // 'stock' | 'europe' | null = all
 
     const cars = await fetchCarList()
-    const enriched = await pLimit(cars, enrichYad, 10)
+    const enriched = await pLimit(cars, enrichCar, 10)
 
     const result = filter === 'stock'
       ? enriched.filter(c => c.status.includes('מלאי'))
