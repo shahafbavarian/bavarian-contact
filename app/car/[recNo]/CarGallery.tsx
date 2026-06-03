@@ -20,45 +20,64 @@ export default function CarGallery({ images, name, priority }: { images: string[
     setTouchStartX(null)
   }
 
-  // Preload adjacent images so swipe feels instant
   const prevIdx = (idx - 1 + images.length) % images.length
   const nextIdx = (idx + 1) % images.length
 
   return (
     <div style={{ direction: 'ltr' }}>
-      {/* Preload hints for adjacent images */}
+      {/* Preload adjacent images for instant swipe */}
       {images.length > 1 && (
         <>
           <link rel="preload" as="image" href={images[nextIdx]} />
           {images.length > 2 && <link rel="preload" as="image" href={images[prevIdx]} />}
         </>
       )}
-      {/* Main image */}
+
+      {/* ── Main frame: 16:9 to match screens ── */}
       <div
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#0a0a0a', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <Image
-          src={images[idx]}
-          alt={`${name} תמונה ${idx + 1}`}
-          fill
-          sizes="100vw"
-          style={{ objectFit: 'cover' }}
-          priority={idx === 0 && priority}
-        />
-        {/* Stronger top fade — covers the title overlap zone */}
+        {/* Layer 0 — blurred backdrop fills the letterbox bands for 3:2 images */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true">
+          <Image
+            src={images[idx]}
+            alt=""
+            fill
+            sizes="100vw"
+            style={{ objectFit: 'cover', filter: 'blur(26px)', transform: 'scale(1.12)', opacity: 0.6 }}
+          />
+          {/* darken so backdrop doesn't compete with the car */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.42)' }} />
+        </div>
+
+        {/* Layer 1 — main image, contained so car is never cropped */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <Image
+            src={images[idx]}
+            alt={`${name} תמונה ${idx + 1}`}
+            fill
+            sizes="100vw"
+            style={{ objectFit: 'contain' }}
+            priority={idx === 0 && priority}
+          />
+        </div>
+
+        {/* Layer 2 — top fade, merges into the title overlap zone */}
         <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 55%, transparent 100%)',
+          position: 'absolute', top: 0, left: 0, right: 0, height: '38%', zIndex: 2,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.22) 58%, transparent 100%)',
           pointerEvents: 'none',
         }} />
+
+        {/* Layer 3 — navigation + counter */}
         {images.length > 1 && (
           <>
             <button
               onClick={prev}
               style={{
-                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 3,
                 width: 36, height: 36, borderRadius: '50%',
                 background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -71,7 +90,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
             <button
               onClick={next}
               style={{
-                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 3,
                 width: 36, height: 36, borderRadius: '50%',
                 background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -81,9 +100,9 @@ export default function CarGallery({ images, name, priority }: { images: string[
                 <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            {/* Counter */}
+
             <div style={{
-              position: 'absolute', bottom: 10, right: 12,
+              position: 'absolute', bottom: 10, right: 12, zIndex: 3,
               fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.7)',
               background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: 10,
             }}>
@@ -93,7 +112,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
         )}
       </div>
 
-      {/* Thumbnails */}
+      {/* Thumbnails strip */}
       {images.length >= 3 && (
         <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {images.map((src, i) => i === 0 ? null : (
