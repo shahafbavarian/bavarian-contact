@@ -136,7 +136,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
   return (
-    <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
+    <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84, maxWidth: 480, margin: '0 auto' }}>
 
       {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
       <div style={{

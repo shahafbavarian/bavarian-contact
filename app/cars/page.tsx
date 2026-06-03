@@ -193,6 +193,9 @@ export default function CarsPage() {
                           {car.year}
                         </span>
                       )}
+                      {car.year && car.mileage && (
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>·</span>
+                      )}
                       {car.mileage && (
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
                           {formatMileage(car.mileage)}

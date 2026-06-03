@@ -218,7 +218,7 @@ export default function CarIndices({
               padding: '0 16px',
               paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
               boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-              transform: isClosing ? 'translateY(calc(100% + 60px))' : `translateY(${dragY}px)`,
+              transform: isClosing ? 'translateY(calc(100% + 200px))' : `translateY(${dragY}px)`,
               transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
               animation: (dragY === 0 && !isClosing) ? 'ciSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
               touchAction: 'none',
