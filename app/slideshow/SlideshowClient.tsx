@@ -24,7 +24,7 @@ function splitName(name: string): [string, string] {
   return [words[0], words.slice(1).join(' ')]
 }
 
-export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe' }) {
+export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter?: 'stock' | 'europe'; imageFit?: 'cover' | 'contain' }) {
   const [cars, setCars]         = useState<CarSummary[]>([])
   const [order, setOrder]       = useState<number[]>([])
   const [slidePos, setSlidePos] = useState(0)
@@ -219,7 +219,11 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
                   <div style={{ direction: 'ltr', textAlign: 'left', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                     <h1 style={{
                       fontFamily: 'var(--font-heebo)', fontWeight: 900,
-                      fontSize: 'clamp(18px,3.6vw,58px)',
+                      fontSize: make.length > 9
+                        ? 'clamp(14px,2.6vw,42px)'
+                        : make.length > 6
+                        ? 'clamp(16px,3.1vw,50px)'
+                        : 'clamp(18px,3.6vw,58px)',
                       color: '#fff', margin: 0, lineHeight: 1.0,
                       textTransform: 'uppercase',
                     }}>
@@ -291,7 +295,7 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
                       fill sizes="68vw"
-                      style={{ objectFit: 'cover' }}
+                      style={{ objectFit: imageFit }}
                       priority
                     />
                   </div>
