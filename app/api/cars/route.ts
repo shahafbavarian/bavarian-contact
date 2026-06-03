@@ -32,12 +32,21 @@ async function enrichYad(car: CarSummary): Promise<CarSummary> {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url)
+    const filter = searchParams.get('filter') // 'stock' | 'europe' | null = all
+
     const cars = await fetchCarList()
-    // Enrich יד from detail spec tables (same source as /car/[recNo] page)
     const enriched = await pLimit(cars, enrichYad, 10)
-    return NextResponse.json({ cars: enriched })
+
+    const result = filter === 'stock'
+      ? enriched.filter(c => c.status.includes('מלאי'))
+      : filter === 'europe'
+      ? enriched.filter(c => !c.status.includes('מלאי'))
+      : enriched
+
+    return NextResponse.json({ cars: result })
   } catch (err) {
     console.error('[/api/cars]', err)
     return NextResponse.json({ cars: [], error: String(err) }, { status: 500 })
