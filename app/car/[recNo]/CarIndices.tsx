@@ -191,6 +191,18 @@ export default function CarIndices({
         </div>
       </button>
 
+      {/* Controls the safe-area strip colour iOS Safari "adopts" for the URL-bar
+          region. Sits above the sheet (zIndex 62 > 61) so iOS sees THIS colour,
+          not the sheet's beige. Turns black the moment closing starts — before
+          the sheet has slid away — so iOS re-adopts black immediately. */}
+      <div aria-hidden="true" style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        height: 'env(safe-area-inset-bottom, 0px)',
+        background: (open && !isClosing) ? '#f5f3f0' : '#000',
+        zIndex: 62,
+        pointerEvents: 'none',
+      }} />
+
       {/* ── Bottom sheet ── */}
       {open && (
         <>
@@ -212,12 +224,12 @@ export default function CarIndices({
             onTouchEnd={handleTouchEnd}
             style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
-              background: isClosing ? 'transparent' : '#f5f3f0',
+              background: '#f5f3f0',
               borderRadius: '18px 18px 0 0',
-              borderTop: isClosing ? 'none' : '1px solid rgba(0,0,0,0.08)',
+              borderTop: '1px solid rgba(0,0,0,0.08)',
               padding: '0 16px',
               paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-              boxShadow: isClosing ? 'none' : '0 -8px 40px rgba(0,0,0,0.25)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
               opacity: isClosing ? 0 : 1,
               transform: isClosing ? 'translateY(100vh)' : `translateY(${dragY}px)`,
               transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease',
