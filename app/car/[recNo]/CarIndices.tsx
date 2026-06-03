@@ -97,6 +97,7 @@ export default function CarIndices({
   const touchStartY = useRef(0)
   const touchStartTime = useRef(0)
   const latestDragY = useRef(0)
+  const sheetRef = useRef<HTMLDivElement>(null)
 
   if (pollutionGrade === null && safetyLevel === null) return null
 
@@ -104,6 +105,14 @@ export default function CarIndices({
   const safeColor = safetyLevel !== null ? SAFETY_COLORS[safetyLevel] : '#888'
 
   function triggerClose() {
+    // Synchronous DOM mutation — happens before the next paint frame so iOS
+    // immediately sees a transparent element at bottom:0 and re-adopts the
+    // html background (#000) for the safe-area / URL-bar region.
+    if (sheetRef.current) {
+      sheetRef.current.style.background = 'transparent'
+      sheetRef.current.style.boxShadow = 'none'
+      sheetRef.current.style.borderTop = 'none'
+    }
     setIsClosing(true)
     setTimeout(() => { setOpen(false); setIsClosing(false); setDragY(0); latestDragY.current = 0 }, 420)
   }
@@ -191,18 +200,6 @@ export default function CarIndices({
         </div>
       </button>
 
-      {/* Controls the safe-area strip colour iOS Safari "adopts" for the URL-bar
-          region. Sits above the sheet (zIndex 62 > 61) so iOS sees THIS colour,
-          not the sheet's beige. Turns black the moment closing starts — before
-          the sheet has slid away — so iOS re-adopts black immediately. */}
-      <div aria-hidden="true" style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        height: 'env(safe-area-inset-bottom, 0px)',
-        background: (open && !isClosing) ? '#f5f3f0' : '#000',
-        zIndex: 62,
-        pointerEvents: 'none',
-      }} />
-
       {/* ── Bottom sheet ── */}
       {open && (
         <>
@@ -219,6 +216,7 @@ export default function CarIndices({
 
           {/* Sheet */}
           <div
+            ref={sheetRef}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}

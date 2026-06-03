@@ -21,7 +21,7 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
         background: 'rgba(8,8,8,0.97)',
         borderTop: '1px solid rgba(200,169,110,0.15)',
         backdropFilter: 'blur(16px)',
-        padding: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         <div style={{
           display: 'grid',
