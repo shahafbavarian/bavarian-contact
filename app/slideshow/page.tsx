@@ -206,6 +206,7 @@ export default function SlideshowPage() {
                       fontFamily: 'var(--font-heebo)', fontWeight: 900,
                       fontSize: 'clamp(18px,3.6vw,58px)',
                       color: '#fff', margin: 0, lineHeight: 1.0,
+                      textTransform: 'uppercase',
                     }}>
                       {make}
                     </h1>
