@@ -13,23 +13,18 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
 
   return (
     <>
-      {/* Sticky CTA bar */}
       <div style={{
-        position: 'fixed',
-        bottom: 0, left: 0, right: 0,
-        zIndex: 40,
+        flexShrink: 0,
         background: 'rgba(8,8,8,0.97)',
         borderTop: '1px solid rgba(200,169,110,0.15)',
         backdropFilter: 'blur(16px)',
-        padding: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
           gap: 8,
           padding: '10px 16px 12px',
-          maxWidth: 480,
-          margin: '0 auto',
         }}>
           {/* WhatsApp */}
           <a
