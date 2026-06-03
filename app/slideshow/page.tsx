@@ -31,9 +31,25 @@ export default function SlideshowPage() {
   const [fading, setFading]     = useState(false)
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
+  const [isPortrait, setIsPortrait] = useState(false)
+  const portraitCache = useRef<Record<string, boolean>>({})
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentCar = cars[order[slidePos] ?? 0] ?? null
+
+  // Reset portrait detection on slide change (use cache to avoid flash on revisit)
+  useEffect(() => {
+    if (!currentCar) return
+    setIsPortrait(portraitCache.current[currentCar.recNo] ?? false)
+  }, [currentCar?.recNo])
+
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    if (!currentCar) return
+    const img = e.currentTarget
+    const portrait = img.naturalHeight > img.naturalWidth
+    portraitCache.current[currentCar.recNo] = portrait
+    setIsPortrait(portrait)
+  }
 
   const goNext = useCallback(() => {
     setFading(true)
@@ -278,8 +294,9 @@ export default function SlideshowPage() {
                       alt={currentCar.name}
                       fill
                       sizes="62vw"
-                      style={{ objectFit: 'contain' }}
+                      style={{ objectFit: isPortrait ? 'cover' : 'contain' }}
                       priority
+                      onLoad={handleImageLoad}
                     />
                   </div>
                 </div>
