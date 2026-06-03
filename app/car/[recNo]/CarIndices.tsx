@@ -212,12 +212,12 @@ export default function CarIndices({
             onTouchEnd={handleTouchEnd}
             style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
-              background: '#f5f3f0',
+              background: isClosing ? 'transparent' : '#f5f3f0',
               borderRadius: '18px 18px 0 0',
-              borderTop: '1px solid rgba(0,0,0,0.08)',
+              borderTop: isClosing ? 'none' : '1px solid rgba(0,0,0,0.08)',
               padding: '0 16px',
               paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+              boxShadow: isClosing ? 'none' : '0 -8px 40px rgba(0,0,0,0.25)',
               opacity: isClosing ? 0 : 1,
               transform: isClosing ? 'translateY(100vh)' : `translateY(${dragY}px)`,
               transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease',
