@@ -19,7 +19,7 @@ function formatMileage(raw: string): string {
   if (!raw) return ''
   const n = parseInt(raw.replace(/[^\d]/g, ''), 10)
   if (isNaN(n) || n === 0) return 'חדש'
-  return n.toLocaleString('he-IL') + ' ק"מ'
+  return n.toLocaleString('he-IL')
 }
 
 export default function CarsPage() {
@@ -29,8 +29,18 @@ export default function CarsPage() {
   const [activeMake, setActiveMake] = useState('הכל')
 
   useEffect(() => {
-    const load = async () => {
+    const load = async (isFirst: boolean) => {
       try {
+        // Fast path: show basic list immediately (no detail enrichment)
+        if (isFirst) {
+          const basicRes = await fetch('/api/cars?basic=1')
+          if (basicRes.ok) {
+            const { cars: basic }: { cars: CarSummary[] } = await basicRes.json()
+            setCars(basic.filter(c => c.imageUrl))
+            setLoading(false)
+          }
+        }
+        // Slow path: fetch enriched list (pollution/safety grades)
         const res = await fetch('/api/cars')
         if (!res.ok) return
         const { cars: data }: { cars: CarSummary[] } = await res.json()
@@ -39,8 +49,8 @@ export default function CarsPage() {
         setLoading(false)
       }
     }
-    load()
-    const id = setInterval(load, POLL_INTERVAL)
+    load(true)
+    const id = setInterval(() => load(false), POLL_INTERVAL)
     return () => clearInterval(id)
   }, [])
 
@@ -187,10 +197,10 @@ export default function CarsPage() {
                       </div>
                     )}
 
-                    <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap', direction: 'rtl' }}>
+                    <div style={{ marginTop: 4, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', direction: 'rtl' }}>
                       {car.year && (
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                          {car.year}
+                          שנה: {car.year}
                         </span>
                       )}
                       {car.year && car.mileage && (
@@ -198,12 +208,15 @@ export default function CarsPage() {
                       )}
                       {car.mileage && (
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                          {formatMileage(car.mileage)}
+                          {formatMileage(car.mileage) === 'חדש' ? 'חדש' : `ק"מ: ${formatMileage(car.mileage)}`}
                         </span>
+                      )}
+                      {car.yad && (car.year || car.mileage) && (
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>·</span>
                       )}
                       {car.yad && (
                         <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                          יד {car.yad}
+                          יד: {car.yad}
                         </span>
                       )}
                     </div>

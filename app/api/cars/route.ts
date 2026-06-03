@@ -38,21 +38,27 @@ async function enrichCar(car: CarSummary): Promise<CarSummary> {
   }
 }
 
+function applyFilter(cars: CarSummary[], filter: string | null): CarSummary[] {
+  if (filter === 'stock')  return cars.filter(c => c.status.includes('מלאי'))
+  if (filter === 'europe') return cars.filter(c => !c.status.includes('מלאי'))
+  return cars
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const filter = searchParams.get('filter') // 'stock' | 'europe' | null = all
+    const basic  = searchParams.get('basic') === '1'
 
     const cars = await fetchCarList()
+
+    // ?basic=1: return raw list immediately (no detail scrapes, no gov.il calls)
+    if (basic) {
+      return NextResponse.json({ cars: applyFilter(cars, filter) })
+    }
+
     const enriched = await pLimit(cars, enrichCar, 10)
-
-    const result = filter === 'stock'
-      ? enriched.filter(c => c.status.includes('מלאי'))
-      : filter === 'europe'
-      ? enriched.filter(c => !c.status.includes('מלאי'))
-      : enriched
-
-    return NextResponse.json({ cars: result })
+    return NextResponse.json({ cars: applyFilter(enriched, filter) })
   } catch (err) {
     console.error('[/api/cars]', err)
     return NextResponse.json({ cars: [], error: String(err) }, { status: 500 })

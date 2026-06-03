@@ -99,9 +99,6 @@ export default function CarIndices({
   const latestDragY = useRef(0)
   if (pollutionGrade === null && safetyLevel === null) return null
 
-  const pollColor = pollutionGrade !== null ? POLLUTION_COLORS[pollutionGrade - 1] : '#888'
-  const safeColor = safetyLevel !== null ? SAFETY_COLORS[safetyLevel] : '#888'
-
   function triggerClose() {
     setIsClosing(true)
     setTimeout(() => { setOpen(false); setIsClosing(false); setDragY(0); latestDragY.current = 0 }, 420)
@@ -139,55 +136,21 @@ export default function CarIndices({
         @keyframes ciFadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
-      {/* ── Trigger: grade badges always visible (legal compliance) ── */}
+      {/* ── Trigger ── */}
       <button
         onClick={() => setOpen(true)}
         style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          gap: 5, width: '100%', padding: '2px 14px 8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: 5, width: '100%', padding: '6px 14px 10px',
           background: 'none', border: 'none', cursor: 'pointer',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, direction: 'rtl' }}>
-          {pollutionGrade !== null && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: GOLD_DIM }}>
-                זיהום אוויר
-              </span>
-              <span style={{
-                background: pollColor, color: '#fff',
-                fontFamily: 'var(--font-inter)', fontWeight: 700, fontSize: 12,
-                borderRadius: 4, padding: '2px 7px',
-                boxShadow: `0 0 6px ${pollColor}99`,
-              }}>
-                {pollutionGrade}
-              </span>
-            </div>
-          )}
-          {safetyLevel !== null && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: GOLD_DIM }}>
-                אבזור בטיחות
-              </span>
-              <span style={{
-                background: safeColor, color: '#fff',
-                fontFamily: 'var(--font-inter)', fontWeight: 700, fontSize: 12,
-                borderRadius: 4, padding: '2px 7px',
-                boxShadow: `0 0 6px ${safeColor}99`,
-              }}>
-                {safetyLevel}
-              </span>
-            </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.3)' }}>
-            לפרטים נוספים
-          </span>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ color: 'rgba(200,169,110,0.3)' }}>
-            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: GOLD_DIM }}>
+          זיהום אוויר ובטיחות
+        </span>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: GOLD_DIM, flexShrink: 0 }}>
+          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
 
       {/* ── Bottom sheet ── */}

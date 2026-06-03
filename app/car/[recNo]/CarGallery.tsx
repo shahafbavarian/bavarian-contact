@@ -35,21 +35,32 @@ export default function CarGallery({ images, name, priority }: { images: string[
       )}
       {/* Main image */}
       <div
-        style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <Image
-          src={images[idx]}
-          alt={`${name} תמונה ${idx + 1}`}
-          fill
-          sizes="100vw"
-          style={{ objectFit: 'cover' }}
-          priority={idx === 0 && priority}
-        />
+        {/* Blurred backdrop fills black bars around contained image */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true">
+          <Image src={images[idx]} alt="" fill sizes="100vw"
+            style={{ objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.08)', opacity: 0.65 }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.38)' }} />
+        </div>
+
+        {/* Main image */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <Image
+            src={images[idx]}
+            alt={`${name} תמונה ${idx + 1}`}
+            fill
+            sizes="100vw"
+            style={{ objectFit: 'contain' }}
+            priority={idx === 0 && priority}
+          />
+        </div>
+
         {/* Stronger top fade — covers the title overlap zone */}
         <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
+          position: 'absolute', top: 0, left: 0, right: 0, height: '40%', zIndex: 2,
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 55%, transparent 100%)',
           pointerEvents: 'none',
         }} />
@@ -58,7 +69,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
             <button
               onClick={prev}
               style={{
-                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
                 width: 36, height: 36, borderRadius: '50%',
                 background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -71,7 +82,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
             <button
               onClick={next}
               style={{
-                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
                 width: 36, height: 36, borderRadius: '50%',
                 background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -83,7 +94,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
             </button>
             {/* Counter */}
             <div style={{
-              position: 'absolute', bottom: 10, right: 12,
+              position: 'absolute', bottom: 10, right: 12, zIndex: 2,
               fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.7)',
               background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: 10,
             }}>

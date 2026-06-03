@@ -155,6 +155,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       background: '#000',
       direction: 'rtl',
       paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
+      maxWidth: 480,
+      margin: '0 auto',
     }}>
 
       {/* ─── Top nav + title ─── */}
@@ -238,7 +240,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
           <SpecCell label="יד" value={yad} />
           <SpecCell label="שנה" value={yearValue} />
-          <SpecCell label='קילומטר' value={km} />
+          <SpecCell label='ק"מ' value={km} />
         </div>
 
         {/* Row 2: נפח מנוע / כ"ס / סוג מנוע */}
