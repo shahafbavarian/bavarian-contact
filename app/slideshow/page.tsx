@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Image from 'next/image'
 
 import type { CarSummary } from '@/lib/scraper'
 
@@ -176,6 +177,7 @@ export default function SlideshowPage() {
                   width: '32%', flexShrink: 0,
                   display: 'flex', flexDirection: 'column',
                   padding: '5% 4% 4% 5%',
+                  overflow: 'hidden',
                   /* Semi-transparent so the warm blurred backdrop bleeds through */
                   background: 'rgba(5,5,5,0.72)',
                   borderRight: '1px solid rgba(200,169,110,0.1)',
@@ -241,7 +243,7 @@ export default function SlideshowPage() {
                   </div>
 
                   {/* QR code — pinned to bottom of info panel, never near the car image */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, flexShrink: 0, marginTop: 'clamp(20px, 5%, 64px)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 'clamp(20px, 5%, 64px)' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/qr/${currentCar.recNo}`}
@@ -262,30 +264,21 @@ export default function SlideshowPage() {
                   </div>
                 </div>
 
-                {/* ── Right: sharp car image ── */}
-                {/*
-                  height:100% / width:auto = always height-constrained.
-                  Portrait images stay narrow (blurred backdrop fills sides).
-                  Landscape images wider than the panel are clipped at edges.
-                */}
+                {/* ── Right: car image — cover fills panel, clips edges, never shrinks ── */}
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                   <div style={{
                     position: 'absolute', inset: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    overflow: 'hidden',
                     opacity: fading ? 0 : 1,
                     transition: 'opacity 0.7s ease-in-out',
                   }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       key={`img-${currentCar.recNo}`}
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
-                      style={{
-                        display: 'block',
-                        width: 'auto', height: 'auto',
-                        maxWidth: 'none', maxHeight: 'none',
-                      }}
+                      fill
+                      sizes="68vw"
+                      style={{ objectFit: 'cover' }}
+                      priority
                     />
                   </div>
                 </div>
