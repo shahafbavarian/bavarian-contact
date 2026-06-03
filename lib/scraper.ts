@@ -68,6 +68,7 @@ export type CarDetail = CarSummary & {
   specs:          Record<string, string>
   pollutionGrade: number | null
   safetyLevel:    number | null
+  licensePlate:   string | null
 }
 
 function extractIndexValue(html: string, keyword: RegExp, min: number, max: number): number | null {
@@ -280,6 +281,13 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
     images,
     sourceUrl,
     specs,
+    licensePlate: (() => {
+      const raw = findSpec('מספר רכב', 'לוחית', 'רישוי')
+      if (!raw) return null
+      // normalise: keep only digits and dashes, strip spaces
+      const cleaned = raw.replace(/[^\d-]/g, '').replace(/^-+|-+$/g, '')
+      return cleaned.length >= 5 ? cleaned : null
+    })(),
     // Try spec table first, then HTML regex (these appear in a separate section below the main table)
     pollutionGrade: (() => {
       const s = findSpec('דרגת זיהום', 'זיהום אוויר')

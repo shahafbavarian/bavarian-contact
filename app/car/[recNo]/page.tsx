@@ -78,9 +78,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     fetchCarDetail(params.recNo),
   ])
 
-  // Gov.il preferred; fall back to detail-page scraping
+  // Gov.il preferred — exact by license plate if available, else by model+year+engine
   const gov = summary
-    ? await fetchGovIndices(summary.name, summary.year, summary.engine)
+    ? await fetchGovIndices(summary.name, summary.year, summary.engine, detail?.licensePlate)
     : { pollutionGrade: null, safetyLevel: null }
   const pollutionGrade = gov.pollutionGrade ?? detail?.pollutionGrade ?? null
   const safetyLevel    = gov.safetyLevel    ?? detail?.safetyLevel    ?? null

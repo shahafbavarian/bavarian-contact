@@ -25,15 +25,11 @@ async function pLimit<T>(
 
 async function enrichCar(car: CarSummary): Promise<CarSummary> {
   try {
-    // Run both in parallel — gov.il has a 4s hard timeout so it never delays detail
-    const [gov, detail] = await Promise.all([
-      fetchGovIndices(car.name, car.year, car.engine),
-      fetchCarDetail(car.recNo),
-    ])
+    const detail = await fetchCarDetail(car.recNo)
+    const gov    = await fetchGovIndices(car.name, car.year, car.engine, detail?.licensePlate)
     return {
       ...car,
       yad:            car.yad || (detail?.yad ?? ''),
-      // Gov.il preferred (official); falls back to detail-page scraping
       pollutionGrade: gov.pollutionGrade ?? detail?.pollutionGrade ?? null,
       safetyLevel:    gov.safetyLevel    ?? detail?.safetyLevel    ?? null,
     }
