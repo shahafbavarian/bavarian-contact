@@ -88,15 +88,26 @@ async function fetchByPlate(plate: string): Promise<GovResult> {
   return recs.length ? parseGovRecord(recs[0]) : EMPTY
 }
 
-// ── 2. Fallback: model + year + engine ──────────────────────────────────────
+// ── 2. Fallback: model + year + engine (+ trim words) ───────────────────────
 
 async function fetchByModel(name: string, year: string, engine: string): Promise<GovResult> {
   const parsedYear = parseYear(year)
   if (!parsedYear) return EMPTY
 
   const [, model] = parseMfrModel(name)
-  const mKey = modelSearchKey(model)
+  const modelWords = model.split(' ').filter(Boolean)
+  const mKey = modelSearchKey(model) // e.g. "M2", "5 SERIES", "X5"
   if (!mKey) return EMPTY
+
+  // Trim words: everything after the search key that might identify the variant.
+  // e.g. "M2 COMPETITION M-SPORT" → mKey="M2", trimWords=["COMPETITION","M-SPORT"]
+  // e.g. "5 SERIES 530I"         → mKey="5 SERIES", trimWords=["530I"]
+  const keyWordCount = mKey.split(' ').length
+  const trimWords = modelWords
+    .slice(keyWordCount)
+    .filter(w => w.length >= 3)          // skip very short tokens
+    .map(w => w.replace(/[^A-Z0-9]/g, '')) // strip non-alphanumeric
+    .filter(Boolean)
 
   const params = new URLSearchParams({
     resource_id: RESOURCE,
@@ -114,12 +125,25 @@ async function fetchByModel(name: string, year: string, engine: string): Promise
 
   let recs: Array<Record<string, unknown>> = json.result?.records ?? []
 
+  // Step 1 — filter by model key
   recs = recs.filter(r => {
     const k = String(r.kinuy_mishari ?? '').toUpperCase()
     const d = String(r.degem_nm      ?? '').toUpperCase()
     return k.includes(mKey) || d.includes(mKey)
   })
 
+  // Step 2 — narrow by trim words (kinuy_mishari or ramat_gimur must match at least one)
+  if (trimWords.length > 0) {
+    const trimFiltered = recs.filter(r => {
+      const k = String(r.kinuy_mishari ?? '').toUpperCase()
+      const g = String(r.ramat_gimur   ?? '').toUpperCase()
+      return trimWords.some(w => k.includes(w) || g.includes(w))
+    })
+    // Only narrow down if we still have results — otherwise keep broader set
+    if (trimFiltered.length > 0) recs = trimFiltered
+  }
+
+  // Step 3 — fuel type
   const fuelKw = FUEL_KW[engine.toLowerCase()] ?? []
   if (fuelKw.length) {
     const narrow = recs.filter(r => {
@@ -129,12 +153,14 @@ async function fetchByModel(name: string, year: string, engine: string): Promise
     if (narrow.length) recs = narrow
   }
 
-  const polls  = recs.map(r => parseGovRecord(r).pollutionGrade).filter((n): n is number => n !== null)
-  const safes  = recs.map(r => parseGovRecord(r).safetyLevel).filter((n): n is number => n !== null)
+  const polls = recs.map(r => parseGovRecord(r).pollutionGrade).filter((n): n is number => n !== null)
+  const safes = recs.map(r => parseGovRecord(r).safetyLevel).filter((n): n is number => n !== null)
 
   return {
+    // Pollution: mode — all same-powertrain cars should agree
     pollutionGrade: statMode(polls),
-    safetyLevel:    safes.length ? Math.max(...safes) : null,
+    // Safety: max — after trim narrowing this is the highest level the variant supports
+    safetyLevel: safes.length ? Math.max(...safes) : null,
   }
 }
 
