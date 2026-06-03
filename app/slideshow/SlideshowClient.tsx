@@ -60,23 +60,30 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
   }, [slidePos, cars.length, goNext])
 
   const fetchCars = useCallback(async (isFirst = false) => {
-    try {
-      const url = filter ? `/api/cars?filter=${filter}` : '/api/cars'
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const { cars: newCars }: { cars: CarSummary[] } = await res.json()
-      const visible = newCars.filter(c => c.imageUrl)
-      if (visible.length === 0) { if (isFirst) setError('אין רכבים זמינים'); return }
-      setCars(prev => {
-        if (isFirst) { setOrder(shuffle(visible.map((_, i) => i))); setLoading(false); return visible }
-        const newSet = new Set(visible.map(c => c.recNo))
-        const prevSet = new Set(prev.map(c => c.recNo))
-        const changed = visible.some(c => !prevSet.has(c.recNo)) || prev.some(c => !newSet.has(c.recNo))
-        if (!changed) return prev
-        setOrder(shuffle(visible.map((_, i) => i))); setSlidePos(0); return visible
-      })
-      setError(null)
-    } catch (e) { if (isFirst) setError(String(e)) }
+    const url = filter ? `/api/cars?filter=${filter}` : '/api/cars'
+    // Retry up to 3 times on transient errors (500, network blip, etc.)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500))
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const { cars: newCars }: { cars: CarSummary[] } = await res.json()
+        const visible = newCars.filter(c => c.imageUrl)
+        if (visible.length === 0) { if (isFirst) setError('אין רכבים זמינים'); return }
+        setCars(prev => {
+          if (isFirst) { setOrder(shuffle(visible.map((_, i) => i))); setLoading(false); return visible }
+          const newSet = new Set(visible.map(c => c.recNo))
+          const prevSet = new Set(prev.map(c => c.recNo))
+          const changed = visible.some(c => !prevSet.has(c.recNo)) || prev.some(c => !newSet.has(c.recNo))
+          if (!changed) return prev
+          setOrder(shuffle(visible.map((_, i) => i))); setSlidePos(0); return visible
+        })
+        setError(null)
+        return
+      } catch (e) {
+        if (attempt === 2 && isFirst) setError(String(e))
+      }
+    }
   }, [filter])
 
   useEffect(() => {
@@ -315,82 +322,64 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                     />
                   </div>
 
-                  {/* Top-left overlay: stacked compact badges — uniform pill style */}
+                  {/* Top-left overlay: single compact pill — all info on one row */}
                   {(currentCar.status && !currentCar.status.includes('מלאי') ||
-                    currentCar.pollutionGrade !== null || currentCar.safetyLevel !== null) && (
-                    <div style={{
-                      position: 'absolute', top: '8%', left: '5%', zIndex: 5,
-                      display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                      gap: 'clamp(3px,0.35vw,5px)',
-                    }}>
-                      {/* "בדרך לארץ" */}
-                      {currentCar.status && !currentCar.status.includes('מלאי') && (
-                        <div style={{
-                          display: 'inline-flex', alignItems: 'center',
-                          padding: 'clamp(3px,0.38vw,5px) clamp(7px,0.85vw,12px)',
-                          background: 'rgba(6,6,6,0.82)', borderRadius: 999,
-                          border: '1px solid rgba(200,169,110,0.5)',
-                          backdropFilter: 'blur(12px)',
-                        }}>
+                    currentCar.pollutionGrade !== null || currentCar.safetyLevel !== null) && (() => {
+                    const isEurope = currentCar.status && !currentCar.status.includes('מלאי')
+                    const hasPoll  = currentCar.pollutionGrade !== null
+                    const hasSafe  = currentCar.safetyLevel    !== null
+                    const sep = <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 'clamp(7px,0.7vw,11px)' }}>·</span>
+                    const chipSz = 'clamp(14px,1.5vw,20px)'
+                    const chipStyle = (bg: string): React.CSSProperties => ({
+                      width: chipSz, height: chipSz, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: bg, borderRadius: 3,
+                      fontFamily: 'var(--font-inter)', fontWeight: 700,
+                      fontSize: 'clamp(7px,0.7vw,10px)', color: '#fff',
+                    })
+                    return (
+                      <div style={{
+                        position: 'absolute', top: '8%', left: '5%', zIndex: 5,
+                        display: 'inline-flex', alignItems: 'center',
+                        gap: 'clamp(4px,0.5vw,8px)',
+                        padding: 'clamp(3px,0.38vw,5px) clamp(8px,0.9vw,13px)',
+                        background: 'rgba(6,6,6,0.82)',
+                        border: `1px solid ${isEurope ? 'rgba(200,169,110,0.45)' : 'rgba(255,255,255,0.08)'}`,
+                        borderRadius: 999, backdropFilter: 'blur(12px)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.55)',
+                      }}>
+                        {isEurope && (
                           <span style={{
                             fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                            fontSize: 'clamp(8px,0.85vw,13px)', color: 'rgba(200,169,110,0.95)',
-                            direction: 'rtl', whiteSpace: 'nowrap',
+                            fontSize: 'clamp(7px,0.72vw,11px)',
+                            color: 'rgba(200,169,110,0.92)', whiteSpace: 'nowrap', direction: 'rtl',
                           }}>בדרך לארץ</span>
-                        </div>
-                      )}
-
-                      {/* Pollution badge */}
-                      {currentCar.pollutionGrade !== null && (
-                        <div style={{
-                          display: 'inline-flex', alignItems: 'center',
-                          gap: 'clamp(3px,0.38vw,6px)',
-                          padding: 'clamp(3px,0.38vw,5px) clamp(7px,0.85vw,12px)',
-                          background: 'rgba(6,6,6,0.82)', borderRadius: 999,
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          backdropFilter: 'blur(12px)',
-                        }}>
-                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
-                            זיהום אוויר
-                          </span>
-                          <span style={{
-                            background: POLLUTION_COLORS[currentCar.pollutionGrade - 1],
-                            color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
-                            fontSize: 'clamp(7px,0.7vw,11px)', borderRadius: 3,
-                            padding: 'clamp(1px,0.12vw,2px) clamp(3px,0.38vw,6px)',
-                            boxShadow: `0 0 4px ${POLLUTION_COLORS[currentCar.pollutionGrade - 1]}88`,
-                          }}>
-                            {currentCar.pollutionGrade}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Safety badge */}
-                      {currentCar.safetyLevel !== null && (
-                        <div style={{
-                          display: 'inline-flex', alignItems: 'center',
-                          gap: 'clamp(3px,0.38vw,6px)',
-                          padding: 'clamp(3px,0.38vw,5px) clamp(7px,0.85vw,12px)',
-                          background: 'rgba(6,6,6,0.82)', borderRadius: 999,
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          backdropFilter: 'blur(12px)',
-                        }}>
-                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
-                            אבזור בטיחות
-                          </span>
-                          <span style={{
-                            background: SAFETY_COLORS[currentCar.safetyLevel],
-                            color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
-                            fontSize: 'clamp(7px,0.7vw,11px)', borderRadius: 3,
-                            padding: 'clamp(1px,0.12vw,2px) clamp(3px,0.38vw,6px)',
-                            boxShadow: `0 0 4px ${SAFETY_COLORS[currentCar.safetyLevel]}88`,
-                          }}>
-                            {currentCar.safetyLevel}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                        {isEurope && (hasPoll || hasSafe) && sep}
+                        {hasPoll && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(3px,0.32vw,5px)' }}>
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(6px,0.62vw,9px)', color: 'rgba(255,255,255,0.38)', whiteSpace: 'nowrap' }}>
+                              זיהום
+                            </span>
+                            <span style={chipStyle(POLLUTION_COLORS[currentCar.pollutionGrade! - 1])}>
+                              {currentCar.pollutionGrade}
+                            </span>
+                          </div>
+                        )}
+                        {hasPoll && hasSafe && sep}
+                        {hasSafe && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(3px,0.32vw,5px)' }}>
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(6px,0.62vw,9px)', color: 'rgba(255,255,255,0.38)', whiteSpace: 'nowrap' }}>
+                              בטיחות
+                            </span>
+                            <span style={chipStyle(SAFETY_COLORS[currentCar.safetyLevel!])}>
+                              {currentCar.safetyLevel}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
