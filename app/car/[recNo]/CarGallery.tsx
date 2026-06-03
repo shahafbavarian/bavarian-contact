@@ -33,9 +33,9 @@ export default function CarGallery({ images, name, priority }: { images: string[
           {images.length > 2 && <link rel="preload" as="image" href={images[prevIdx]} />}
         </>
       )}
-      {/* Main image */}
+      {/* Main image — fixed 3:2 ratio */}
       <div
-        style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -105,20 +105,20 @@ export default function CarGallery({ images, name, priority }: { images: string[
       </div>
 
       {/* Thumbnails */}
-      {images.length >= 3 && (
-        <div style={{ display: 'flex', gap: 3, padding: '4px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
-          {images.map((src, i) => i === 0 ? null : (
+      {images.length >= 2 && (
+        <div style={{ display: 'flex', gap: 4, padding: '5px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
+          {images.map((src, i) => (
             <button
               key={i}
               onClick={() => setIdx(i)}
               style={{
-                flexShrink: 0, width: 52, height: 34,
-                borderRadius: 5, overflow: 'hidden',
-                border: `2px solid ${i === idx ? 'rgba(200,169,110,0.8)' : 'transparent'}`,
+                flexShrink: 0, width: 76, height: 52,
+                borderRadius: 6, overflow: 'hidden',
+                border: `2px solid ${i === idx ? 'rgba(200,169,110,0.8)' : 'rgba(255,255,255,0.08)'}`,
                 padding: 0, cursor: 'pointer', position: 'relative',
               }}
             >
-              <Image src={src} alt="" fill sizes="52px" style={{ objectFit: 'cover' }} />
+              <Image src={src} alt="" fill sizes="76px" style={{ objectFit: 'cover' }} />
             </button>
           ))}
         </div>
