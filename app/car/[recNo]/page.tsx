@@ -121,7 +121,10 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const listPrice = (() => {
     if (!detail?.specs) return null
     for (const [k, v] of Object.entries(detail.specs)) {
-      if (k.includes('מחיר') && !k.includes('שלנו')) return v
+      if (k.includes('מחיר') && !k.includes('שלנו')) {
+        const n = parseFloat(v.replace(/[^\d.]/g, ''))
+        return (!isNaN(n) && n > 0) ? v : null
+      }
     }
     return null
   })()

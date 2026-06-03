@@ -25,19 +25,15 @@ async function pLimit<T>(
 
 async function enrichCar(car: CarSummary): Promise<CarSummary> {
   try {
-    // Primary: government API — precise match on model+year+engine, cached 24h
-    const gov = await fetchGovIndices(car.name, car.year, car.engine)
-
-    // If gov has both indices and yad is already in list data, skip detail fetch
-    if (gov.pollutionGrade !== null && gov.safetyLevel !== null && car.yad) {
-      return { ...car, pollutionGrade: gov.pollutionGrade, safetyLevel: gov.safetyLevel }
-    }
-
-    // Fallback: scrape detail page (needed when gov data is missing or yad absent)
-    const detail = await fetchCarDetail(car.recNo)
+    // Run both in parallel — gov.il has a 4s hard timeout so it never delays detail
+    const [gov, detail] = await Promise.all([
+      fetchGovIndices(car.name, car.year, car.engine),
+      fetchCarDetail(car.recNo),
+    ])
     return {
       ...car,
       yad:            car.yad || (detail?.yad ?? ''),
+      // Gov.il preferred (official); falls back to detail-page scraping
       pollutionGrade: gov.pollutionGrade ?? detail?.pollutionGrade ?? null,
       safetyLevel:    gov.safetyLevel    ?? detail?.safetyLevel    ?? null,
     }

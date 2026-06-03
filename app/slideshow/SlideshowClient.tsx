@@ -315,83 +315,78 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                     />
                   </div>
 
-                  {/* Top-left overlay: "בדרך לארץ" badge + pollution/safety badges */}
+                  {/* Top-left overlay: stacked compact badges — uniform pill style */}
                   {(currentCar.status && !currentCar.status.includes('מלאי') ||
                     currentCar.pollutionGrade !== null || currentCar.safetyLevel !== null) && (
                     <div style={{
                       position: 'absolute', top: '8%', left: '5%', zIndex: 5,
-                      display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'clamp(4px,0.5vw,8px)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                      gap: 'clamp(3px,0.35vw,5px)',
                     }}>
-                      {/* "בדרך לארץ" badge */}
+                      {/* "בדרך לארץ" */}
                       {currentCar.status && !currentCar.status.includes('מלאי') && (
                         <div style={{
                           display: 'inline-flex', alignItems: 'center',
-                          padding: 'clamp(5px,0.7vw,9px) clamp(12px,1.5vw,22px)',
-                          background: 'rgba(6,6,6,0.82)',
-                          border: '1px solid rgba(200,169,110,0.55)',
-                          borderRadius: 999,
+                          padding: 'clamp(3px,0.38vw,5px) clamp(7px,0.85vw,12px)',
+                          background: 'rgba(6,6,6,0.82)', borderRadius: 999,
+                          border: '1px solid rgba(200,169,110,0.5)',
                           backdropFilter: 'blur(12px)',
-                          boxShadow: '0 2px 18px rgba(0,0,0,0.6), 0 0 28px rgba(200,169,110,0.07)',
                         }}>
                           <span style={{
                             fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                            fontSize: 'clamp(9px,1.15vw,16px)',
-                            color: 'rgba(200,169,110,0.95)',
-                            letterSpacing: '0.05em',
-                            direction: 'rtl',
-                            whiteSpace: 'nowrap',
+                            fontSize: 'clamp(8px,0.85vw,13px)', color: 'rgba(200,169,110,0.95)',
+                            direction: 'rtl', whiteSpace: 'nowrap',
+                          }}>בדרך לארץ</span>
+                        </div>
+                      )}
+
+                      {/* Pollution badge */}
+                      {currentCar.pollutionGrade !== null && (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center',
+                          gap: 'clamp(3px,0.38vw,6px)',
+                          padding: 'clamp(3px,0.38vw,5px) clamp(7px,0.85vw,12px)',
+                          background: 'rgba(6,6,6,0.82)', borderRadius: 999,
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          backdropFilter: 'blur(12px)',
+                        }}>
+                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
+                            זיהום אוויר
+                          </span>
+                          <span style={{
+                            background: POLLUTION_COLORS[currentCar.pollutionGrade - 1],
+                            color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
+                            fontSize: 'clamp(7px,0.7vw,11px)', borderRadius: 3,
+                            padding: 'clamp(1px,0.12vw,2px) clamp(3px,0.38vw,6px)',
+                            boxShadow: `0 0 4px ${POLLUTION_COLORS[currentCar.pollutionGrade - 1]}88`,
                           }}>
-                            בדרך לארץ
+                            {currentCar.pollutionGrade}
                           </span>
                         </div>
                       )}
 
-                      {/* Pollution / safety badges — legally required disclosure */}
-                      {(currentCar.pollutionGrade !== null || currentCar.safetyLevel !== null) && (
+                      {/* Safety badge */}
+                      {currentCar.safetyLevel !== null && (
                         <div style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 'clamp(5px,0.6vw,9px)',
-                          padding: 'clamp(4px,0.5vw,7px) clamp(8px,1vw,14px)',
-                          background: 'rgba(6,6,6,0.78)',
+                          display: 'inline-flex', alignItems: 'center',
+                          gap: 'clamp(3px,0.38vw,6px)',
+                          padding: 'clamp(3px,0.38vw,5px) clamp(7px,0.85vw,12px)',
+                          background: 'rgba(6,6,6,0.82)', borderRadius: 999,
                           border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 999,
                           backdropFilter: 'blur(12px)',
-                          boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
                         }}>
-                          {currentCar.pollutionGrade !== null && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(3px,0.35vw,5px)' }}>
-                              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
-                                זיהום אוויר
-                              </span>
-                              <span style={{
-                                background: POLLUTION_COLORS[currentCar.pollutionGrade - 1],
-                                color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
-                                fontSize: 'clamp(8px,0.75vw,12px)', borderRadius: 3,
-                                padding: 'clamp(1px,0.15vw,2px) clamp(4px,0.5vw,7px)',
-                                boxShadow: `0 0 5px ${POLLUTION_COLORS[currentCar.pollutionGrade - 1]}88`,
-                              }}>
-                                {currentCar.pollutionGrade}
-                              </span>
-                            </div>
-                          )}
-                          {currentCar.pollutionGrade !== null && currentCar.safetyLevel !== null && (
-                            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 'clamp(7px,0.65vw,10px)' }}>·</span>
-                          )}
-                          {currentCar.safetyLevel !== null && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(3px,0.35vw,5px)' }}>
-                              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
-                                אבזור בטיחות
-                              </span>
-                              <span style={{
-                                background: SAFETY_COLORS[currentCar.safetyLevel],
-                                color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
-                                fontSize: 'clamp(8px,0.75vw,12px)', borderRadius: 3,
-                                padding: 'clamp(1px,0.15vw,2px) clamp(4px,0.5vw,7px)',
-                                boxShadow: `0 0 5px ${SAFETY_COLORS[currentCar.safetyLevel]}88`,
-                              }}>
-                                {currentCar.safetyLevel}
-                              </span>
-                            </div>
-                          )}
+                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(7px,0.65vw,10px)', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
+                            אבזור בטיחות
+                          </span>
+                          <span style={{
+                            background: SAFETY_COLORS[currentCar.safetyLevel],
+                            color: '#fff', fontFamily: 'var(--font-inter)', fontWeight: 700,
+                            fontSize: 'clamp(7px,0.7vw,11px)', borderRadius: 3,
+                            padding: 'clamp(1px,0.12vw,2px) clamp(3px,0.38vw,6px)',
+                            boxShadow: `0 0 4px ${SAFETY_COLORS[currentCar.safetyLevel]}88`,
+                          }}>
+                            {currentCar.safetyLevel}
+                          </span>
                         </div>
                       )}
                     </div>
