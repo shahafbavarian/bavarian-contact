@@ -138,33 +138,68 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
           {/* ── Slide ── */}
           {!loading && currentCar && (
             <>
-              {/* Layer 0 — Full-bleed blurred backdrop */}
+              {/*
+                Layer 0 — Full-bleed blurred backdrop across the ENTIRE stage.
+                Both panels share this same background — visually unified.
+              */}
               <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                {/* Backdrop layer 1 — heavy blur, full saturation */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentCar.imageUrl} alt=""
+                  style={{
+                    position: 'absolute', top: '-8%', left: '-8%',
+                    width: '116%', height: '116%',
+                    objectFit: 'cover', filter: 'blur(40px)',
+                    opacity: fading ? 0 : 1,
+                    transition: 'opacity 0.7s ease-in-out',
+                  }}
+                />
+                {/* Backdrop layer 2 — lighter blur on top for depth and texture */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={currentCar.imageUrl} alt=""
                   style={{
                     position: 'absolute', top: '-6%', left: '-6%',
                     width: '112%', height: '112%',
-                    objectFit: 'cover', filter: 'blur(24px)',
-                    opacity: fading ? 0 : 1,
+                    objectFit: 'cover', filter: 'blur(12px)',
+                    opacity: fading ? 0 : 0.35,
                     transition: 'opacity 0.7s ease-in-out',
                   }}
                 />
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.52)' }} />
               </div>
 
-              {/* Layer 1 — Split layout */}
+              {/*
+                Layer 1 — Cinematic top + bottom vignettes across the full stage.
+                Applied once over both panels so the effect is uniform.
+              */}
+              <div aria-hidden="true" style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: '22%',
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
+                zIndex: 8, pointerEvents: 'none',
+              }} />
+              <div aria-hidden="true" style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: '22%',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)',
+                zIndex: 8, pointerEvents: 'none',
+              }} />
+
+              {/* Layer 2 — Split layout */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
 
                 {/* ── Left: info panel ── */}
+                {/*
+                  Only a faint extra overlay — lets the shared blurred backdrop
+                  show through, making both panels look continuous and connected.
+                */}
                 <div style={{
                   width: '32%', flexShrink: 0,
                   display: 'flex', flexDirection: 'column',
                   padding: '5% 4% 4% 5%',
                   overflow: 'hidden',
-                  background: 'rgba(5,5,5,0.72)',
-                  borderRight: '1px solid rgba(200,169,110,0.1)',
+                  background: 'rgba(0,0,0,0.18)',
+                  borderRight: '1px solid rgba(200,169,110,0.12)',
                   opacity: fading ? 0 : 1,
                   transition: 'opacity 0.7s ease-in-out',
                 }}>
@@ -240,8 +275,14 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
 
                 {/* ── Right: car image ── */}
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                  {/*
+                    Image is inset from all edges — creating a visible frame of
+                    blurred backdrop around the car on every side.
+                    objectFit:contain = full car, zero cropping.
+                  */}
                   <div style={{
-                    position: 'absolute', inset: 0,
+                    position: 'absolute',
+                    inset: '6% 5% 6% 4%',
                     opacity: fading ? 0 : 1,
                     transition: 'opacity 0.7s ease-in-out',
                   }}>
@@ -250,32 +291,43 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
                       fill sizes="68vw"
-                      style={{ objectFit: 'cover' }}
+                      style={{ objectFit: 'contain' }}
                       priority
                     />
                   </div>
 
                   {/*
-                    Elegant cinematic fades at top and bottom of the image panel.
-                    Thin gradient bands that dissolve the hard edge without
-                    interfering with the car itself (which sits in the centre).
+                    "בדרך לארץ" badge — Europe slideshow only.
+                    Positioned in the top of the image panel, above the car.
+                    Dark pill with gold border + plane icon — premium import feel.
                   */}
-                  <div aria-hidden="true" style={{
-                    position: 'absolute', top: 0, left: 0, right: 0,
-                    height: '22%', pointerEvents: 'none',
-                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.18) 55%, transparent 100%)',
-                    zIndex: 2,
-                  }} />
-                  <div aria-hidden="true" style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    height: '22%', pointerEvents: 'none',
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.18) 55%, transparent 100%)',
-                    zIndex: 2,
-                  }} />
+                  {filter === 'europe' && (
+                    <div style={{
+                      position: 'absolute', top: '8%', left: '5%', zIndex: 5,
+                      display: 'inline-flex', alignItems: 'center',
+                      padding: 'clamp(5px,0.7vw,9px) clamp(12px,1.5vw,22px)',
+                      background: 'rgba(6,6,6,0.82)',
+                      border: '1px solid rgba(200,169,110,0.55)',
+                      borderRadius: 999,
+                      backdropFilter: 'blur(12px)',
+                      boxShadow: '0 2px 18px rgba(0,0,0,0.6), 0 0 28px rgba(200,169,110,0.07)',
+                    }}>
+                      <span style={{
+                        fontFamily: 'var(--font-heebo)', fontWeight: 700,
+                        fontSize: 'clamp(9px,1.15vw,16px)',
+                        color: 'rgba(200,169,110,0.95)',
+                        letterSpacing: '0.05em',
+                        direction: 'rtl',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        בדרך לארץ
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Progress bar — above the fades */}
+              {/* Progress bar — above vignettes */}
               <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: 'rgba(255,255,255,0.07)', zIndex: 10 }}>
                 <div
                   key={`bar-${currentCar.recNo}`}
