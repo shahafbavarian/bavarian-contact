@@ -337,7 +337,11 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
                       fill sizes="68vw"
-                      style={{ objectFit: imageFit }}
+                      style={{
+                        objectFit: (currentCar.status && !currentCar.status.includes('מלאי'))
+                          ? 'contain'
+                          : imageFit,
+                      }}
                       priority
                     />
                   </div>
