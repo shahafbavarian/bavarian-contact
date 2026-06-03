@@ -165,33 +165,7 @@ export async function fetchCarList(): Promise<CarSummary[]> {
       engine:  $el.attr(SEL.attrEngineType) ?? '',
       carType: $el.attr(SEL.attrCarType) ?? '',
       status:  $el.attr(SEL.attrStatus) ?? '',
-      yad:     (() => {
-        // Try known attribute name variants
-        const fromAttr = $el.attr('data-yad') || $el.attr('data-hand') || $el.attr('data-baalut')
-          || $el.attr('data-ownership') || $el.attr('data-car_yad') || ''
-        if (fromAttr) {
-          // Normalize: might contain Hebrew ordinal or plain number
-          const n = parseInt(fromAttr)
-          if (!isNaN(n)) return String(n)
-          if (/ראשונ/.test(fromAttr)) return '1'
-          if (/שניי/.test(fromAttr)) return '2'
-          if (/שלישי/.test(fromAttr)) return '3'
-          if (/רביעי/.test(fromAttr)) return '4'
-          if (/חמישי/.test(fromAttr)) return '5'
-          return fromAttr
-        }
-        // Fallback: search inner text for "יד X" pattern
-        const txt = $el.text()
-        const numM = txt.match(/יד\s*(\d+)/) ?? txt.match(/(\d+)\s*יד/)
-        if (numM) return numM[1]
-        // Hebrew ordinals in text
-        if (/יד\s*ראשונ/.test(txt)) return '1'
-        if (/יד\s*שניי/.test(txt)) return '2'
-        if (/יד\s*שלישי/.test(txt)) return '3'
-        if (/יד\s*רביעי/.test(txt)) return '4'
-        if (/יד\s*חמישי/.test(txt)) return '5'
-        return ''
-      })(),
+      yad:     $el.attr('data-yad') ?? '',  // enriched via fetchCarDetail in /api/cars
     })
   })
 
