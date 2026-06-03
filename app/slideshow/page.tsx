@@ -114,12 +114,12 @@ export default function SlideshowPage() {
           overflow: hidden;
         }
 
-        /* 3:2 content box — fills screen on landscape, letterboxed on portrait */
+        /* 16:9 content box — fills screen on landscape monitors, letterboxed on portrait */
         #sw-root {
           position: relative;
           flex-shrink: 0;
-          width: min(100vw, calc(100vh * 3 / 2));
-          aspect-ratio: 3 / 2;
+          width: min(100vw, calc(100vh * 16 / 9));
+          aspect-ratio: 16 / 9;
           z-index: 1;
         }
 
@@ -163,7 +163,22 @@ export default function SlideshowPage() {
           {/* ── Slide ── */}
           {!loading && currentCar && (
             <>
-              {/* Background image */}
+              {/* Blurred backdrop — fills the side-bands around the 3:2 photo */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentCar.imageUrl}
+                alt=""
+                style={{
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%', objectFit: 'cover',
+                  filter: 'blur(22px)', transform: 'scale(1.08)',
+                  opacity: fading ? 0 : 0.55,
+                  transition: 'opacity 0.7s ease-in-out',
+                }}
+              />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', pointerEvents: 'none' }} />
+
+              {/* Main image — objectFit contain so the car is never cropped */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 key={currentCar.recNo}
@@ -171,7 +186,7 @@ export default function SlideshowPage() {
                 alt=""
                 style={{
                   position: 'absolute', inset: 0,
-                  width: '100%', height: '100%', objectFit: 'cover',
+                  width: '100%', height: '100%', objectFit: 'contain',
                   opacity: fading ? 0 : 1,
                   transition: 'opacity 0.7s ease-in-out',
                 }}
