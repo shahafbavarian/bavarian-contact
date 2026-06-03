@@ -122,8 +122,10 @@ export async function fetchGovIndices(
       .filter(n => !isNaN(n) && n >= 0 && n <= 8)
 
     return {
+      // Pollution: mode — most representative across powertrain variants
       pollutionGrade: statMode(pollGrades),
-      safetyLevel:    statMode(safetyLevels),
+      // Safety: max — different trims have different levels; show the highest available
+      safetyLevel: safetyLevels.length ? Math.max(...safetyLevels) : null,
     }
   }
 
