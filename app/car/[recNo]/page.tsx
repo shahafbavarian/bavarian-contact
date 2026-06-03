@@ -236,7 +236,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Pollution / safety indices — tight below specs, above CTA ─── */}
-      <div style={{ padding: '6px 0 0' }}>
+      <div style={{ padding: '2px 0 0' }}>
         <CarIndices
           pollutionGrade={detail?.pollutionGrade ?? null}
           safetyLevel={detail?.safetyLevel ?? null}
