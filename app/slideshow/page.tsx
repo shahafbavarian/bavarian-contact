@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Image from 'next/image'
+
 import type { CarSummary } from '@/lib/scraper'
 
 const SLIDE_DURATION = 8000
@@ -31,25 +31,9 @@ export default function SlideshowPage() {
   const [fading, setFading]     = useState(false)
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
-  const [isPortrait, setIsPortrait] = useState(false)
-  const portraitCache = useRef<Record<string, boolean>>({})
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentCar = cars[order[slidePos] ?? 0] ?? null
-
-  // Reset portrait detection on slide change (use cache to avoid flash on revisit)
-  useEffect(() => {
-    if (!currentCar) return
-    setIsPortrait(portraitCache.current[currentCar.recNo] ?? false)
-  }, [currentCar?.recNo])
-
-  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    if (!currentCar) return
-    const img = e.currentTarget
-    const portrait = img.naturalHeight > img.naturalWidth
-    portraitCache.current[currentCar.recNo] = portrait
-    setIsPortrait(portrait)
-  }
 
   const goNext = useCallback(() => {
     setFading(true)
@@ -279,24 +263,24 @@ export default function SlideshowPage() {
 
                 {/* ── Right: sharp car image ── */}
                 {/*
-                  The global blurred backdrop (layer 0) fills the top/bottom
-                  margins that objectFit:contain leaves — no black bars.
+                  height:100% / width:auto = always height-constrained.
+                  Portrait images stay narrow (blurred backdrop fills sides).
+                  Landscape images wider than the panel are clipped at edges.
                 */}
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                   <div style={{
                     position: 'absolute', inset: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden',
                     opacity: fading ? 0 : 1,
                     transition: 'opacity 0.7s ease-in-out',
                   }}>
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       key={`img-${currentCar.recNo}`}
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
-                      fill
-                      sizes="62vw"
-                      style={{ objectFit: isPortrait ? 'cover' : 'contain' }}
-                      priority
-                      onLoad={handleImageLoad}
+                      style={{ height: '100%', width: 'auto', display: 'block' }}
                     />
                   </div>
                 </div>
