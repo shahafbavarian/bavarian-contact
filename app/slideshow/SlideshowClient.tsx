@@ -305,7 +305,7 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                     Positioned in the top of the image panel, above the car.
                     Dark pill with gold border + plane icon — premium import feel.
                   */}
-                  {filter === 'europe' && (
+                  {currentCar.status && !currentCar.status.includes('מלאי') && (
                     <div style={{
                       position: 'absolute', top: '8%', left: '5%', zIndex: 5,
                       display: 'inline-flex', alignItems: 'center',
