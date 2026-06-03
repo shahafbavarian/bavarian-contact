@@ -282,7 +282,7 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
                   */}
                   <div style={{
                     position: 'absolute',
-                    inset: '6% 5% 6% 4%',
+                    inset: 0,
                     opacity: fading ? 0 : 1,
                     transition: 'opacity 0.7s ease-in-out',
                   }}>
@@ -291,7 +291,7 @@ export default function SlideshowClient({ filter }: { filter?: 'stock' | 'europe
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
                       fill sizes="68vw"
-                      style={{ objectFit: 'contain' }}
+                      style={{ objectFit: 'cover' }}
                       priority
                     />
                   </div>
