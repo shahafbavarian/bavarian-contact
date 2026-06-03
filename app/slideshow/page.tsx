@@ -281,7 +281,11 @@ export default function SlideshowPage() {
                       key={`img-${currentCar.recNo}`}
                       src={currentCar.imageUrl}
                       alt={currentCar.name}
-                      style={{ height: '100%', width: 'auto', display: 'block' }}
+                      style={{
+                        display: 'block',
+                        width: 'auto', height: 'auto',
+                        maxWidth: 'none', maxHeight: 'none',
+                      }}
                     />
                   </div>
                 </div>
