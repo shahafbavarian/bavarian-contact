@@ -16,15 +16,26 @@ export default function CarGallery({ images, name, priority }: { images: string[
   function onTouchEnd(e: React.TouchEvent) {
     if (touchStartX === null) return
     const dx = e.changedTouches[0].clientX - touchStartX
-    if (Math.abs(dx) > 40) dx > 0 ? prev() : next()
+    if (Math.abs(dx) > 25) dx > 0 ? prev() : next()
     setTouchStartX(null)
   }
 
+  // Preload adjacent images so swipe feels instant
+  const prevIdx = (idx - 1 + images.length) % images.length
+  const nextIdx = (idx + 1) % images.length
+
   return (
     <div style={{ direction: 'ltr' }}>
+      {/* Preload hints for adjacent images */}
+      {images.length > 1 && (
+        <>
+          <link rel="preload" as="image" href={images[nextIdx]} />
+          {images.length > 2 && <link rel="preload" as="image" href={images[prevIdx]} />}
+        </>
+      )}
       {/* Main image */}
       <div
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#111', overflow: 'hidden' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#111', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

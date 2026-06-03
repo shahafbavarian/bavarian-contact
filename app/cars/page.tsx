@@ -141,15 +141,16 @@ export default function CarsPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
             {filtered.map(car => (
-              <Link key={car.recNo} href={`/car/${car.recNo}`} style={{ textDecoration: 'none' }}>
+              <Link key={car.recNo} href={`/car/${car.recNo}`} style={{ textDecoration: 'none', display: 'block', minWidth: 0, height: '100%' }}>
                 <div style={{
                   background: 'rgba(255,255,255,0.03)',
                   border: `1px solid ${GOLD_BORDER}`,
                   borderRadius: 12, overflow: 'hidden',
                   transition: 'border-color 0.2s',
+                  display: 'flex', flexDirection: 'column', height: '100%',
                 }}>
                   {/* Image */}
-                  <div style={{ aspectRatio: '3/2', overflow: 'hidden', background: '#111', position: 'relative' }}>
+                  <div style={{ aspectRatio: '3/2', overflow: 'hidden', background: '#111', position: 'relative', flexShrink: 0 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={car.imageUrl}
@@ -159,14 +160,14 @@ export default function CarsPage() {
                     />
                   </div>
 
-                  {/* Info */}
-                  <div style={{ padding: '9px 10px 10px' }}>
+                  {/* Info — flex:1 so all cards fill equal height */}
+                  <div style={{ padding: '9px 10px 10px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     {(() => {
                       const make = getMake(car.name)
                       const model = car.name.slice(make.length).trim()
                       return (
-                        <div style={{ marginBottom: 5, direction: 'ltr', textAlign: 'left', overflow: 'hidden' }}>
-                          <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 13, color: '#fff', lineHeight: 1.2 }}>
+                        <div style={{ marginBottom: 5, direction: 'ltr', textAlign: 'left' }}>
+                          <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 13, color: '#fff', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {make}
                           </div>
                           {model && (
@@ -177,6 +178,8 @@ export default function CarsPage() {
                         </div>
                       )
                     })()}
+
+                    <div style={{ flex: 1 }} />
 
                     {car.price && (
                       <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 14, color: GOLD }}>

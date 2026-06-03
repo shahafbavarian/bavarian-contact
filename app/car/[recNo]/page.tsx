@@ -4,6 +4,7 @@ import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
+import CarScrollEnable from './CarScrollEnable'
 
 export const revalidate = 300
 export const dynamicParams = true
@@ -137,6 +138,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', direction: 'rtl', paddingBottom: 84 }}>
+      <CarScrollEnable />
 
       {/* ─── Top nav + title in same block so h1 aligns with back link ─── */}
       <div style={{

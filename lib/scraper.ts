@@ -165,7 +165,13 @@ export async function fetchCarList(): Promise<CarSummary[]> {
       engine:  $el.attr(SEL.attrEngineType) ?? '',
       carType: $el.attr(SEL.attrCarType) ?? '',
       status:  $el.attr(SEL.attrStatus) ?? '',
-      yad:     $el.attr(SEL.attrYad) ?? '',
+      yad:     (() => {
+        const fromAttr = $el.attr(SEL.attrYad) || $el.attr('data-hand') || ''
+        if (fromAttr) return fromAttr
+        const txt = $el.text()
+        const m = txt.match(/יד\s*(\d+)/) ?? txt.match(/(\d+)\s*יד/)
+        return m ? m[1] : ''
+      })(),
     })
   })
 
