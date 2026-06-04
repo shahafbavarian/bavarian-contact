@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { fetchCarList, fetchCarDetail, CarSummary } from '@/lib/scraper'
-import { fetchGovIndices } from '@/lib/gov-data'
 
 // Cache the whole response for 5 minutes — same window as car detail pages
 export const revalidate = 300
@@ -26,12 +25,11 @@ async function pLimit<T>(
 async function enrichCar(car: CarSummary): Promise<CarSummary> {
   try {
     const detail = await fetchCarDetail(car.recNo)
-    const gov    = await fetchGovIndices(car.name, car.year, car.engine, detail?.licensePlate)
     return {
       ...car,
       yad:            car.yad || (detail?.yad ?? ''),
-      pollutionGrade: gov.pollutionGrade ?? detail?.pollutionGrade ?? null,
-      safetyLevel:    gov.safetyLevel    ?? detail?.safetyLevel    ?? null,
+      pollutionGrade: detail?.pollutionGrade ?? null,
+      safetyLevel:    detail?.safetyLevel    ?? null,
     }
   } catch {
     return car

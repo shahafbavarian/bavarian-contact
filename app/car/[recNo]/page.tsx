@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
-import { fetchGovIndices } from '@/lib/gov-data'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
@@ -78,12 +77,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     fetchCarDetail(params.recNo),
   ])
 
-  // Gov.il preferred — exact by license plate if available, else by model+year+engine
-  const gov = summary
-    ? await fetchGovIndices(summary.name, summary.year, summary.engine, detail?.licensePlate)
-    : { pollutionGrade: null, safetyLevel: null }
-  const pollutionGrade = gov.pollutionGrade ?? detail?.pollutionGrade ?? null
-  const safetyLevel    = gov.safetyLevel    ?? detail?.safetyLevel    ?? null
+  const pollutionGrade = detail?.pollutionGrade ?? null
+  const safetyLevel    = detail?.safetyLevel    ?? null
 
   if (!summary) {
     return (
