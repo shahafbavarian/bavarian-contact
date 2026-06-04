@@ -233,42 +233,47 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                       style={{ height: 'clamp(14px,2vw,28px)', opacity: 0.32 }} />
                   </div>
 
-                  <div style={{ direction: 'ltr', textAlign: 'left', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  <div style={{ direction: 'ltr', textAlign: 'left', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                     <h1 style={{
                       fontFamily: 'var(--font-heebo)', fontWeight: 900,
                       fontSize: make.length > 9
-                        ? 'clamp(14px,2.6vw,42px)'
+                        ? 'clamp(10px,2.6vw,42px)'
                         : make.length > 6
-                        ? 'clamp(16px,3.1vw,50px)'
-                        : 'clamp(18px,3.6vw,58px)',
+                        ? 'clamp(12px,3.1vw,50px)'
+                        : 'clamp(14px,3.6vw,58px)',
                       color: '#fff', margin: 0, lineHeight: 1.0,
-                      textTransform: 'uppercase',
+                      textTransform: 'uppercase', flexShrink: 0,
                     }}>
                       {make}
                     </h1>
                     {model && (
                       <h2 style={{
                         fontFamily: 'var(--font-heebo)', fontWeight: 300,
-                        fontSize: 'clamp(14px,2.9vw,47px)',
-                        color: 'rgba(255,255,255,0.82)', margin: '2px 0 0', lineHeight: 1.15,
-                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        fontSize: model.length > 35
+                          ? 'clamp(8px,1.7vw,27px)'
+                          : model.length > 22
+                          ? 'clamp(10px,2.2vw,36px)'
+                          : 'clamp(12px,2.9vw,47px)',
+                        color: 'rgba(255,255,255,0.82)', margin: '2px 0 0', lineHeight: 1.2,
+                        flexShrink: 1,
                       }}>
                         {model}
                       </h2>
                     )}
+                    <div style={{ flex: 1, minHeight: 4 }} />
                     {currentCar.price && (
                       <p style={{
                         fontFamily: 'var(--font-heebo)', fontWeight: 700,
-                        fontSize: 'clamp(13px,2.0vw,33px)',
-                        color: 'rgba(200,169,110,0.95)', margin: '6% 0 0',
+                        fontSize: 'clamp(11px,2.0vw,33px)',
+                        color: 'rgba(200,169,110,0.95)', margin: 0, flexShrink: 0,
                       }}>
                         {currentCar.price}
                       </p>
                     )}
                     {currentCar.monthlyPrice && (
                       <p style={{
-                        fontFamily: 'var(--font-inter)', fontSize: 'clamp(9px,0.85vw,14px)',
-                        color: 'rgba(255,255,255,0.38)', margin: '3px 0 0',
+                        fontFamily: 'var(--font-inter)', fontSize: 'clamp(8px,0.85vw,14px)',
+                        color: 'rgba(255,255,255,0.38)', margin: '2px 0 0', flexShrink: 0,
                       }}>
                         {currentCar.monthlyPrice}
                       </p>
@@ -276,14 +281,15 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
 
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 'clamp(20px,5%,64px)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 1, marginTop: '3%' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/qr/${currentCar.recNo}`} alt="QR"
                       style={{
-                        width: 'clamp(52px,7.5vw,108px)', height: 'clamp(52px,7.5vw,108px)',
+                        width: 'clamp(40px,7.5vw,108px)', height: 'clamp(40px,7.5vw,108px)',
                         borderRadius: 8, background: '#fff', padding: 4,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.8)',
+                        flexShrink: 1,
                       }}
                     />
                     <p style={{
