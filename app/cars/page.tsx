@@ -22,6 +22,20 @@ function formatMileage(raw: string): string {
   return n.toLocaleString('he-IL')
 }
 
+const YAD_CACHE_KEY = 'bav-yad'
+
+function loadYadCache(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(YAD_CACHE_KEY) ?? '{}') } catch { return {} }
+}
+
+function saveYadCache(cars: CarSummary[]) {
+  try {
+    const cache: Record<string, string> = {}
+    cars.filter(c => c.yad).forEach(c => { cache[c.recNo] = c.yad as string })
+    localStorage.setItem(YAD_CACHE_KEY, JSON.stringify(cache))
+  } catch {}
+}
+
 export default function CarsPage() {
   const [cars, setCars]       = useState<CarSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,12 +45,14 @@ export default function CarsPage() {
   useEffect(() => {
     const load = async (isFirst: boolean) => {
       try {
-        // Fast path: show basic list immediately (no detail enrichment)
+        // Fast path: show basic list immediately, merge cached yad values
         if (isFirst) {
           const basicRes = await fetch('/api/cars?basic=1')
           if (basicRes.ok) {
             const { cars: basic }: { cars: CarSummary[] } = await basicRes.json()
-            setCars(basic.filter(c => c.imageUrl))
+            const yadCache = loadYadCache()
+            const withYad = basic.map(c => ({ ...c, yad: c.yad || yadCache[c.recNo] || '' }))
+            setCars(withYad.filter(c => c.imageUrl))
             setLoading(false)
           }
         }
@@ -44,6 +60,7 @@ export default function CarsPage() {
         const res = await fetch('/api/cars')
         if (!res.ok) return
         const { cars: data }: { cars: CarSummary[] } = await res.json()
+        saveYadCache(data)
         setCars(data.filter(c => c.imageUrl))
       } finally {
         setLoading(false)

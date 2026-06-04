@@ -206,13 +206,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Gallery — pulled up 28px, nav fade reveals top edge ─── */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -14 }}>
+      {/* ─── Gallery — nav fade reveals top edge ─── */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ flexShrink: 0, padding: 'clamp(4px,0.8vh,12px) 14px 0', position: 'relative' }}>
+      <div style={{ flexShrink: 0, padding: 'clamp(8px,1.2vh,16px) 14px 0', position: 'relative' }}>
         {/* Watermark logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
