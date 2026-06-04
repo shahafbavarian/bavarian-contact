@@ -162,11 +162,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       {/* ─── Top nav + title ─── */}
       <div style={{
         flexShrink: 0,
-        padding: 'clamp(8px,1.5vh,12px) 18px 0',
-        marginBottom: -64,
-        paddingBottom: 64,
+        padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,10px)',
         position: 'relative', zIndex: 2,
-        background: 'linear-gradient(to bottom, #000 55%, transparent 100%)',
+        background: '#000',
       }}>
         {/* Back link */}
         <Link href="/cars" style={{
@@ -197,8 +195,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               {model}
             </h2>
           )}
-          {/* Price row — this 28px padded area overlaps the gallery top */}
-          <div style={{ marginTop: 6, paddingBottom: 28, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
             {summary.price && (
               <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
                 {summary.price}
@@ -213,8 +210,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Gallery ─── */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+      {/* ─── Gallery — pulled up 28px so top edge overlaps under the price ─── */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -28 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
