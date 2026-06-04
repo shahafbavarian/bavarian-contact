@@ -71,12 +71,33 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
         const visible = newCars.filter(c => c.imageUrl)
         if (visible.length === 0) { if (isFirst) setError('אין רכבים זמינים'); return }
         setCars(prev => {
-          if (isFirst) { setOrder(shuffle(visible.map((_, i) => i))); setLoading(false); return visible }
-          const newSet = new Set(visible.map(c => c.recNo))
-          const prevSet = new Set(prev.map(c => c.recNo))
-          const changed = visible.some(c => !prevSet.has(c.recNo)) || prev.some(c => !newSet.has(c.recNo))
-          if (!changed) return prev
-          setOrder(shuffle(visible.map((_, i) => i))); setSlidePos(0); return visible
+          if (isFirst) {
+            setOrder(shuffle(visible.map((_, i) => i)))
+            setLoading(false)
+            return visible
+          }
+          const newRecNos  = new Set(visible.map(c => c.recNo))
+          const prevRecNos = new Set(prev.map(c => c.recNo))
+          const hasChanges = visible.some(c => !prevRecNos.has(c.recNo)) || prev.some(c => !newRecNos.has(c.recNo))
+          if (!hasChanges) return prev
+
+          // Remap existing order to new indices (removed cars drop out automatically).
+          // Append newly-added cars in shuffled order at the end.
+          // Never reset slidePos — the show keeps playing from where it is.
+          const recNoToIdx = new Map<string, number>(visible.map((c, i) => [c.recNo, i]))
+          setOrder(prevOrder => {
+            const preserved = prevOrder
+              .map(i => recNoToIdx.get(prev[i]?.recNo ?? '') ?? -1)
+              .filter(i => i >= 0)
+            const preservedSet = new Set(preserved)
+            const added = shuffle(
+              visible.map((c, i) => !prevRecNos.has(c.recNo) ? i : -1)
+                     .filter(i => i >= 0 && !preservedSet.has(i))
+            )
+            const merged = [...preserved, ...added]
+            return merged.length > 0 ? merged : shuffle(visible.map((_, i) => i))
+          })
+          return visible
         })
         setError(null)
         return
