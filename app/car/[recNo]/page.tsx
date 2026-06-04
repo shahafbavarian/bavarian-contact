@@ -163,9 +163,10 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       <div style={{
         flexShrink: 0,
         padding: 'clamp(8px,1.5vh,12px) 18px 0',
-        marginBottom: -28,
+        marginBottom: -64,
+        paddingBottom: 64,
         position: 'relative', zIndex: 2,
-        background: '#000',
+        background: 'linear-gradient(to bottom, #000 55%, transparent 100%)',
       }}>
         {/* Back link */}
         <Link href="/cars" style={{
