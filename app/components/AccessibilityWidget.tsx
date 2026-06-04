@@ -21,7 +21,7 @@ const DEFAULT: Settings = {
 const STORAGE_KEY = 'a11y-settings'
 const FONT_SIZES = ['100%', '120%', '140%']
 
-export default function AccessibilityWidget() {
+export default function AccessibilityWidget({ top = 16, left, right }: { top?: number; left?: number; right?: number } = {}) {
   const [open, setOpen] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULT)
   const [mounted, setMounted] = useState(false)
@@ -92,8 +92,8 @@ export default function AccessibilityWidget() {
         aria-label="פתח תפריט נגישות"
         style={{
           position: 'fixed',
-          top: 16,
-          left: 16,
+          top,
+          ...(right !== undefined ? { right } : { left: left ?? 16 }),
           zIndex: 9999,
           width: 44,
           height: 44,

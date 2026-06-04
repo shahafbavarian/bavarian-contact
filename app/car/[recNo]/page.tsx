@@ -262,7 +262,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
-      <AccessibilityWidget />
+      <AccessibilityWidget top={50} right={18} />
     </main>
   )
 }
