@@ -257,8 +257,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Pollution / safety indices ─── */}
-      <div style={{ flexShrink: 0, paddingTop: 6 }}>
+      {/* ─── Pollution / safety indices — centered in remaining space ─── */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
         <CarIndices
           pollutionGrade={pollutionGrade}
           safetyLevel={safetyLevel}
