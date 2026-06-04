@@ -123,8 +123,8 @@ export default function AccessibilityWidget({ top = 16, left, right }: { top?: n
           aria-label="תפריט נגישות"
           style={{
             position: 'fixed',
-            top: 68,
-            left: 16,
+            top: top + 52,
+            ...(right !== undefined ? { right } : { left: left ?? 16 }),
             zIndex: 9999,
             width: 256,
             background: 'rgba(10,10,10,0.97)',
