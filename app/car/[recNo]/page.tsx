@@ -4,6 +4,7 @@ import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
+import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 export const revalidate = 300
 export const dynamicParams = true
@@ -261,6 +262,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
+      <AccessibilityWidget />
     </main>
   )
 }
