@@ -141,7 +141,7 @@ export default function CarIndices({
         onClick={() => setOpen(true)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 5, width: '100%', padding: '6px 14px 10px',
+          gap: 5, width: '100%', padding: '12px 14px 16px',
           background: 'none', border: 'none', cursor: 'pointer',
         }}
       >

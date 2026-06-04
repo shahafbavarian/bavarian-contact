@@ -149,6 +149,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   return (
     <main style={{
       height: '100dvh',
+      position: 'relative',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -159,58 +160,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       margin: '0 auto',
     }}>
 
-      {/* ─── Top nav + title ─── */}
-      <div style={{
-        flexShrink: 0,
-        padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,12px)',
-        position: 'relative', zIndex: 10,
-        background: '#000',
-      }}>
-        {/* Back link */}
-        <Link href="/cars" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.5)',
-          textDecoration: 'none', direction: 'rtl', marginBottom: 6,
-        }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          כל הרכבים
-        </Link>
-
-        <div style={{ direction: 'ltr', textAlign: 'left' }}>
-        <h1 style={{
-          fontFamily: 'var(--font-heebo)', fontWeight: 900,
-          fontSize: 'clamp(24px, 7vw, 38px)',
-          color: '#fff', margin: 0, lineHeight: 1.0,
-        }}>
-          {make.toUpperCase()}
-        </h1>
-        {model && (
-          <h2 style={{
-            fontFamily: 'var(--font-heebo)', fontWeight: 300,
-            fontSize: 'clamp(18px, 5.5vw, 30px)',
-            color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.0,
-          }}>
-            {model}
-          </h2>
-        )}
-        <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          {summary.price && (
-            <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
-              {summary.price}
-            </span>
-          )}
-          {summary.monthlyPrice && (
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>
-              {summary.monthlyPrice}
-            </span>
-          )}
-        </div>
-        </div>{/* end direction:ltr */}
-      </div>{/* end nav+title block */}
-
-      {/* ─── Gallery — fills remaining vertical space ─── */}
+      {/* ─── Gallery — top of page, title floats over it ─── */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
@@ -258,11 +208,59 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Pollution / safety indices ─── */}
-      <div style={{ flexShrink: 0 }}>
+      <div style={{ flexShrink: 0, paddingTop: 6 }}>
         <CarIndices
           pollutionGrade={pollutionGrade}
           safetyLevel={safetyLevel}
         />
+      </div>
+
+      {/* ─── Nav + title — absolute overlay on gallery top ─── */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+        padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,12px)',
+      }}>
+        <Link href="/cars" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.5)',
+          textDecoration: 'none', direction: 'rtl', marginBottom: 6,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          כל הרכבים
+        </Link>
+
+        <div style={{ direction: 'ltr', textAlign: 'left' }}>
+          <h1 style={{
+            fontFamily: 'var(--font-heebo)', fontWeight: 900,
+            fontSize: 'clamp(24px, 7vw, 38px)',
+            color: '#fff', margin: 0, lineHeight: 1.0,
+          }}>
+            {make.toUpperCase()}
+          </h1>
+          {model && (
+            <h2 style={{
+              fontFamily: 'var(--font-heebo)', fontWeight: 300,
+              fontSize: 'clamp(18px, 5.5vw, 30px)',
+              color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.0,
+            }}>
+              {model}
+            </h2>
+          )}
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            {summary.price && (
+              <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
+                {summary.price}
+              </span>
+            )}
+            {summary.monthlyPrice && (
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>
+                {summary.monthlyPrice}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
