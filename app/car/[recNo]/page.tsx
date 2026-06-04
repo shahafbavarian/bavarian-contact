@@ -160,7 +160,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         flexShrink: 0,
         padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,10px)',
         position: 'relative', zIndex: 2,
-        background: 'linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%)',
+        background: 'linear-gradient(to bottom, #000 calc(100% - 14px), transparent 100%)',
       }}>
         {/* Back link */}
         <Link href="/cars" style={{
@@ -207,7 +207,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Gallery — pulled up 28px, nav fade reveals top edge ─── */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -28 }}>
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -14 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
