@@ -25,7 +25,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div style={{ direction: 'ltr', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column' }}>
       {/* Preload hints for adjacent images */}
       {images.length > 1 && (
         <>
