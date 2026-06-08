@@ -31,6 +31,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/admin/cars',
+    label: 'רכבים',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path d="M19 17H5a2 2 0 01-2-2V9l2-4h14l2 4v6a2 2 0 01-2 2z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="7.5" cy="17" r="1.5" stroke="currentColor" strokeWidth="1.4"/>
+        <circle cx="16.5" cy="17" r="1.5" stroke="currentColor" strokeWidth="1.4"/>
+      </svg>
+    ),
+  },
 ]
 
 export default function AdminNav() {

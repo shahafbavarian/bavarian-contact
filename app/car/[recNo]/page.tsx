@@ -4,6 +4,7 @@ import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
+import CarVideoScreen from './CarVideoScreen'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 export const revalidate = 300
@@ -72,10 +73,21 @@ function SpecCell({ label, value }: { label: string; value: string | null | unde
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
+async function fetchVideoUrl(recNo: string): Promise<string | null> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/car-videos`, { next: { revalidate: 60 } })
+    if (!res.ok) return null
+    const map: Record<string, string> = await res.json()
+    return map[recNo] ?? null
+  } catch { return null }
+}
+
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  const [summary, detail] = await Promise.all([
+  const [summary, detail, videoUrl] = await Promise.all([
     fetchCarSummaryByRecNo(params.recNo),
     fetchCarDetail(params.recNo),
+    fetchVideoUrl(params.recNo),
   ])
 
   const pollutionGrade = detail?.pollutionGrade ?? null
@@ -143,8 +155,15 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
   return (
+    <div style={{
+      height: '100dvh',
+      overflowY: videoUrl ? 'scroll' : 'hidden',
+      scrollSnapType: videoUrl ? 'y mandatory' : undefined,
+      background: '#000',
+    }}>
     <main style={{
       height: '100dvh',
+      scrollSnapAlign: 'start',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -153,6 +172,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
       maxWidth: 480,
       margin: '0 auto',
+      position: 'relative',
     }}>
 
       {/* ─── Top nav + title ─── */}
@@ -263,6 +283,32 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
       <CarCTA carName={summary.name} recNo={params.recNo} />
       <AccessibilityWidget top={50} right={18} />
+
+      {/* Scroll-up hint when video exists */}
+      {videoUrl && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+          zIndex: 50,
+          animation: 'videoHintBounce 2s ease-in-out infinite',
+          pointerEvents: 'none',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
+          <style>{`@keyframes videoHintBounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-5px)} }`}</style>
+        </div>
+      )}
     </main>
+
+    {videoUrl && <CarVideoScreen youtubeUrl={videoUrl} />}
+    </div>
   )
 }
