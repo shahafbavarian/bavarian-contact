@@ -148,14 +148,13 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
             right: 18,
             zIndex: 9999,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 36, height: 36,
-            borderRadius: 9,
-            background: 'rgba(0,0,0,0.38)',
+            background: 'none',
             border: 'none',
-            color: muted ? 'rgba(255,255,255,0.75)' : 'rgba(200,169,110,1)',
+            color: muted ? 'rgba(255,255,255,0.85)' : 'rgba(200,169,110,1)',
             cursor: 'pointer',
-            backdropFilter: 'blur(6px)',
+            filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))',
             transition: 'color 0.2s',
+            padding: 6,
           }}
         >
           {muted ? (
