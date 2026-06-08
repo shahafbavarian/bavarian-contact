@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 function extractVideoId(url: string): string | null {
   try {
@@ -16,10 +16,20 @@ function extractVideoId(url: string): string | null {
 
 export default function CarVideoScreen({ youtubeUrl }: { youtubeUrl: string }) {
   const [muted, setMuted] = useState(true)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
   if (!videoId) return null
 
-  const src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1`
+  const src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1`
+
+  function toggleMute() {
+    const fn = muted ? 'unMute' : 'mute'
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func: fn, args: [] }),
+      '*'
+    )
+    setMuted(m => !m)
+  }
 
   return (
     <div style={{
@@ -31,7 +41,7 @@ export default function CarVideoScreen({ youtubeUrl }: { youtubeUrl: string }) {
     }}>
       {/* Fullscreen iframe — 9:16 centred */}
       <iframe
-        key={String(muted)}
+        ref={iframeRef}
         src={src}
         allow="autoplay; fullscreen"
         style={{
@@ -43,13 +53,12 @@ export default function CarVideoScreen({ youtubeUrl }: { youtubeUrl: string }) {
           height: '100dvh',
           minWidth: '100%',
           border: 'none',
-          pointerEvents: 'none',
         }}
       />
 
       {/* Mute / unmute button */}
       <button
-        onClick={() => setMuted(m => !m)}
+        onClick={toggleMute}
         style={{
           position: 'absolute',
           bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
@@ -89,6 +98,7 @@ export default function CarVideoScreen({ youtubeUrl }: { youtubeUrl: string }) {
         gap: 5,
         zIndex: 10,
         opacity: 0.55,
+        pointerEvents: 'none',
       }}>
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
           <path d="M8 3v10M4 9l4 4 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
