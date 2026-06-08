@@ -114,14 +114,14 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         />
       )}
 
-      {/* Sound button — top right, above everything */}
+      {/* Sound button — bottom right, CTA is hidden so no overlap */}
       {loaded && (
         <button
           onClick={toggleMute}
           style={{
             position: 'absolute',
-            top: 'calc(16px + env(safe-area-inset-top, 0px))',
-            right: 16,
+            bottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
+            right: 20,
             zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
