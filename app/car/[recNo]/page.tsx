@@ -310,7 +310,15 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       )}
     </main>
 
-    {videoUrl && <CarVideoScreen youtubeUrl={videoUrl} />}
+    {videoUrl && (
+      <>
+        {/* Preconnect to YouTube early so iframe loads fast */}
+        <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+        <link rel="preconnect" href="https://i.ytimg.com" />
+        <link rel="dns-prefetch" href="https://www.youtube-nocookie.com" />
+        <CarVideoScreen youtubeUrl={videoUrl} carName={summary.name} />
+      </>
+    )}
     </div>
   )
 }
