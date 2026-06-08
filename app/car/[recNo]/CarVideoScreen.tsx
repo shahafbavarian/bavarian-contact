@@ -14,14 +14,22 @@ function extractVideoId(url: string): string | null {
   return null
 }
 
+function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
+  iframe?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'command', func, args: [] }),
+    'https://www.youtube-nocookie.com'
+  )
+}
+
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
   const [visible, setVisible] = useState(false)
   const [muted, setMuted] = useState(true)
+  const [playing, setPlaying] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // Track when video section is in view — for thumbnail fade and focus
+  // Track visibility for thumbnail fade + focus
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
@@ -35,7 +43,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     return () => obs.disconnect()
   }, [])
 
-  // Hide accessibility widget when video screen is visible
+  // Hide accessibility widget when video is visible
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
@@ -51,15 +59,12 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     return () => obs.disconnect()
   }, [])
 
-  // Unmute on hardware volume key press
+  // Hardware volume key → unmute
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'AudioVolumeUp' || e.key === 'AudioVolumeDown' || e.key === 'VolumeUp' || e.key === 'VolumeDown') {
         setMuted(false)
-        iframeRef.current?.contentWindow?.postMessage(
-          JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
-          'https://www.youtube-nocookie.com'
-        )
+        sendCommand(iframeRef.current, 'unMute')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -72,11 +77,18 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
   const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
 
   function toggleMute() {
-    iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func: muted ? 'unMute' : 'mute', args: [] }),
-      'https://www.youtube-nocookie.com'
-    )
+    sendCommand(iframeRef.current, muted ? 'unMute' : 'mute')
     setMuted(m => !m)
+  }
+
+  function togglePlayPause() {
+    if (playing) {
+      sendCommand(iframeRef.current, 'pauseVideo')
+    } else {
+      sendCommand(iframeRef.current, 'playVideo')
+    }
+    setPlaying(p => !p)
+    containerRef.current?.focus()
   }
 
   return (
@@ -117,14 +129,32 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Tap anywhere on video to toggle mute — also keeps focus on parent
-          so hardware volume keys reach the keydown listener */}
+      {/* Tap anywhere on video to pause/play — keeps focus on parent for volume keys */}
       <div
         style={{ position: 'absolute', inset: 0, zIndex: 5, cursor: 'pointer' }}
-        onClick={() => { toggleMute(); containerRef.current?.focus() }}
+        onClick={togglePlayPause}
       />
 
-      {/* Sound button — above CTA bar */}
+      {/* Pause indicator — shown briefly when paused */}
+      {!playing && visible && (
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10,
+          background: 'rgba(0,0,0,0.55)',
+          borderRadius: '50%',
+          width: 72, height: 72,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+            <rect x="6" y="4" width="4" height="16"/>
+            <rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        </div>
+      )}
+
+      {/* Sound button — above CTA bar, above overlay */}
       {visible && (
         <button
           onClick={toggleMute}
@@ -135,9 +165,9 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
             zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            padding: '11px 18px',
-            borderRadius: 28,
+            justifyContent: 'center',
+            padding: 14,
+            borderRadius: '50%',
             background: muted ? 'rgba(0,0,0,0.78)' : 'rgba(200,169,110,0.95)',
             border: `1.5px solid ${muted ? 'rgba(255,255,255,0.3)' : 'transparent'}`,
             color: muted ? '#fff' : '#000',
@@ -148,22 +178,16 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
           }}
         >
           {muted ? (
-            <>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
-                <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
-                <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
-              </svg>
-              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, fontWeight: 700 }}>הפעל סאונד</span>
-            </>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
+              <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+              <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
           ) : (
-            <>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
-                <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-              <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 14, fontWeight: 700 }}>השתק</span>
-            </>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
+              <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
           )}
         </button>
       )}
