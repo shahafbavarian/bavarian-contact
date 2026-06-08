@@ -22,10 +22,16 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
   const videoId = extractVideoId(youtubeUrl)
 
   // Load iframe only when scrolled into view — scroll = user gesture = autoplay works
+  // Also focus the container so hardware volume keys reach our keydown listener
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setLoaded(true) },
+      ([e]) => {
+        if (e.isIntersecting) {
+          setLoaded(true)
+          setTimeout(() => containerRef.current?.focus(), 400)
+        }
+      },
       { threshold: 0.5 }
     )
     obs.observe(containerRef.current)
@@ -66,7 +72,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
   if (!videoId) return null
 
   const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1`
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
 
   function toggleMute() {
     iframeRef.current?.contentWindow?.postMessage(
@@ -79,7 +85,8 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
   return (
     <div
       ref={containerRef}
-      style={{ height: '100dvh', scrollSnapAlign: 'start', position: 'relative', background: '#000', overflow: 'hidden' }}
+      tabIndex={-1}
+      style={{ height: '100dvh', scrollSnapAlign: 'start', position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
     >
       {/* Thumbnail — visible instantly before iframe loads */}
       {!loaded && (
@@ -93,22 +100,28 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
 
       {/* iframe — loads only after scroll into view */}
       {loaded && (
-        <iframe
-          ref={iframeRef}
-          src={src}
-          allow="autoplay; fullscreen"
-          dir="ltr"
-          style={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 'calc(100dvh * 9 / 16)',
-            height: '100dvh',
-            minWidth: '100%',
-            border: 'none',
-            direction: 'ltr',
-          }}
-        />
+        <>
+          <iframe
+            ref={iframeRef}
+            src={src}
+            allow="autoplay; fullscreen"
+            style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(100dvh * 9 / 16)',
+              height: '100dvh',
+              minWidth: '100%',
+              border: 'none',
+            }}
+          />
+          {/* Transparent overlay — prevents iframe from stealing focus so
+              hardware volume keys reach the parent page's keydown listener */}
+          <div
+            style={{ position: 'absolute', inset: 0, zIndex: 5 }}
+            onClick={() => containerRef.current?.focus()}
+          />
+        </>
       )}
 
       {/* Sound button — above CTA bar */}
