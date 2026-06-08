@@ -75,11 +75,13 @@ function SpecCell({ label, value }: { label: string; value: string | null | unde
 
 async function fetchVideoUrl(recNo: string): Promise<string | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-    const res = await fetch(`${baseUrl}/api/car-videos`, { next: { revalidate: 60 } })
-    if (!res.ok) return null
-    const map: Record<string, string> = await res.json()
-    return map[recNo] ?? null
+    const { getSupabaseAdmin } = await import('@/lib/supabase')
+    const { data } = await getSupabaseAdmin()
+      .from('car_videos')
+      .select('youtube_url')
+      .eq('rec_no', recNo)
+      .single()
+    return data?.youtube_url ?? null
   } catch { return null }
 }
 
