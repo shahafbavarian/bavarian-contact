@@ -24,6 +24,7 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
   const [visible, setVisible] = useState(false)
   const [muted, setMuted] = useState(true)
+  const mutedRef = useRef(true) // mirrors muted for use inside event listeners
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
@@ -76,9 +77,27 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
   const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
 
   function toggleMute() {
-    sendCommand(iframeRef.current, muted ? 'unMute' : 'mute')
-    setMuted(m => !m)
+    const next = !mutedRef.current
+    mutedRef.current = next
+    sendCommand(iframeRef.current, next ? 'mute' : 'unMute')
+    setMuted(next)
   }
+
+  // Re-apply our mute state whenever YouTube starts playing (rewind/loop resets it)
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (typeof e.data !== 'string') return
+      try {
+        const data = JSON.parse(e.data)
+        // YouTube fires onStateChange info=1 when playback starts/resumes
+        if (data.event === 'onStateChange' && data.info === 1) {
+          sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+        }
+      } catch {}
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
   return (
     <div
