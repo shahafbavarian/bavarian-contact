@@ -24,7 +24,6 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
   const [visible, setVisible] = useState(false)
   const [muted, setMuted] = useState(true)
-  const [playing, setPlaying] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
@@ -81,16 +80,6 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     setMuted(m => !m)
   }
 
-  function togglePlayPause() {
-    if (playing) {
-      sendCommand(iframeRef.current, 'pauseVideo')
-    } else {
-      sendCommand(iframeRef.current, 'playVideo')
-    }
-    setPlaying(p => !p)
-    containerRef.current?.focus()
-  }
-
   return (
     <div
       ref={containerRef}
@@ -129,32 +118,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Tap anywhere on video to pause/play — keeps focus on parent for volume keys */}
-      <div
-        style={{ position: 'absolute', inset: 0, zIndex: 5, cursor: 'pointer' }}
-        onClick={togglePlayPause}
-      />
-
-      {/* Pause indicator — shown briefly when paused */}
-      {!playing && visible && (
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10,
-          background: 'rgba(0,0,0,0.55)',
-          borderRadius: '50%',
-          width: 72, height: 72,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none',
-        }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-            <rect x="6" y="4" width="4" height="16"/>
-            <rect x="14" y="4" width="4" height="16"/>
-          </svg>
-        </div>
-      )}
-
-      {/* Sound button — above CTA bar, above overlay */}
+      {/* Sound button — above CTA bar */}
       {visible && (
         <button
           onClick={toggleMute}
