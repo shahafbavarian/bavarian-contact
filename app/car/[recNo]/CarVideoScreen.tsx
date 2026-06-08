@@ -117,11 +117,11 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Transparent overlay — prevents iframe from stealing focus so
-          hardware volume keys reach the parent page's keydown listener */}
+      {/* Tap anywhere on video to toggle mute — also keeps focus on parent
+          so hardware volume keys reach the keydown listener */}
       <div
-        style={{ position: 'absolute', inset: 0, zIndex: 5 }}
-        onClick={() => containerRef.current?.focus()}
+        style={{ position: 'absolute', inset: 0, zIndex: 5, cursor: 'pointer' }}
+        onClick={() => { toggleMute(); containerRef.current?.focus() }}
       />
 
       {/* Sound button — above CTA bar */}
