@@ -129,11 +129,11 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Fade from black at top — smooth transition from CTA bar above */}
+      {/* Fade at bottom — video blends into the fixed CTA bar */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0,
-        height: 100,
-        background: 'linear-gradient(to bottom, #000 0%, transparent 100%)',
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: 'calc(120px + env(safe-area-inset-bottom, 0px))',
+        background: 'linear-gradient(to bottom, transparent 0%, rgba(8,8,8,0.97) 100%)',
         pointerEvents: 'none',
         zIndex: 2,
       }} />
