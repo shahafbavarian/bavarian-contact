@@ -23,13 +23,14 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
 
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
   const [visible, setVisible] = useState(false)
+  const [videoReady, setVideoReady] = useState(false) // true once YouTube fires onStateChange=1
   const [muted, setMuted] = useState(true)
-  const mutedRef = useRef(true) // mirrors muted for use inside event listeners
+  const mutedRef = useRef(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // Track visibility for thumbnail fade + focus
+  // Track when video section is scrolled into view
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
@@ -59,10 +60,29 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     return () => obs.disconnect()
   }, [])
 
+  // Listen for YouTube playback events:
+  // - onStateChange=1 (playing): mark ready + re-apply mute state
+  // - onStateChange=1 after rewind/loop: re-apply mute state
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (typeof e.data !== 'string') return
+      try {
+        const data = JSON.parse(e.data)
+        if (data.event === 'onStateChange' && data.info === 1) {
+          setVideoReady(true)
+          sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+        }
+      } catch {}
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
   // Hardware volume key → unmute
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'AudioVolumeUp' || e.key === 'AudioVolumeDown' || e.key === 'VolumeUp' || e.key === 'VolumeDown') {
+        mutedRef.current = false
         setMuted(false)
         sendCommand(iframeRef.current, 'unMute')
       }
@@ -83,21 +103,8 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     setMuted(next)
   }
 
-  // Re-apply our mute state whenever YouTube starts playing (rewind/loop resets it)
-  useEffect(() => {
-    function onMessage(e: MessageEvent) {
-      if (typeof e.data !== 'string') return
-      try {
-        const data = JSON.parse(e.data)
-        // YouTube fires onStateChange info=1 when playback starts/resumes
-        if (data.event === 'onStateChange' && data.info === 1) {
-          sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-        }
-      } catch {}
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [])
+  // Thumbnail stays visible until YouTube confirms it's actually playing
+  const showThumbnail = !videoReady
 
   return (
     <div
@@ -105,21 +112,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
       tabIndex={-1}
       style={{ height: '100dvh', scrollSnapAlign: 'start', position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
     >
-      {/* Thumbnail — fades out when video becomes visible */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={thumbnailUrl}
-        alt=""
-        style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover',
-          opacity: visible ? 0 : 0.75,
-          transition: 'opacity 0.6s ease',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* iframe — loaded immediately on mount so it's ready when user scrolls */}
+      {/* iframe — loads immediately on page mount, hidden behind thumbnail until ready */}
       <iframe
         ref={iframeRef}
         src={src}
@@ -132,13 +125,44 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
           height: '100dvh',
           minWidth: '100%',
           border: 'none',
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 0.6s ease',
         }}
       />
 
-      {/* Sound button — above CTA bar */}
-      {visible && (
+      {/* Thumbnail — covers iframe until video is actually playing */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={thumbnailUrl}
+        alt=""
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover',
+          opacity: showThumbnail ? 0.85 : 0,
+          transition: showThumbnail ? 'none' : 'opacity 0.5s ease',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Loading spinner — visible when scrolled to video but not yet playing */}
+      {visible && showThumbnail && (
+        <>
+          <style>{`
+            @keyframes spin { to { transform: rotate(360deg); } }
+          `}</style>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 44, height: 44,
+            border: '3px solid rgba(255,255,255,0.15)',
+            borderTopColor: 'rgba(200,169,110,0.85)',
+            borderRadius: '50%',
+            animation: 'spin 0.9s linear infinite',
+            pointerEvents: 'none',
+          }} />
+        </>
+      )}
+
+      {/* Sound button — shown once video is playing */}
+      {visible && videoReady && (
         <button
           onClick={toggleMute}
           style={{

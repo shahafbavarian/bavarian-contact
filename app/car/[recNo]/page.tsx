@@ -167,8 +167,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     {videoUrl && (
       <>
         <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://s.ytimg.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://googlevideo.com" />
       </>
     )}
@@ -290,7 +291,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
 
       {/* Scroll-up hint when video exists */}
       {videoUrl && (
-        <div style={{
+        <div data-scroll-hint style={{
           position: 'absolute',
           bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
           left: '50%',

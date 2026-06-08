@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
-
-const GOLD_DIM = 'rgba(200,169,110,0.5)'
+import { useState, useRef, useEffect } from 'react'
 
 // Index 0 = grade 1 (best, dark green) → index 14 = grade 15 (worst, dark red)
 const POLLUTION_COLORS = [
@@ -97,6 +95,16 @@ export default function CarIndices({
   const touchStartY = useRef(0)
   const touchStartTime = useRef(0)
   const latestDragY = useRef(0)
+
+  // Hide scroll hint while sheet is open
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>('[data-scroll-hint]')
+    if (!el) return
+    el.style.opacity = open ? '0' : ''
+    el.style.pointerEvents = open ? 'none' : ''
+    el.style.transition = 'opacity 0.2s'
+  }, [open])
+
   if (pollutionGrade === null && safetyLevel === null) return null
 
   function triggerClose() {
@@ -117,7 +125,7 @@ export default function CarIndices({
 
   function handleTouchEnd() {
     const elapsed = Math.max(1, Date.now() - touchStartTime.current)
-    const velocity = latestDragY.current / elapsed // px/ms
+    const velocity = latestDragY.current / elapsed
     if (latestDragY.current > 90 || velocity > 0.4) {
       triggerClose()
     } else {
@@ -136,53 +144,19 @@ export default function CarIndices({
         @keyframes ciFadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
-      {/* ── Trigger: compact inline badges ── */}
+      {/* ── Trigger: simple text button ── */}
       <button
         onClick={() => setOpen(true)}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
+          display: 'inline-flex', alignItems: 'center', gap: 5,
           padding: '4px 0 2px',
           background: 'none', border: 'none', cursor: 'pointer',
-          direction: 'ltr',
         }}
       >
-        {pollutionGrade !== null && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '3px 9px 3px 7px',
-            borderRadius: 20,
-            background: 'rgba(255,255,255,0.055)',
-            border: '1px solid rgba(255,255,255,0.09)',
-          }}>
-            <span style={{
-              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-              background: POLLUTION_COLORS[pollutionGrade - 1] ?? '#888',
-              boxShadow: `0 0 4px ${POLLUTION_COLORS[pollutionGrade - 1] ?? '#888'}`,
-            }} />
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
-              זיהום {pollutionGrade}
-            </span>
-          </span>
-        )}
-        {safetyLevel !== null && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '3px 9px 3px 7px',
-            borderRadius: 20,
-            background: 'rgba(255,255,255,0.055)',
-            border: '1px solid rgba(255,255,255,0.09)',
-          }}>
-            <span style={{
-              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-              background: SAFETY_COLORS[safetyLevel] ?? '#888',
-              boxShadow: `0 0 4px ${SAFETY_COLORS[safetyLevel] ?? '#888'}`,
-            }} />
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
-              בטיחות {safetyLevel}
-            </span>
-          </span>
-        )}
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>
+        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(200,169,110,0.55)' }}>
+          זיהום אוויר ובטיחות
+        </span>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ color: 'rgba(200,169,110,0.4)', flexShrink: 0 }}>
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
@@ -190,7 +164,6 @@ export default function CarIndices({
       {/* ── Bottom sheet ── */}
       {open && (
         <>
-          {/* Backdrop */}
           <div
             onClick={triggerClose}
             style={{
@@ -201,7 +174,6 @@ export default function CarIndices({
             }}
           />
 
-          {/* Sheet — black background matches page so iOS always shows black in safe area */}
           <div
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -221,13 +193,11 @@ export default function CarIndices({
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           >
-            {/* Drag handle */}
             <div style={{
               width: 40, height: 4, background: 'rgba(255,255,255,0.15)',
               borderRadius: 2, margin: '12px auto 0',
             }} />
 
-            {/* Header */}
             <div style={{ padding: '12px 16px 10px', direction: 'rtl', textAlign: 'right' }}>
               <span style={{
                 fontFamily: 'var(--font-inter)', fontSize: 10,
@@ -238,7 +208,6 @@ export default function CarIndices({
               </span>
             </div>
 
-            {/* White frame for index data */}
             <div style={{
               margin: '0 16px 16px',
               background: '#f5f3f0',
