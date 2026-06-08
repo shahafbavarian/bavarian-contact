@@ -32,20 +32,38 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     return () => obs.disconnect()
   }, [])
 
-  // Hide accessibility widget when video screen is visible
+  // Hide fixed UI (a11y widget + CTA bar) when video screen is visible
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
       ([e]) => {
-        const widget = document.querySelector<HTMLElement>('[data-a11y-widget]')
-        if (!widget) return
-        widget.style.opacity = e.isIntersecting ? '0' : ''
-        widget.style.pointerEvents = e.isIntersecting ? 'none' : ''
+        const hidden = e.isIntersecting
+        for (const sel of ['[data-a11y-widget]', '[data-cta-bar]']) {
+          const el = document.querySelector<HTMLElement>(sel)
+          if (!el) continue
+          el.style.opacity = hidden ? '0' : ''
+          el.style.pointerEvents = hidden ? 'none' : ''
+        }
       },
       { threshold: 0.5 }
     )
     obs.observe(containerRef.current)
     return () => obs.disconnect()
+  }, [])
+
+  // Unmute on hardware volume key press
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'AudioVolumeUp' || e.key === 'AudioVolumeDown' || e.key === 'VolumeUp' || e.key === 'VolumeDown') {
+        setMuted(false)
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
+          'https://www.youtube-nocookie.com'
+        )
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   if (!videoId) return null
@@ -82,6 +100,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
           ref={iframeRef}
           src={src}
           allow="autoplay; fullscreen"
+          dir="ltr"
           style={{
             position: 'absolute',
             top: '50%', left: '50%',
@@ -90,18 +109,19 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
             height: '100dvh',
             minWidth: '100%',
             border: 'none',
+            direction: 'ltr',
           }}
         />
       )}
 
-      {/* Sound button — always visible once loaded */}
+      {/* Sound button — top right, above everything */}
       {loaded && (
         <button
           onClick={toggleMute}
           style={{
             position: 'absolute',
-            bottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
-            right: 20,
+            top: 'calc(16px + env(safe-area-inset-top, 0px))',
+            right: 16,
             zIndex: 9999,
             display: 'flex',
             alignItems: 'center',

@@ -14,7 +14,7 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
   return (
     <>
       {/* Sticky CTA bar */}
-      <div style={{
+      <div data-cta-bar="1" style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
         zIndex: 40,
