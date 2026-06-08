@@ -90,6 +90,7 @@ export default function AccessibilityWidget({ top = 16, left, right }: { top?: n
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="פתח תפריט נגישות"
+        data-a11y-widget="1"
         style={{
           position: 'fixed',
           top,

@@ -316,7 +316,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         <link rel="preconnect" href="https://www.youtube-nocookie.com" />
         <link rel="preconnect" href="https://i.ytimg.com" />
         <link rel="dns-prefetch" href="https://www.youtube-nocookie.com" />
-        <CarVideoScreen youtubeUrl={videoUrl} carName={summary.name} />
+        <CarVideoScreen youtubeUrl={videoUrl} />
       </>
     )}
     </div>
