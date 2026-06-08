@@ -163,6 +163,15 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       scrollSnapType: videoUrl ? 'y mandatory' : undefined,
       background: '#000',
     }}>
+    {/* Preconnect ASAP so YouTube iframe is ready when user scrolls */}
+    {videoUrl && (
+      <>
+        <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://googlevideo.com" />
+      </>
+    )}
     <main style={{
       height: '100dvh',
       scrollSnapAlign: 'start',
@@ -311,13 +320,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     </main>
 
     {videoUrl && (
-      <>
-        {/* Preconnect to YouTube early so iframe loads fast */}
-        <link rel="preconnect" href="https://www.youtube-nocookie.com" />
-        <link rel="preconnect" href="https://i.ytimg.com" />
-        <link rel="dns-prefetch" href="https://www.youtube-nocookie.com" />
-        <CarVideoScreen youtubeUrl={videoUrl} carName={summary.name} />
-      </>
+      <CarVideoScreen youtubeUrl={videoUrl} carName={summary.name} />
     )}
     </div>
   )

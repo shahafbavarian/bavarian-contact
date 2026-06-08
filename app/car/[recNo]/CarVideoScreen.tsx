@@ -15,22 +15,19 @@ function extractVideoId(url: string): string | null {
 }
 
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
-  const [loaded, setLoaded] = useState(false)
+  const [visible, setVisible] = useState(false)
   const [muted, setMuted] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // Load iframe only when scrolled into view — scroll = user gesture = autoplay works
-  // Also focus the container so hardware volume keys reach our keydown listener
+  // Track when video section is in view — for thumbnail fade and focus
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting) {
-          setLoaded(true)
-          setTimeout(() => containerRef.current?.focus(), 400)
-        }
+        setVisible(e.isIntersecting)
+        if (e.isIntersecting) setTimeout(() => containerRef.current?.focus(), 400)
       },
       { threshold: 0.5 }
     )
@@ -38,7 +35,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     return () => obs.disconnect()
   }, [])
 
-  // Hide only accessibility widget when video screen is visible
+  // Hide accessibility widget when video screen is visible
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
@@ -88,44 +85,47 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
       tabIndex={-1}
       style={{ height: '100dvh', scrollSnapAlign: 'start', position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
     >
-      {/* Thumbnail — visible instantly before iframe loads */}
-      {!loaded && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={thumbnailUrl}
-          alt=""
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
-        />
-      )}
+      {/* Thumbnail — fades out when video becomes visible */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={thumbnailUrl}
+        alt=""
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover',
+          opacity: visible ? 0 : 0.75,
+          transition: 'opacity 0.6s ease',
+          pointerEvents: 'none',
+        }}
+      />
 
-      {/* iframe — loads only after scroll into view */}
-      {loaded && (
-        <>
-          <iframe
-            ref={iframeRef}
-            src={src}
-            allow="autoplay; fullscreen"
-            style={{
-              position: 'absolute',
-              top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'calc(100dvh * 9 / 16)',
-              height: '100dvh',
-              minWidth: '100%',
-              border: 'none',
-            }}
-          />
-          {/* Transparent overlay — prevents iframe from stealing focus so
-              hardware volume keys reach the parent page's keydown listener */}
-          <div
-            style={{ position: 'absolute', inset: 0, zIndex: 5 }}
-            onClick={() => containerRef.current?.focus()}
-          />
-        </>
-      )}
+      {/* iframe — loaded immediately on mount so it's ready when user scrolls */}
+      <iframe
+        ref={iframeRef}
+        src={src}
+        allow="autoplay; fullscreen"
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'calc(100dvh * 9 / 16)',
+          height: '100dvh',
+          minWidth: '100%',
+          border: 'none',
+          opacity: visible ? 1 : 0,
+          transition: 'opacity 0.6s ease',
+        }}
+      />
+
+      {/* Transparent overlay — prevents iframe from stealing focus so
+          hardware volume keys reach the parent page's keydown listener */}
+      <div
+        style={{ position: 'absolute', inset: 0, zIndex: 5 }}
+        onClick={() => containerRef.current?.focus()}
+      />
 
       {/* Sound button — above CTA bar */}
-      {loaded && (
+      {visible && (
         <button
           onClick={toggleMute}
           style={{
