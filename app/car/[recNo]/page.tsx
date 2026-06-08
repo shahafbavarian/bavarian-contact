@@ -73,6 +73,22 @@ function SpecCell({ label, value }: { label: string; value: string | null | unde
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
+async function fetchCarOverrides(recNo: string): Promise<{ pollutionGrade: number | null; safetyLevel: number | null } | null> {
+  try {
+    const { getSupabaseAdmin } = await import('@/lib/supabase')
+    const { data } = await getSupabaseAdmin()
+      .from('car_overrides')
+      .select('pollution_grade, safety_level')
+      .eq('rec_no', recNo)
+      .single()
+    if (!data) return null
+    return {
+      pollutionGrade: data.pollution_grade ?? null,
+      safetyLevel: data.safety_level ?? null,
+    }
+  } catch { return null }
+}
+
 async function fetchVideoUrl(recNo: string): Promise<string | null> {
   try {
     const { getSupabaseAdmin } = await import('@/lib/supabase')
@@ -86,14 +102,15 @@ async function fetchVideoUrl(recNo: string): Promise<string | null> {
 }
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  const [summary, detail, videoUrl] = await Promise.all([
+  const [summary, detail, videoUrl, carOverride] = await Promise.all([
     fetchCarSummaryByRecNo(params.recNo),
     fetchCarDetail(params.recNo),
     fetchVideoUrl(params.recNo),
+    fetchCarOverrides(params.recNo),
   ])
 
-  const pollutionGrade = detail?.pollutionGrade ?? null
-  const safetyLevel    = detail?.safetyLevel    ?? null
+  const pollutionGrade = carOverride?.pollutionGrade ?? detail?.pollutionGrade ?? null
+  const safetyLevel    = carOverride?.safetyLevel    ?? detail?.safetyLevel    ?? null
 
   if (!summary) {
     return (
@@ -179,6 +196,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     <main style={{
       height: '100dvh',
       scrollSnapAlign: 'start',
+      scrollSnapStop: 'always',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',

@@ -25,11 +25,16 @@ function extractVideoId(url: string): string | null {
   return null
 }
 
+type Override = { pollutionGrade: number | null; safetyLevel: number | null }
+
 export default function AdminCarsPage() {
   const [cars, setCars] = useState<CarSummary[]>([])
   const [videos, setVideos] = useState<Record<string, string>>({})
+  const [overrides, setOverrides] = useState<Record<string, Override>>({})
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [draftPollution, setDraftPollution] = useState<number | ''>('')
+  const [draftSafety, setDraftSafety] = useState<number | ''>('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -38,23 +43,44 @@ export default function AdminCarsPage() {
     Promise.all([
       fetch('/api/cars?basic=1').then(r => r.json()),
       fetch('/api/car-videos').then(r => r.json()),
-    ]).then(([carsData, videosData]) => {
+      fetch('/api/car-overrides').then(r => r.json()),
+    ]).then(([carsData, videosData, overridesData]) => {
       setCars((carsData.cars ?? []).filter((c: CarSummary) => c.imageUrl))
       setVideos(videosData)
+      setOverrides(overridesData)
       setLoading(false)
     })
   }, [])
 
   async function save(recNo: string) {
     setSaving(true)
-    await fetch('/api/car-videos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rec_no: recNo, youtube_url: draft.trim() }),
-    })
-    setVideos(prev => {
+    await Promise.all([
+      fetch('/api/car-videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rec_no: recNo, youtube_url: draft.trim() }),
+      }),
+      fetch('/api/car-overrides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rec_no: recNo,
+          pollution_grade: draftPollution === '' ? null : draftPollution,
+          safety_level: draftSafety === '' ? null : draftSafety,
+        }),
+      }),
+    ])
+    setVideos((prev: Record<string, string>) => {
       const next = { ...prev }
       if (draft.trim()) next[recNo] = draft.trim()
+      else delete next[recNo]
+      return next
+    })
+    setOverrides((prev: Record<string, Override>) => {
+      const next = { ...prev }
+      const pg = draftPollution === '' ? null : draftPollution
+      const sl = draftSafety === '' ? null : draftSafety
+      if (pg !== null || sl !== null) next[recNo] = { pollutionGrade: pg, safetyLevel: sl }
       else delete next[recNo]
       return next
     })
@@ -65,6 +91,17 @@ export default function AdminCarsPage() {
   const filtered = cars.filter(c =>
     !search.trim() || c.name.toLowerCase().includes(search.trim().toLowerCase())
   )
+
+  const selectStyle = {
+    width: '100%', boxSizing: 'border-box' as const,
+    background: 'rgba(255,255,255,0.05)',
+    border: `1px solid ${GOLD_BORDER}`,
+    borderRadius: 8, padding: '8px 10px',
+    fontFamily: 'var(--font-heebo)', fontSize: 13,
+    color: '#fff', outline: 'none',
+    appearance: 'none' as const,
+    WebkitAppearance: 'none' as const,
+  }
 
   return (
     <div style={{ overflowY: 'auto', flex: 1, direction: 'rtl' }}>
@@ -77,7 +114,7 @@ export default function AdminCarsPage() {
       }}>
         <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.3em', color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 3px' }}>ניהול</p>
         <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 20, color: '#fff', margin: 0 }}>
-          סרטוני רכבים
+          ניהול רכבים
           {!loading && <span style={{ fontSize: 13, color: GOLD_DIM, fontWeight: 400, marginRight: 10 }}>{filtered.length}</span>}
         </h1>
         {!loading && (
@@ -125,6 +162,7 @@ export default function AdminCarsPage() {
               const make = getMake(car.name)
               const model = car.name.slice(make.length).trim()
               const hasVideo = !!videos[car.recNo]
+              const hasOverride = !!overrides[car.recNo]
               const isEditing = editing === car.recNo
 
               return (
@@ -136,11 +174,9 @@ export default function AdminCarsPage() {
                   transition: 'border-color 0.2s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
-                    {/* Thumbnail */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={car.imageUrl} alt={car.name} style={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 7, flexShrink: 0 }} />
 
-                    {/* Info */}
                     <div style={{ flex: 1, minWidth: 0, direction: 'ltr', textAlign: 'left' }}>
                       <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 14, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {make}
@@ -150,22 +186,30 @@ export default function AdminCarsPage() {
                           {model}
                         </div>
                       )}
-                      {hasVideo && !isEditing && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                            <polygon points="5,3 19,12 5,21" fill="rgba(200,169,110,0.8)" />
-                          </svg>
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: GOLD_DIM }}>יש סרטון</span>
+                      {!isEditing && (hasVideo || hasOverride) && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                          {hasVideo && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                <polygon points="5,3 19,12 5,21" fill="rgba(200,169,110,0.8)" />
+                              </svg>
+                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: GOLD_DIM }}>סרטון</span>
+                            </div>
+                          )}
+                          {hasOverride && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(100,180,255,0.7)' }}>מדדים ידניים</span>
+                          )}
                         </div>
                       )}
                     </div>
 
-                    {/* Edit button */}
                     <button
                       onClick={() => {
                         if (isEditing) { setEditing(null); return }
                         setEditing(car.recNo)
                         setDraft(videos[car.recNo] ?? '')
+                        setDraftPollution(overrides[car.recNo]?.pollutionGrade ?? '')
+                        setDraftSafety(overrides[car.recNo]?.safetyLevel ?? '')
                       }}
                       style={{
                         width: 34, height: 34, borderRadius: 8, flexShrink: 0,
@@ -183,36 +227,74 @@ export default function AdminCarsPage() {
                     </button>
                   </div>
 
-                  {/* Edit panel */}
                   {isEditing && (
                     <div style={{ padding: '0 12px 12px', borderTop: `1px solid ${GOLD_BORDER}` }}>
-                      <div style={{ paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <label style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(255,255,255,0.45)', direction: 'rtl' }}>
-                          קישור YouTube (Shorts או Watch)
-                        </label>
-                        <input
-                          type="url"
-                          value={draft}
-                          onChange={e => setDraft(e.target.value)}
-                          placeholder="https://www.youtube.com/shorts/..."
-                          dir="ltr"
-                          style={{
-                            width: '100%', boxSizing: 'border-box',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: `1px solid ${draft && !extractVideoId(draft) ? 'rgba(255,80,80,0.5)' : GOLD_BORDER}`,
-                            borderRadius: 8, padding: '8px 10px',
-                            fontFamily: 'var(--font-inter)', fontSize: 12,
-                            color: '#fff', outline: 'none',
-                          }}
-                        />
-                        {draft && !extractVideoId(draft) && (
-                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,100,100,0.8)' }}>קישור לא תקין</span>
-                        )}
-                        {draft && extractVideoId(draft) && (
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(100,200,100,0.8)' }}>
-                            ✓ מזוהה: {extractVideoId(draft)}
-                          </span>
-                        )}
+                      <div style={{ paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                        {/* YouTube URL */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(255,255,255,0.45)', direction: 'rtl' }}>
+                            קישור YouTube (Shorts או Watch)
+                          </label>
+                          <input
+                            type="url"
+                            value={draft}
+                            onChange={e => setDraft(e.target.value)}
+                            placeholder="https://www.youtube.com/shorts/..."
+                            dir="ltr"
+                            style={{
+                              width: '100%', boxSizing: 'border-box',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: `1px solid ${draft && !extractVideoId(draft) ? 'rgba(255,80,80,0.5)' : GOLD_BORDER}`,
+                              borderRadius: 8, padding: '8px 10px',
+                              fontFamily: 'var(--font-inter)', fontSize: 12,
+                              color: '#fff', outline: 'none',
+                            }}
+                          />
+                          {draft && !extractVideoId(draft) && (
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,100,100,0.8)' }}>קישור לא תקין</span>
+                          )}
+                          {draft && extractVideoId(draft) && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(100,200,100,0.8)' }}>
+                              ✓ מזוהה: {extractVideoId(draft)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Pollution grade */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(255,255,255,0.45)', direction: 'rtl' }}>
+                            דרגת זיהום (1 = הכי נקי, 15 = הכי מזהם)
+                          </label>
+                          <select
+                            value={draftPollution}
+                            onChange={e => setDraftPollution(e.target.value === '' ? '' : Number(e.target.value))}
+                            style={selectStyle}
+                          >
+                            <option value="">ללא עקיפה (ברירת מחדל)</option>
+                            {Array.from({ length: 15 }, (_, i) => i + 1).map(v => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Safety level */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(255,255,255,0.45)', direction: 'rtl' }}>
+                            רמת בטיחות (0 = הכי נמוך, 8 = הכי גבוה)
+                          </label>
+                          <select
+                            value={draftSafety}
+                            onChange={e => setDraftSafety(e.target.value === '' ? '' : Number(e.target.value))}
+                            style={selectStyle}
+                          >
+                            <option value="">ללא עקיפה (ברירת מחדל)</option>
+                            {Array.from({ length: 9 }, (_, i) => i).map(v => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
+                          </select>
+                        </div>
+
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             onClick={() => save(car.recNo)}
@@ -227,9 +309,9 @@ export default function AdminCarsPage() {
                           >
                             {saving ? 'שומר...' : 'שמור'}
                           </button>
-                          {hasVideo && (
+                          {(hasVideo || hasOverride) && (
                             <button
-                              onClick={() => { setDraft(''); save(car.recNo) }}
+                              onClick={() => { setDraft(''); setDraftPollution(''); setDraftSafety(''); save(car.recNo) }}
                               style={{
                                 padding: '8px 14px', borderRadius: 8,
                                 background: 'rgba(255,255,255,0.05)',
@@ -239,7 +321,7 @@ export default function AdminCarsPage() {
                                 cursor: 'pointer',
                               }}
                             >
-                              הסר
+                              הסר הכל
                             </button>
                           )}
                         </div>
