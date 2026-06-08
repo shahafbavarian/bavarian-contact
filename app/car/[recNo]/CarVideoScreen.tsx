@@ -14,7 +14,7 @@ function extractVideoId(url: string): string | null {
   return null
 }
 
-export default function CarVideoScreen({ youtubeUrl }: { youtubeUrl: string }) {
+export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
   const [loaded, setLoaded] = useState(false)
   const [muted, setMuted] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
