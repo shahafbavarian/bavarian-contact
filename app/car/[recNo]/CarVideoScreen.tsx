@@ -23,59 +23,68 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
 
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
   const [visible, setVisible] = useState(false)
-  const [videoReady, setVideoReady] = useState(false) // true once YouTube fires onStateChange=1
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // Track when video section is scrolled into view
+  // When video is ready: unlock scroll + update hint to ready state
+  function markReady() {
+    const container = document.querySelector<HTMLElement>('[data-scroll-container]')
+    if (container) {
+      container.style.overflowY = 'scroll'
+      container.style.scrollSnapType = 'y mandatory'
+    }
+    const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
+    if (hint) hint.setAttribute('data-ready', '1')
+  }
+
+  // Fallback: unlock after 8s if YouTube never fires the event
   useEffect(() => {
-    if (!containerRef.current) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        setVisible(e.isIntersecting)
-        if (e.isIntersecting) setTimeout(() => containerRef.current?.focus(), 400)
-      },
-      { threshold: 0.5 }
-    )
-    obs.observe(containerRef.current)
-    return () => obs.disconnect()
+    const t = setTimeout(markReady, 8000)
+    return () => clearTimeout(t)
   }, [])
 
-  // Hide accessibility widget when video is visible
-  useEffect(() => {
-    if (!containerRef.current) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        const el = document.querySelector<HTMLElement>('[data-a11y-widget]')
-        if (!el) return
-        el.style.opacity = e.isIntersecting ? '0' : ''
-        el.style.pointerEvents = e.isIntersecting ? 'none' : ''
-      },
-      { threshold: 0.5 }
-    )
-    obs.observe(containerRef.current)
-    return () => obs.disconnect()
-  }, [])
-
-  // Listen for YouTube playback events:
-  // - onStateChange=1 (playing): mark ready + re-apply mute state
-  // - onStateChange=1 after rewind/loop: re-apply mute state
+  // YouTube events: onStateChange=1 means playing
+  // Handle both raw format and infoDelivery wrapper
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof e.data !== 'string') return
       try {
-        const data = JSON.parse(e.data)
-        if (data.event === 'onStateChange' && data.info === 1) {
-          setVideoReady(true)
+        const d = JSON.parse(e.data)
+        const isPlaying =
+          (d.event === 'onStateChange' && d.info === 1) ||
+          (d.event === 'infoDelivery' && d.info?.playerState === 1)
+        if (isPlaying) {
+          markReady()
           sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
         }
       } catch {}
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  // Track visibility — hide/show fixed widgets when on video screen
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        setVisible(e.isIntersecting)
+        if (e.isIntersecting) setTimeout(() => containerRef.current?.focus(), 400)
+        for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]']) {
+          const el = document.querySelector<HTMLElement>(sel)
+          if (!el) return
+          el.style.opacity = e.isIntersecting ? '0' : ''
+          el.style.pointerEvents = e.isIntersecting ? 'none' : ''
+          el.style.transition = 'opacity 0.2s'
+        }
+      },
+      { threshold: 0.5 }
+    )
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
   }, [])
 
   // Hardware volume key → unmute
@@ -93,7 +102,6 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
 
   if (!videoId) return null
 
-  const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
   const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
 
   function toggleMute() {
@@ -103,16 +111,12 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     setMuted(next)
   }
 
-  // Thumbnail stays visible until YouTube confirms it's actually playing
-  const showThumbnail = !videoReady
-
   return (
     <div
       ref={containerRef}
       tabIndex={-1}
       style={{ height: '100dvh', scrollSnapAlign: 'start', position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
     >
-      {/* iframe — loads immediately on page mount, hidden behind thumbnail until ready */}
       <iframe
         ref={iframeRef}
         src={src}
@@ -128,41 +132,8 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Thumbnail — covers iframe until video is actually playing */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={thumbnailUrl}
-        alt=""
-        style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover',
-          opacity: showThumbnail ? 0.85 : 0,
-          transition: showThumbnail ? 'none' : 'opacity 0.5s ease',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Loading spinner — visible when scrolled to video but not yet playing */}
-      {visible && showThumbnail && (
-        <>
-          <style>{`
-            @keyframes spin { to { transform: rotate(360deg); } }
-          `}</style>
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 44, height: 44,
-            border: '3px solid rgba(255,255,255,0.15)',
-            borderTopColor: 'rgba(200,169,110,0.85)',
-            borderRadius: '50%',
-            animation: 'spin 0.9s linear infinite',
-            pointerEvents: 'none',
-          }} />
-        </>
-      )}
-
-      {/* Sound button — shown once video is playing */}
-      {visible && videoReady && (
+      {/* Sound button */}
+      {visible && (
         <button
           onClick={toggleMute}
           style={{
@@ -170,9 +141,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
             bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
             right: 20,
             zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 14,
             borderRadius: '50%',
             background: muted ? 'rgba(0,0,0,0.78)' : 'rgba(200,169,110,0.95)',

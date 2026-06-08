@@ -146,13 +146,14 @@ export default function CarIndices({
 
       {/* ── Trigger: fixed pill below accessibility widget ── */}
       <button
+        data-ci-trigger
         onClick={() => setOpen(true)}
         style={{
           position: 'fixed',
           top: 102,
           right: 18,
           zIndex: 9998,
-          display: 'inline-flex', alignItems: 'center', gap: 6,
+          display: 'inline-flex', alignItems: 'center',
           padding: '7px 12px',
           borderRadius: 20,
           background: 'rgba(14,14,14,0.88)',
@@ -162,9 +163,6 @@ export default function CarIndices({
           boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
         }}
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: 'rgba(200,169,110,0.7)', flexShrink: 0 }}>
-          <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        </svg>
         <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, fontWeight: 600, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>
           זיהום ובטיחות
         </span>

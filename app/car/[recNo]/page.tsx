@@ -157,12 +157,14 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
   return (
-    <div style={{
-      height: '100dvh',
-      overflowY: videoUrl ? 'scroll' : 'hidden',
-      scrollSnapType: videoUrl ? 'y mandatory' : undefined,
-      background: '#000',
-    }}>
+    <div
+      data-scroll-container
+      style={{
+        height: '100dvh',
+        overflowY: 'hidden',
+        background: '#000',
+      }}
+    >
     {/* Preconnect ASAP so YouTube iframe is ready when user scrolls */}
     {videoUrl && (
       <>
@@ -288,26 +290,52 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       <CarCTA carName={summary.name} recNo={params.recNo} />
       <AccessibilityWidget top={50} right={18} />
 
-      {/* Scroll-up hint when video exists */}
+      {/* Scroll hint — loading state until video ready, then bounce arrow */}
       {videoUrl && (
-        <div data-scroll-hint style={{
-          position: 'absolute',
-          bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 4,
-          zIndex: 50,
-          animation: 'videoHintBounce 2s ease-in-out infinite',
-          pointerEvents: 'none',
-        }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
-          <style>{`@keyframes videoHintBounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-5px)} }`}</style>
+        <div
+          data-scroll-hint
+          data-ready="0"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 50,
+            pointerEvents: 'none',
+          }}
+        >
+          <style>{`
+            @keyframes videoHintBounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-5px)} }
+            @keyframes hintSpin { to { transform: rotate(360deg); } }
+            [data-scroll-hint][data-ready="0"] { animation: none; }
+            [data-scroll-hint][data-ready="1"] { animation: videoHintBounce 2s ease-in-out infinite; }
+            [data-scroll-hint][data-ready="0"] [data-hint-loading] { display: flex; }
+            [data-scroll-hint][data-ready="0"] [data-hint-ready]   { display: none; }
+            [data-scroll-hint][data-ready="1"] [data-hint-loading] { display: none; }
+            [data-scroll-hint][data-ready="1"] [data-hint-ready]   { display: flex; }
+          `}</style>
+
+          {/* Loading state */}
+          <div data-hint-loading style={{ flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{
+              width: 16, height: 16,
+              border: '2px solid rgba(200,169,110,0.2)',
+              borderTopColor: 'rgba(200,169,110,0.75)',
+              borderRadius: '50%',
+              animation: 'hintSpin 0.9s linear infinite',
+            }} />
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>
+              סרטון בטעינה
+            </span>
+          </div>
+
+          {/* Ready state */}
+          <div data-hint-ready style={{ flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
+          </div>
         </div>
       )}
     </main>
