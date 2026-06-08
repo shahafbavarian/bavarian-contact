@@ -32,18 +32,15 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     return () => obs.disconnect()
   }, [])
 
-  // Hide fixed UI (a11y widget + CTA bar) when video screen is visible
+  // Hide only accessibility widget when video screen is visible
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new IntersectionObserver(
       ([e]) => {
-        const hidden = e.isIntersecting
-        for (const sel of ['[data-a11y-widget]', '[data-cta-bar]']) {
-          const el = document.querySelector<HTMLElement>(sel)
-          if (!el) continue
-          el.style.opacity = hidden ? '0' : ''
-          el.style.pointerEvents = hidden ? 'none' : ''
-        }
+        const el = document.querySelector<HTMLElement>('[data-a11y-widget]')
+        if (!el) return
+        el.style.opacity = e.isIntersecting ? '0' : ''
+        el.style.pointerEvents = e.isIntersecting ? 'none' : ''
       },
       { threshold: 0.5 }
     )
@@ -114,13 +111,13 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         />
       )}
 
-      {/* Sound button — bottom right, CTA is hidden so no overlap */}
+      {/* Sound button — above CTA bar */}
       {loaded && (
         <button
           onClick={toggleMute}
           style={{
             position: 'absolute',
-            bottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
+            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
             right: 20,
             zIndex: 9999,
             display: 'flex',
