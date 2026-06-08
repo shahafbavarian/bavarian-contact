@@ -162,6 +162,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       style={{
         height: '100dvh',
         overflowY: 'hidden',
+        scrollSnapType: 'y mandatory',
         background: '#000',
       }}
     >

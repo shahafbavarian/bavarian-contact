@@ -29,13 +29,10 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // When video is ready: unlock scroll + update hint to ready state
+  // When video is ready: unlock scroll (snap is already set in CSS) + update hint
   function markReady() {
     const container = document.querySelector<HTMLElement>('[data-scroll-container]')
-    if (container) {
-      container.style.overflowY = 'scroll'
-      container.style.scrollSnapType = 'y mandatory'
-    }
+    if (container) container.style.overflowY = 'scroll'
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
   }
@@ -132,35 +129,43 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Sound button */}
+      {/* Fade from black at top — smooth transition from CTA bar above */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        height: 100,
+        background: 'linear-gradient(to bottom, #000 0%, transparent 100%)',
+        pointerEvents: 'none',
+        zIndex: 2,
+      }} />
+
+      {/* Mute button — minimal floating icon */}
       {visible && (
         <button
           onClick={toggleMute}
           style={{
             position: 'absolute',
-            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
-            right: 20,
+            bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+            right: 18,
             zIndex: 9999,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 14,
-            borderRadius: '50%',
-            background: muted ? 'rgba(0,0,0,0.78)' : 'rgba(200,169,110,0.95)',
-            border: `1.5px solid ${muted ? 'rgba(255,255,255,0.3)' : 'transparent'}`,
-            color: muted ? '#fff' : '#000',
+            width: 36, height: 36,
+            borderRadius: 9,
+            background: 'rgba(0,0,0,0.38)',
+            border: 'none',
+            color: muted ? 'rgba(255,255,255,0.75)' : 'rgba(200,169,110,1)',
             cursor: 'pointer',
-            backdropFilter: 'blur(12px)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-            transition: 'all 0.2s',
+            backdropFilter: 'blur(6px)',
+            transition: 'color 0.2s',
           }}
         >
           {muted ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
               <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
               <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
               <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
