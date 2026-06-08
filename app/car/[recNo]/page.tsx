@@ -235,7 +235,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               </span>
             )}
           </div>
-          <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
         </div>
       </div>
 
@@ -316,6 +315,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     {videoUrl && (
       <CarVideoScreen youtubeUrl={videoUrl} carName={summary.name} />
     )}
+    <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
     </div>
   )
 }

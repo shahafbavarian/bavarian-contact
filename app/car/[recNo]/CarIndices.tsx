@@ -144,21 +144,30 @@ export default function CarIndices({
         @keyframes ciFadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
-      {/* ── Trigger: simple text button ── */}
+      {/* ── Trigger: fixed pill below accessibility widget ── */}
       <button
         onClick={() => setOpen(true)}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          padding: '4px 0 2px',
-          background: 'none', border: 'none', cursor: 'pointer',
+          position: 'fixed',
+          top: 102,
+          right: 18,
+          zIndex: 9998,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '7px 12px',
+          borderRadius: 20,
+          background: 'rgba(14,14,14,0.88)',
+          border: '1px solid rgba(200,169,110,0.28)',
+          cursor: 'pointer',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
         }}
       >
-        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(200,169,110,0.55)' }}>
-          זיהום אוויר ובטיחות
-        </span>
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ color: 'rgba(200,169,110,0.4)', flexShrink: 0 }}>
-          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: 'rgba(200,169,110,0.7)', flexShrink: 0 }}>
+          <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
         </svg>
+        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, fontWeight: 600, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>
+          זיהום ובטיחות
+        </span>
       </button>
 
       {/* ── Bottom sheet ── */}
