@@ -234,6 +234,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               </span>
             )}
           </div>
+          <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
         </div>
       </div>
 
@@ -282,14 +283,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           <SpecCell label="מחירון" value={listPrice} />
           <SpecCell label="המחיר שלנו" value={summary.price || null} />
         </div>
-      </div>
-
-      {/* ─── Pollution / safety indices — centered in remaining space ─── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-        <CarIndices
-          pollutionGrade={pollutionGrade}
-          safetyLevel={safetyLevel}
-        />
       </div>
 
       <CarCTA carName={summary.name} recNo={params.recNo} />

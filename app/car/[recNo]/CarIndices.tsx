@@ -136,19 +136,53 @@ export default function CarIndices({
         @keyframes ciFadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
-      {/* ── Trigger ── */}
+      {/* ── Trigger: compact inline badges ── */}
       <button
         onClick={() => setOpen(true)}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 5, width: '100%', padding: '12px 14px 16px',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '4px 0 2px',
           background: 'none', border: 'none', cursor: 'pointer',
+          direction: 'ltr',
         }}
       >
-        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: GOLD_DIM }}>
-          זיהום אוויר ובטיחות
-        </span>
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: GOLD_DIM, flexShrink: 0 }}>
+        {pollutionGrade !== null && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 9px 3px 7px',
+            borderRadius: 20,
+            background: 'rgba(255,255,255,0.055)',
+            border: '1px solid rgba(255,255,255,0.09)',
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+              background: POLLUTION_COLORS[pollutionGrade - 1] ?? '#888',
+              boxShadow: `0 0 4px ${POLLUTION_COLORS[pollutionGrade - 1] ?? '#888'}`,
+            }} />
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
+              זיהום {pollutionGrade}
+            </span>
+          </span>
+        )}
+        {safetyLevel !== null && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 9px 3px 7px',
+            borderRadius: 20,
+            background: 'rgba(255,255,255,0.055)',
+            border: '1px solid rgba(255,255,255,0.09)',
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+              background: SAFETY_COLORS[safetyLevel] ?? '#888',
+              boxShadow: `0 0 4px ${SAFETY_COLORS[safetyLevel] ?? '#888'}`,
+            }} />
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
+              בטיחות {safetyLevel}
+            </span>
+          </span>
+        )}
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
