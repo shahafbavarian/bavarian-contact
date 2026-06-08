@@ -32,6 +32,7 @@ export default function AdminCarsPage() {
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -61,6 +62,10 @@ export default function AdminCarsPage() {
     setEditing(null)
   }
 
+  const filtered = cars.filter(c =>
+    !search.trim() || c.name.toLowerCase().includes(search.trim().toLowerCase())
+  )
+
   return (
     <div style={{ overflowY: 'auto', flex: 1, direction: 'rtl' }}>
       <header style={{
@@ -73,8 +78,30 @@ export default function AdminCarsPage() {
         <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.3em', color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 3px' }}>ניהול</p>
         <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 20, color: '#fff', margin: 0 }}>
           סרטוני רכבים
-          {!loading && <span style={{ fontSize: 13, color: GOLD_DIM, fontWeight: 400, marginRight: 10 }}>{cars.length} רכבים</span>}
+          {!loading && <span style={{ fontSize: 13, color: GOLD_DIM, fontWeight: 400, marginRight: 10 }}>{filtered.length}</span>}
         </h1>
+        {!loading && (
+          <div style={{ position: 'relative', marginTop: 12 }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }}>
+              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="חיפוש לפי יצרן או דגם..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${GOLD_BORDER}`,
+                borderRadius: 8, padding: '8px 32px 8px 10px',
+                fontFamily: 'var(--font-heebo)', fontSize: 13,
+                color: '#fff', outline: 'none', direction: 'rtl',
+              }}
+            />
+          </div>
+        )}
       </header>
 
       <div style={{ height: 1, background: `linear-gradient(to left, transparent, ${GOLD_DIM}, transparent)`, margin: '0 40px' }} />
@@ -89,7 +116,12 @@ export default function AdminCarsPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {cars.map(car => {
+            {filtered.length === 0 && (
+              <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-heebo)', paddingTop: 32 }}>
+                לא נמצאו רכבים
+              </p>
+            )}
+            {filtered.map(car => {
               const make = getMake(car.name)
               const model = car.name.slice(make.length).trim()
               const hasVideo = !!videos[car.recNo]
