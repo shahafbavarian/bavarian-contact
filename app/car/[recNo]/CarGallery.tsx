@@ -38,7 +38,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column' }}>
 
       {images.length > 1 && (
         <>
@@ -47,10 +47,10 @@ export default function CarGallery({ images, name, priority }: { images: string[
         </>
       )}
 
-      {/* Main image — flex:1 fills all space above thumbnails, no fixed aspect ratio */}
+      {/* Main image — always 3:2 */}
       <div
         data-gallery-main
-        style={{ position: 'relative', width: '100%', flex: '1 1 0', minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'none' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', flexShrink: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

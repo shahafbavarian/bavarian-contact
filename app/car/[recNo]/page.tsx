@@ -202,10 +202,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       overflow: 'hidden',
       background: '#000',
       direction: 'rtl',
-      paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
       maxWidth: 480,
       margin: '0 auto',
-      position: 'relative',
     }}>
 
       {/* ─── Top nav + title ─── */}
@@ -259,8 +257,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Gallery — flex:1 fills space between nav and specs ─── */}
-      <div data-car-gallery-col style={{ flex: '1 1 0', minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
+      {/* ─── Gallery ─── */}
+      <div data-car-gallery-col style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
@@ -306,45 +304,22 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      <CarCTA carName={summary.name} recNo={params.recNo} />
-      <AccessibilityWidget top={50} right={18} />
-
-      {/* Scroll hint — loading state until video ready, then bounce arrow */}
+      {/* ─── Scroll hint — in flex flow, never overlaps anything ─── */}
       {videoUrl && (
         <div
           data-scroll-hint
           data-ready="0"
-          style={{
-            position: 'absolute',
-            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 50,
-            pointerEvents: 'none',
-          }}
+          style={{ flexShrink: 0, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
         >
           <style>{`
-            @keyframes videoHintBounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-5px)} }
+            @keyframes videoHintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
             @keyframes hintSpin { to { transform: rotate(360deg); } }
-            [data-scroll-hint][data-ready="0"] { animation: none; }
-            [data-scroll-hint][data-ready="1"] { animation: videoHintBounce 2s ease-in-out infinite; }
+            [data-scroll-hint][data-ready="1"] [data-hint-ready] { animation: videoHintBounce 2s ease-in-out infinite; }
           `}</style>
-
-          {/* Loading state — display set inline so it's applied on first paint, no flash */}
-          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{
-              width: 16, height: 16,
-              border: '2px solid rgba(200,169,110,0.2)',
-              borderTopColor: 'rgba(200,169,110,0.75)',
-              borderRadius: '50%',
-              animation: 'hintSpin 0.9s linear infinite',
-            }} />
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>
-              סרטון בטעינה
-            </span>
+          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 16, height: 16, border: '2px solid rgba(200,169,110,0.2)', borderTopColor: 'rgba(200,169,110,0.75)', borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
           </div>
-
-          {/* Ready state — hidden inline on first paint */}
           <div data-hint-ready style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -353,6 +328,12 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           </div>
         </div>
       )}
+
+      {/* ─── Spacer for fixed CTA bar ─── */}
+      <div style={{ flexShrink: 0, height: 'calc(76px + env(safe-area-inset-bottom, 0px))' }} aria-hidden="true" />
+
+      <CarCTA carName={summary.name} recNo={params.recNo} />
+      <AccessibilityWidget top={50} right={18} />
     </main>
 
     {videoUrl && (
