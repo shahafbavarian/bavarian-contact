@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { CarSummary } from '@/lib/scraper'
@@ -9,6 +9,14 @@ const GOLD = 'rgba(200,169,110,0.9)'
 const GOLD_DIM = 'rgba(200,169,110,0.5)'
 const GOLD_BORDER = 'rgba(200,169,110,0.15)'
 const POLL_INTERVAL = 5 * 60 * 1000
+
+type StockFilter = 'all' | 'stock' | 'europe'
+
+const STOCK_LABELS: Record<StockFilter, string> = {
+  all:    'כל הרכבים',
+  stock:  'במלאי',
+  europe: 'בדרך למלאי',
+}
 
 function getMake(name: string): string {
   const twoWord = ['Land Rover', 'Rolls-Royce', 'Aston Martin', 'Alfa Romeo']
@@ -38,15 +46,28 @@ function saveYadCache(cars: CarSummary[]) {
 }
 
 export default function CarsPage() {
-  const [cars, setCars]       = useState<CarSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch]   = useState('')
+  const [cars, setCars]             = useState<CarSummary[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [search, setSearch]         = useState('')
   const [activeMake, setActiveMake] = useState('הכל')
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all')
+  const [showStockMenu, setShowStockMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowStockMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
 
   useEffect(() => {
     const load = async (isFirst: boolean) => {
       try {
-        // Fast path: show basic list immediately, merge cached yad values
         if (isFirst) {
           const basicRes = await fetch('/api/cars?basic=1')
           if (basicRes.ok) {
@@ -57,7 +78,6 @@ export default function CarsPage() {
             setLoading(false)
           }
         }
-        // Slow path: fetch enriched list (pollution/safety grades)
         const res = await fetch('/api/cars')
         if (!res.ok) return
         const { cars: data }: { cars: CarSummary[] } = await res.json()
@@ -80,9 +100,12 @@ export default function CarsPage() {
   const filtered = useMemo(() => cars.filter(c => {
     const q = search.trim().toLowerCase()
     const matchSearch = !q || c.name.toLowerCase().includes(q) || c.price.includes(q)
-    const matchMake = activeMake === 'הכל' || getMake(c.name) === activeMake
-    return matchSearch && matchMake
-  }), [cars, search, activeMake])
+    const matchMake   = activeMake === 'הכל' || getMake(c.name) === activeMake
+    const matchStock  =
+      stockFilter === 'stock'  ? c.status.includes('מלאי') :
+      stockFilter === 'europe' ? !c.status.includes('מלאי') : true
+    return matchSearch && matchMake && matchStock
+  }), [cars, search, activeMake, stockFilter])
 
   return (
     <main style={{ minHeight: '100vh', background: '#000', paddingBottom: 32 }}>
@@ -99,12 +122,62 @@ export default function CarsPage() {
       {/* Header */}
       <div style={{ padding: '16px 18px 0', position: 'sticky', top: 0, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(8px)', zIndex: 20, borderBottom: `1px solid ${GOLD_BORDER}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 20, color: '#fff', margin: 0, direction: 'rtl' }}>
-            רכבים במלאי
-            {!loading && <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: GOLD_DIM, fontWeight: 400, marginRight: 8 }}>
-              {filtered.length}
-            </span>}
-          </h1>
+
+          {/* Title + dropdown */}
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowStockMenu(v => !v)}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 20, color: '#fff', margin: 0, direction: 'rtl' }}>
+                {STOCK_LABELS[stockFilter]}
+              </h1>
+              {!loading && (
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: GOLD_DIM, fontWeight: 400 }}>
+                  {filtered.length}
+                </span>
+              )}
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none"
+                style={{ color: GOLD_DIM, transition: 'transform 0.2s', transform: showStockMenu ? 'rotate(180deg)' : 'none' }}
+              >
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {showStockMenu && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                background: 'rgba(18,18,18,0.98)', backdropFilter: 'blur(12px)',
+                border: `1px solid ${GOLD_BORDER}`, borderRadius: 10,
+                overflow: 'hidden', zIndex: 100, minWidth: 150,
+              }}>
+                {(['all', 'stock', 'europe'] as StockFilter[]).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => { setStockFilter(f); setShowStockMenu(false) }}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'right',
+                      padding: '11px 16px',
+                      background: f === stockFilter ? 'rgba(200,169,110,0.1)' : 'none',
+                      border: 'none',
+                      borderBottom: f !== 'europe' ? `1px solid ${GOLD_BORDER}` : 'none',
+                      color: f === stockFilter ? GOLD : 'rgba(255,255,255,0.75)',
+                      fontFamily: 'var(--font-heebo)', fontSize: 14,
+                      fontWeight: f === stockFilter ? 700 : 400,
+                      cursor: 'pointer', direction: 'rtl',
+                    }}
+                  >
+                    {STOCK_LABELS[f]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 26, opacity: 0.5 }} />
         </div>
@@ -190,7 +263,7 @@ export default function CarsPage() {
                     />
                   </div>
 
-                  {/* Info — flex:1 so all cards fill equal height */}
+                  {/* Info */}
                   <div style={{ padding: '9px 10px 10px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     {(() => {
                       const make = getMake(car.name)

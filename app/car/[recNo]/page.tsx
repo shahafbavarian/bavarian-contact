@@ -193,23 +193,66 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         <link rel="dns-prefetch" href="https://googlevideo.com" />
       </>
     )}
-    <main style={{
-      height: '100dvh',
-      scrollSnapAlign: 'start',
-      scrollSnapStop: 'always',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      background: '#000',
-      direction: 'rtl',
-      paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
-      maxWidth: 480,
-      margin: '0 auto',
-      position: 'relative',
-    }}>
+    <style>{`
+      @media (min-width: 768px) {
+        [data-car-main] {
+          display: grid !important;
+          grid-template-columns: 400px 1fr !important;
+          grid-template-rows: auto 1fr !important;
+          max-width: 1280px !important;
+          margin: 0 auto !important;
+          padding-bottom: 0 !important;
+        }
+        [data-car-nav] {
+          grid-column: 1; grid-row: 1;
+          background: #000 !important;
+          padding: 36px 40px 16px !important;
+        }
+        [data-car-specs] {
+          grid-column: 1; grid-row: 2;
+          padding: 0 40px 120px !important;
+          align-self: center;
+        }
+        [data-car-gallery-col] {
+          grid-column: 2; grid-row: 1 / span 2;
+          overflow: hidden;
+          position: relative !important;
+          margin-top: 0 !important;
+        }
+        [data-car-gallery-col] > div {
+          height: 100%;
+        }
+        [data-car-gallery-col] [data-gallery-main] {
+          aspect-ratio: unset !important;
+          height: 100%;
+        }
+        [data-car-main] [data-scroll-hint] {
+          bottom: 130px !important;
+        }
+        [data-cta-bar] > div {
+          max-width: 400px !important;
+        }
+      }
+    `}</style>
+    <main
+      data-car-main
+      style={{
+        height: '100dvh',
+        scrollSnapAlign: 'start',
+        scrollSnapStop: 'always',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: '#000',
+        direction: 'rtl',
+        paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
+        maxWidth: 480,
+        margin: '0 auto',
+        position: 'relative',
+      }}>
 
       {/* ─── Top nav + title ─── */}
-      <div style={{
+      <div data-car-nav style={{
         flexShrink: 0,
         padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,10px)',
         position: 'relative', zIndex: 2,
@@ -260,12 +303,12 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* ─── Gallery — nav fade reveals top edge ─── */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
+      <div data-car-gallery-col style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
       {/* ─── Specs ─── */}
-      <div style={{ flexShrink: 0, padding: 'clamp(8px,1.2vh,16px) 14px 0', position: 'relative' }}>
+      <div data-car-specs style={{ flexShrink: 0, padding: 'clamp(8px,1.2vh,16px) 14px 0', position: 'relative' }}>
         {/* Watermark logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

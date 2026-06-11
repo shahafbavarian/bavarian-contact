@@ -35,6 +35,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
       )}
       {/* Main image — fixed 3:2 ratio */}
       <div
+        data-gallery-main
         style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
