@@ -231,13 +231,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           margin-top: 0 !important;
         }
 
-        /* Scroll hint: center of the 400px left column */
-        [data-car-main] [data-scroll-hint] {
-          left: 200px !important;
-          transform: translateX(-50%) !important;
-          bottom: 100px !important;
-        }
-
         /* CTA inner: match left column width */
         [data-cta-bar] > div {
           max-width: 400px !important;
@@ -362,14 +355,14 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       <CarCTA carName={summary.name} recNo={params.recNo} />
       <AccessibilityWidget top={50} right={18} />
 
-      {/* Scroll hint — loading state until video ready, then bounce arrow */}
+      {/* Scroll hint — fixed to viewport so it's never hidden by content */}
       {videoUrl && (
         <div
           data-scroll-hint
           data-ready="0"
           style={{
-            position: 'absolute',
-            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+            position: 'fixed',
+            bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 50,
@@ -381,6 +374,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             @keyframes hintSpin { to { transform: rotate(360deg); } }
             [data-scroll-hint][data-ready="0"] { animation: none; }
             [data-scroll-hint][data-ready="1"] { animation: videoHintBounce 2s ease-in-out infinite; }
+            @media (min-width: 768px) {
+              [data-scroll-hint] { left: 200px !important; bottom: 100px !important; }
+            }
           `}</style>
 
           {/* Loading state — display set inline so it's applied on first paint, no flash */}
