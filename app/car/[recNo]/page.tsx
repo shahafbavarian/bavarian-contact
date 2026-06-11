@@ -195,6 +195,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     )}
     <style>{`
       @media (min-width: 768px) {
+        /* Grid: left col (nav+specs) | right col (gallery) */
         [data-car-main] {
           display: grid !important;
           grid-template-columns: 400px 1fr !important;
@@ -203,32 +204,41 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           margin: 0 auto !important;
           padding-bottom: 0 !important;
         }
+
+        /* Left-top: nav + title */
         [data-car-nav] {
-          grid-column: 1; grid-row: 1;
+          grid-column: 1 !important; grid-row: 1 !important;
           background: #000 !important;
-          padding: 36px 40px 16px !important;
+          padding: 36px 40px 20px !important;
         }
+
+        /* Left-bottom: specs */
         [data-car-specs] {
-          grid-column: 1; grid-row: 2;
-          padding: 0 40px 120px !important;
-          align-self: center;
+          grid-column: 1 !important; grid-row: 2 !important;
+          padding: 20px 40px 120px !important;
+          overflow-y: auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
         }
+
+        /* Right: gallery — spans both rows, full height */
         [data-car-gallery-col] {
-          grid-column: 2; grid-row: 1 / span 2;
-          overflow: hidden;
-          position: relative !important;
+          grid-column: 2 !important; grid-row: 1 / span 2 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
           margin-top: 0 !important;
         }
-        [data-car-gallery-col] > div {
-          height: 100%;
-        }
-        [data-car-gallery-col] [data-gallery-main] {
-          aspect-ratio: unset !important;
-          height: 100%;
-        }
+
+        /* Scroll hint: center of the 400px left column */
         [data-car-main] [data-scroll-hint] {
-          bottom: 130px !important;
+          left: 200px !important;
+          transform: translateX(-50%) !important;
+          bottom: 100px !important;
         }
+
+        /* CTA inner: match left column width */
         [data-cta-bar] > div {
           max-width: 400px !important;
         }
