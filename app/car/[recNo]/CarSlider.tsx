@@ -23,9 +23,25 @@ export default function CarSlider({
 }) {
   const [onVideo, setOnVideo] = useState(false)
   const [videoReady, setVideoReady] = useState(false)
-  const touchStartY = useRef<number | null>(null)
-  const touchStartX = useRef<number | null>(null)
-  const outerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Enable scrolling only when video is ready
+  useEffect(() => {
+    if (!containerRef.current) return
+    containerRef.current.style.overflowY = videoReady ? 'scroll' : 'hidden'
+  }, [videoReady])
+
+  // Detect which screen is active via scroll position
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    function onScroll() {
+      const isVideo = el!.scrollTop > el!.clientHeight / 2
+      setOnVideo(isVideo)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
 
   // Hide/show fixed overlays when switching screens
   useEffect(() => {
@@ -38,67 +54,38 @@ export default function CarSlider({
     }
   }, [onVideo])
 
-  // Mouse wheel for desktop
-  useEffect(() => {
-    const el = outerRef.current
-    if (!el) return
-    function onWheel(e: WheelEvent) {
-      e.preventDefault()
-      if (!onVideo && videoReady && e.deltaY > 30) setOnVideo(true)
-      if (onVideo && e.deltaY < -30) setOnVideo(false)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [onVideo, videoReady])
-
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartY.current = e.touches[0].clientY
-    touchStartX.current = e.touches[0].clientX
-  }
-
-  function onTouchEnd(e: React.TouchEvent) {
-    if (touchStartY.current === null || touchStartX.current === null) return
-    const dy = e.changedTouches[0].clientY - touchStartY.current
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    touchStartY.current = null
-    touchStartX.current = null
-    // Ignore if horizontal swipe dominates (gallery image switching)
-    if (Math.abs(dx) > Math.abs(dy)) return
-    if (!onVideo && videoReady && dy < -60) setOnVideo(true)
-    if (onVideo && dy > 60) setOnVideo(false)
-  }
-
   return (
     <div
-      ref={outerRef}
-      style={{ height: '100dvh', overflow: 'hidden', background: '#000', position: 'relative' }}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+      ref={containerRef}
+      style={{
+        height: '100dvh',
+        overflowY: 'hidden',
+        scrollSnapType: 'y mandatory',
+        overscrollBehavior: 'none',
+        background: '#000',
+      }}
     >
-      {/* Sliding panel — transform kept here so fixed children below are unaffected */}
+      {/* Screen 1 */}
       <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        transform: onVideo ? 'translateY(-100dvh)' : 'translateY(0)',
-        transition: 'transform 0.45s cubic-bezier(0.4,0,0.2,1)',
-        willChange: 'transform',
+        height: '100dvh',
+        overflow: 'hidden',
+        flexShrink: 0,
+        scrollSnapAlign: 'start',
+        scrollSnapStop: 'always',
       }}>
-        {/* Screen 1 */}
-        <div style={{ height: '100dvh', overflow: 'hidden', flexShrink: 0 }}>
-          {children}
-        </div>
-
-        {/* Screen 2 */}
-        <CarVideoScreen
-          youtubeUrl={youtubeUrl}
-          carName={carName}
-          isActive={onVideo}
-          onReady={() => setVideoReady(true)}
-          onBack={() => setOnVideo(false)}
-        />
+        {children}
       </div>
 
-      {/* Fixed elements outside transform — position:fixed works correctly here */}
+      {/* Screen 2 — video */}
+      <CarVideoScreen
+        youtubeUrl={youtubeUrl}
+        carName={carName}
+        isActive={onVideo}
+        onReady={() => setVideoReady(true)}
+        onBack={() => containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+      />
+
+      {/* position:fixed works correctly here — no transform on this container */}
       <CarCTA carName={carName} recNo={recNo} />
       <AccessibilityWidget top={50} right={18} />
       <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />

@@ -115,7 +115,7 @@ export default function CarVideoScreen({
     <div
       ref={containerRef}
       tabIndex={-1}
-      style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
+      style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
     >
       <iframe
         ref={iframeRef}
