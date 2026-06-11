@@ -261,6 +261,11 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
         @keyframes hintSpin { to { transform: rotate(360deg); } }
         [data-scroll-hint][data-ready="1"] [data-hint-ready] { animation: hintBounce 2s ease-in-out infinite; }
+        /* Short viewports (e.g. mobile Chrome with browser bars): the gallery is the
+           block that gives up height, so the specs block is never clipped.
+           On normal screens the image stays exactly full-width 3:2 as before. */
+        [data-car-gallery-col] [data-gallery-root] { flex: 1 1 auto; min-height: 0; }
+        [data-car-gallery-col] [data-gallery-main] { flex: 0 1 auto !important; min-height: 0 !important; }
       `}</style>
 
       {/* Nav */}
@@ -304,13 +309,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* Gallery — always 3:2 */}
-      <div data-car-gallery-col style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
+      {/* Gallery — 3:2 at full width, shrinks in height only when the viewport is short */}
+      <div data-car-gallery-col style={{ flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
-      {/* Specs — flex:1 so it fills remaining space and compresses on short screens */}
-      <div data-car-specs style={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', padding: 'clamp(6px,1vh,14px) 14px 0', position: 'relative' }}>
+      {/* Specs — fills remaining space on tall screens, never clipped on short ones */}
+      <div data-car-specs style={{ flex: '1 1 auto', minHeight: 'fit-content', padding: 'clamp(6px,1vh,14px) 14px 0', position: 'relative' }}>
         {/* Watermark */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/LOGO.webp" alt="" aria-hidden="true" style={{
