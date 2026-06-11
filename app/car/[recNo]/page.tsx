@@ -5,6 +5,7 @@ import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
 import CarSlider from './CarSlider'
+import DesktopContactForm from './DesktopContactForm'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 export const revalidate = 300
@@ -161,7 +162,87 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const hp         = getSpec('הספק', 'כוח סוס')
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
-  // ─── Screen 1 content ────────────────────────────────────────────────────────
+  // ─── Desktop left panel: gallery fills the full left column ─────────────────
+  const desktopLeft = (
+    <div style={{ width: '100%', height: '100%' }}>
+      <CarGallery images={allImages} name={summary.name} priority />
+    </div>
+  )
+
+  // ─── Desktop right panel: nav + specs + form ─────────────────────────────────
+  const desktopRight = (
+    <div style={{ direction: 'rtl', padding: 'clamp(28px,3.5vh,44px) clamp(24px,2.5vw,40px)', display: 'flex', flexDirection: 'column', minHeight: '100dvh', boxSizing: 'border-box' }}>
+      <Link href="/cars" style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+        fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.45)',
+        textDecoration: 'none', direction: 'rtl', marginBottom: 'clamp(14px,2vh,22px)',
+      }}>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        כל הרכבים
+      </Link>
+
+      <div style={{ direction: 'ltr', textAlign: 'left', flexShrink: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 'clamp(26px,2.8vw,40px)', color: '#fff', margin: 0, lineHeight: 1.0 }}>
+          {make.toUpperCase()}
+        </h1>
+        {model && (
+          <h2 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 'clamp(18px,2vw,28px)', color: 'rgba(255,255,255,0.75)', margin: '2px 0 0', lineHeight: 1.0 }}>
+            {model}
+          </h2>
+        )}
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          {summary.price && (
+            <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 'clamp(18px,1.8vw,24px)', color: GOLD }}>
+              {summary.price}
+            </span>
+          )}
+          {summary.monthlyPrice && (
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 12, color: 'rgba(255,255,255,0.32)' }}>
+              {summary.monthlyPrice}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: 'rgba(200,169,110,0.12)', margin: 'clamp(16px,2vh,24px) 0', flexShrink: 0 }} />
+
+      {/* Specs grid */}
+      <div style={{ flexShrink: 0, position: 'relative' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/LOGO.webp" alt="" aria-hidden="true" style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90%', maxWidth: 300, opacity: 0.045,
+          pointerEvents: 'none', userSelect: 'none', zIndex: 0,
+        }} />
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <SpecCell label="יד" value={yad} />
+          <SpecCell label="שנה" value={yearValue} />
+          <SpecCell label='ק"מ' value={km} />
+        </div>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
+          <SpecCell label="נפח מנוע" value={engineVol} />
+          <SpecCell label='כ"ס' value={hp} />
+          <SpecCell label="סוג מנוע" value={engineType} />
+        </div>
+        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 6 }}>
+          <SpecCell label="מחירון" value={listPrice} />
+          <SpecCell label="המחיר שלנו" value={summary.price || null} />
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: 'clamp(16px,2vh,24px) 0', flexShrink: 0 }} />
+
+      {/* Inline contact form */}
+      <div style={{ flex: '1 1 auto', minHeight: 0 }}>
+        <DesktopContactForm carName={summary.name} recNo={params.recNo} />
+      </div>
+    </div>
+  )
+
+  // ─── Screen 1 content (mobile) ───────────────────────────────────────────────
   const screen1 = (
     <main
       data-car-main
@@ -177,22 +258,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       }}
     >
       <style>{`
-        @media (min-width: 768px) {
-          [data-car-main] {
-            display: grid !important;
-            grid-template-columns: 400px 1fr !important;
-            grid-template-rows: auto 1fr !important;
-            max-width: 1280px !important;
-            margin: 0 auto !important;
-          }
-          [data-car-nav] { grid-column: 1 !important; grid-row: 1 !important; padding: 36px 40px 20px !important; }
-          [data-car-specs] { grid-column: 1 !important; grid-row: 2 !important; padding: 20px 40px 40px !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
-          [data-car-gallery-col] { grid-column: 2 !important; grid-row: 1 / span 2 !important; overflow: hidden !important; }
-          [data-gallery-root] { height: 100% !important; }
-          [data-gallery-main] { aspect-ratio: unset !important; flex: 1 !important; min-height: 0 !important; flex-shrink: unset !important; }
-          [data-scroll-hint] { display: none !important; }
-          [data-cta-bar] > div { max-width: 400px !important; }
-        }
+        @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        @keyframes hintSpin { to { transform: rotate(360deg); } }
+        [data-scroll-hint][data-ready="1"] [data-hint-ready] { animation: hintBounce 2s ease-in-out infinite; }
       `}</style>
 
       {/* Nav */}
@@ -317,6 +385,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           recNo={params.recNo}
           pollutionGrade={pollutionGrade}
           safetyLevel={safetyLevel}
+          desktopLeft={desktopLeft}
+          desktopRight={desktopRight}
         >
           {screen1}
         </CarSlider>

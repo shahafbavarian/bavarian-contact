@@ -6,8 +6,12 @@ import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
+const GOLD = 'rgba(200,169,110,0.8)'
+
 export default function CarSlider({
   children,
+  desktopLeft,
+  desktopRight,
   youtubeUrl,
   carName,
   recNo,
@@ -15,6 +19,8 @@ export default function CarSlider({
   safetyLevel,
 }: {
   children: React.ReactNode
+  desktopLeft: React.ReactNode
+  desktopRight: React.ReactNode
   youtubeUrl: string
   carName: string
   recNo: string
@@ -23,17 +29,27 @@ export default function CarSlider({
 }) {
   const [onVideo, setOnVideo] = useState(false)
   const [videoReady, setVideoReady] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const mobileContainerRef = useRef<HTMLDivElement>(null)
+  const leftPanelRef = useRef<HTMLDivElement>(null)
 
-  // Enable scrolling only when video is ready
   useEffect(() => {
-    if (!containerRef.current) return
-    containerRef.current.style.overflowY = videoReady ? 'scroll' : 'hidden'
-  }, [videoReady])
+    const check = () => setIsDesktop(window.innerWidth >= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
-  // Detect which screen is active via scroll position
+  // ── MOBILE: enable scroll when video ready ──────────────────────────
   useEffect(() => {
-    const el = containerRef.current
+    if (isDesktop || !mobileContainerRef.current) return
+    mobileContainerRef.current.style.overflowY = videoReady ? 'scroll' : 'hidden'
+  }, [videoReady, isDesktop])
+
+  // ── MOBILE: detect active screen via scroll position ────────────────
+  useEffect(() => {
+    if (isDesktop) return
+    const el = mobileContainerRef.current
     if (!el) return
     function onScroll() {
       const isVideo = el!.scrollTop > el!.clientHeight / 2
@@ -41,10 +57,11 @@ export default function CarSlider({
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [isDesktop])
 
-  // Hide/show fixed overlays when switching screens
+  // ── MOBILE: hide/show fixed overlays when switching screens ─────────
   useEffect(() => {
+    if (isDesktop) return
     for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]']) {
       const el = document.querySelector<HTMLElement>(sel)
       if (!el) continue
@@ -52,11 +69,120 @@ export default function CarSlider({
       el.style.pointerEvents = onVideo ? 'none' : ''
       el.style.transition = 'opacity 0.2s'
     }
-  }, [onVideo])
+  }, [onVideo, isDesktop])
 
+  // ── DESKTOP: wheel on left panel toggles gallery ↔ video ────────────
+  useEffect(() => {
+    if (!isDesktop) return
+    const el = leftPanelRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      e.preventDefault()
+      if (!onVideo && videoReady && e.deltaY > 30) setOnVideo(true)
+      if (onVideo && e.deltaY < -30) setOnVideo(false)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [isDesktop, onVideo, videoReady])
+
+  // ── DESKTOP LAYOUT ──────────────────────────────────────────────────
+  if (isDesktop) {
+    return (
+      <>
+        <style>{`
+          @keyframes hintSpin  { to { transform: rotate(360deg); } }
+          @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+          [data-cta-bar]    { display: none !important; }
+          [data-a11y-widget] { display: none !important; }
+          [data-ci-trigger]  { display: none !important; }
+          [data-gallery-root]  { height: 100% !important; }
+          [data-gallery-main]  { aspect-ratio: unset !important; flex: 1 !important; min-height: 0 !important; flex-shrink: unset !important; }
+        `}</style>
+
+        <div style={{
+          display: 'flex', height: '100dvh', overflow: 'hidden',
+          background: '#000', direction: 'ltr',
+        }}>
+
+          {/* ── Left panel: gallery ↔ video ── */}
+          <div
+            ref={leftPanelRef}
+            style={{ flex: 1, position: 'relative', height: '100dvh', overflow: 'hidden', background: '#000' }}
+          >
+            {/* Gallery layer */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              opacity: onVideo ? 0 : 1,
+              transition: 'opacity 0.45s ease',
+              pointerEvents: onVideo ? 'none' : 'auto',
+            }}>
+              <div style={{ width: '100%', height: '100%' }}>
+                {desktopLeft}
+              </div>
+
+              {/* Centered hint: spinner while loading, arrow when ready */}
+              <div style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10, pointerEvents: 'none',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+                borderRadius: 20, padding: '12px 20px',
+              }}>
+                {!videoReady ? (
+                  <>
+                    <div style={{ width: 20, height: 20, border: `2px solid rgba(200,169,110,0.18)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
+                    <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.5)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ animation: 'hintBounce 2s ease-in-out infinite' }}>
+                      <path d="M8 13V3M4 7l4-4 4 4" stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>גלגל לסרטון</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Video layer */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              opacity: onVideo ? 1 : 0,
+              transition: 'opacity 0.45s ease',
+              pointerEvents: onVideo ? 'auto' : 'none',
+            }}>
+              <CarVideoScreen
+                youtubeUrl={youtubeUrl} carName={carName}
+                isActive={onVideo}
+                onReady={() => setVideoReady(true)}
+                onBack={() => setOnVideo(false)}
+              />
+            </div>
+          </div>
+
+          {/* ── Right panel: info + form (always visible) ── */}
+          <div style={{
+            width: 'clamp(380px, 36vw, 480px)',
+            height: '100dvh',
+            overflowY: 'auto',
+            flexShrink: 0,
+            background: '#060606',
+            borderLeft: '1px solid rgba(200,169,110,0.1)',
+          }}>
+            {desktopRight}
+          </div>
+        </div>
+
+        <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
+      </>
+    )
+  }
+
+  // ── MOBILE LAYOUT ───────────────────────────────────────────────────
   return (
     <div
-      ref={containerRef}
+      ref={mobileContainerRef}
       style={{
         height: '100dvh',
         overflowY: 'hidden',
@@ -65,27 +191,20 @@ export default function CarSlider({
         background: '#000',
       }}
     >
-      {/* Screen 1 */}
       <div style={{
-        height: '100dvh',
-        overflow: 'hidden',
-        flexShrink: 0,
-        scrollSnapAlign: 'start',
-        scrollSnapStop: 'always',
+        height: '100dvh', overflow: 'hidden', flexShrink: 0,
+        scrollSnapAlign: 'start', scrollSnapStop: 'always',
       }}>
         {children}
       </div>
 
-      {/* Screen 2 — video */}
       <CarVideoScreen
-        youtubeUrl={youtubeUrl}
-        carName={carName}
+        youtubeUrl={youtubeUrl} carName={carName}
         isActive={onVideo}
         onReady={() => setVideoReady(true)}
-        onBack={() => containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+        onBack={() => mobileContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
       />
 
-      {/* position:fixed works correctly here — no transform on this container */}
       <CarCTA carName={carName} recNo={recNo} />
       <AccessibilityWidget top={50} right={18} />
       <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
