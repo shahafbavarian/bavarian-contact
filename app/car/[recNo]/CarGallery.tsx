@@ -9,7 +9,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const imagesRef = useRef(images)
   imagesRef.current = images
 
-  // Keyboard arrow navigation — must be before early return
+  // Keyboard arrow navigation
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const len = imagesRef.current.length
@@ -38,7 +38,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
       {images.length > 1 && (
         <>
@@ -47,10 +47,10 @@ export default function CarGallery({ images, name, priority }: { images: string[
         </>
       )}
 
-      {/* Main image */}
+      {/* Main image — flex:1 fills all space above thumbnails, no fixed aspect ratio */}
       <div
         data-gallery-main
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', flexShrink: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', flex: '1 1 0', minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'none' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -119,9 +119,9 @@ export default function CarGallery({ images, name, priority }: { images: string[
         )}
       </div>
 
-      {/* Thumbnails */}
+      {/* Thumbnails — fixed 62px height, always visible */}
       {images.length >= 2 && (
-        <div style={{ display: 'flex', gap: 4, padding: '5px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
+        <div style={{ height: 62, flexShrink: 0, display: 'flex', gap: 4, padding: '5px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {images.map((src, i) => i === 0 ? null : (
             <button
               key={i}
