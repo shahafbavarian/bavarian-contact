@@ -222,7 +222,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           justify-content: center !important;
         }
 
-        /* Right: gallery — spans both rows, full height, no flex constraints from mobile */
+        /* Right: gallery — spans both rows, full height */
         [data-car-gallery-col] {
           grid-column: 2 !important; grid-row: 1 / span 2 !important;
           flex: unset !important;
@@ -231,6 +231,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           overflow: hidden !important;
           margin-top: 0 !important;
         }
+        [data-gallery-root] { height: 100% !important; }
+        [data-gallery-main] { aspect-ratio: unset !important; flex: 1 !important; min-height: 0 !important; flex-shrink: unset !important; }
 
         /* CTA inner: match left column width */
         [data-cta-bar] > div {
@@ -250,7 +252,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         background: '#000',
         direction: 'rtl',
         paddingBottom: videoUrl
-          ? 'calc(136px + env(safe-area-inset-bottom, 0px))'
+          ? 'calc(156px + env(safe-area-inset-bottom, 0px))'
           : 'calc(76px + env(safe-area-inset-bottom, 0px))',
         maxWidth: 480,
         margin: '0 auto',

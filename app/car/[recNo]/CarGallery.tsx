@@ -50,7 +50,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
       {/* Main image */}
       <div
         data-gallery-main
-        style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', flexShrink: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
