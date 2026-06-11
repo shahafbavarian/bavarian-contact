@@ -267,33 +267,39 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* Scroll hint — in flex flow, always visible */}
-      {videoUrl && (
+      {/* Scroll hint + CTA spacer merged — content is flex-centered in the visible zone above the CTA bar */}
+      {videoUrl ? (
         <div
           data-scroll-hint
           data-ready="0"
-          style={{ flexShrink: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
+          style={{
+            flexShrink: 0,
+            height: 'calc(clamp(52px, 7vh, 72px) + 76px + env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
+            boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
         >
           <style>{`
-            @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+            @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
             @keyframes hintSpin { to { transform: rotate(360deg); } }
             [data-scroll-hint][data-ready="1"] [data-hint-ready] { animation: hintBounce 2s ease-in-out infinite; }
           `}</style>
-          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-            <div style={{ width: 14, height: 14, border: '2px solid rgba(200,169,110,0.2)', borderTopColor: 'rgba(200,169,110,0.75)', borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 9, color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
+          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 'clamp(18px,2.4vh,26px)', height: 'clamp(18px,2.4vh,26px)', border: '2px solid rgba(200,169,110,0.2)', borderTopColor: 'rgba(200,169,110,0.75)', borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(10px,1.4vh,13px)', color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
           </div>
-          <div data-hint-ready style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <div data-hint-ready style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <svg width="clamp(18px,2.4vh,26px)" height="clamp(18px,2.4vh,26px)" viewBox="0 0 16 16" fill="none">
               <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 9, color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 'clamp(10px,1.4vh,13px)', color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
           </div>
         </div>
+      ) : (
+        <div style={{ flexShrink: 0, height: 'calc(76px + env(safe-area-inset-bottom, 0px))' }} aria-hidden="true" />
       )}
-
-      {/* Spacer for fixed CTA bar */}
-      <div style={{ flexShrink: 0, height: 'calc(76px + env(safe-area-inset-bottom, 0px))' }} aria-hidden="true" />
     </main>
   )
 
