@@ -248,7 +248,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         overflow: 'hidden',
         background: '#000',
         direction: 'rtl',
-        paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: videoUrl
+          ? 'calc(136px + env(safe-area-inset-bottom, 0px))'
+          : 'calc(76px + env(safe-area-inset-bottom, 0px))',
         maxWidth: 480,
         margin: '0 auto',
         position: 'relative',
