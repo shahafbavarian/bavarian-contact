@@ -4,7 +4,7 @@ import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
-import CarVideoScreen from './CarVideoScreen'
+import CarSlider from './CarSlider'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 export const revalidate = 300
@@ -13,8 +13,6 @@ export const dynamicParams = true
 const GOLD = 'rgba(200,169,110,0.9)'
 const GOLD_DIM = 'rgba(200,169,110,0.5)'
 const GOLD_BORDER = 'rgba(200,169,110,0.15)'
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const ENGINE_LABELS: Record<string, string> = {
   petrol: 'בנזין', diesel: 'דיזל', bev: 'חשמלי',
@@ -40,8 +38,6 @@ function splitCarName(name: string): [string, string] {
   return [words[0], words.slice(1).join(' ')]
 }
 
-// ─── Metadata ───────────────────────────────────────────────────────────────
-
 export async function generateMetadata({ params }: { params: { recNo: string } }): Promise<Metadata> {
   const summary = await fetchCarSummaryByRecNo(params.recNo)
   if (!summary) return { title: 'בוואריאן מוטורס' }
@@ -50,8 +46,6 @@ export async function generateMetadata({ params }: { params: { recNo: string } }
     openGraph: { images: summary.imageUrl ? [summary.imageUrl] : [] },
   }
 }
-
-// ─── Spec cell ───────────────────────────────────────────────────────────────
 
 function SpecCell({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -71,8 +65,6 @@ function SpecCell({ label, value }: { label: string; value: string | null | unde
   )
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
-
 async function fetchCarOverrides(recNo: string): Promise<{ pollutionGrade: number | null; safetyLevel: number | null } | null> {
   try {
     const { getSupabaseAdmin } = await import('@/lib/supabase')
@@ -82,10 +74,7 @@ async function fetchCarOverrides(recNo: string): Promise<{ pollutionGrade: numbe
       .eq('rec_no', recNo)
       .single()
     if (!data) return null
-    return {
-      pollutionGrade: data.pollution_grade ?? null,
-      safetyLevel: data.safety_level ?? null,
-    }
+    return { pollutionGrade: data.pollution_grade ?? null, safetyLevel: data.safety_level ?? null }
   } catch { return null }
 }
 
@@ -165,7 +154,6 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   })()
 
   const [make, model] = splitCarName(summary.name)
-
   const yearValue  = getSpec('מועד', 'שנת', 'שנה') ?? summary.year ?? null
   const yad        = getSpec('יד')
   const km         = summary.mileage ? displayMileage(summary.mileage) : null
@@ -173,80 +161,69 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const hp         = getSpec('הספק', 'כוח סוס')
   const engineType = summary.engine ? displayEngine(summary.engine) : null
 
-  return (
-    <div
-      data-scroll-container
+  // ─── Screen 1 content ────────────────────────────────────────────────────────
+  const screen1 = (
+    <main
+      data-car-main
       style={{
         height: '100dvh',
-        overflowY: 'hidden',
-        scrollSnapType: 'y mandatory',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
         background: '#000',
+        direction: 'rtl',
+        maxWidth: 480,
+        margin: '0 auto',
       }}
     >
-    {/* Preconnect ASAP so YouTube iframe is ready when user scrolls */}
-    {videoUrl && (
-      <>
-        <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://s.ytimg.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://googlevideo.com" />
-      </>
-    )}
-    <main style={{
-      height: '100dvh',
-      scrollSnapAlign: 'start',
-      scrollSnapStop: 'always',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      background: '#000',
-      direction: 'rtl',
-      paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
-      maxWidth: 480,
-      margin: '0 auto',
-      position: 'relative',
-    }}>
+      <style>{`
+        @media (min-width: 768px) {
+          [data-car-main] {
+            display: grid !important;
+            grid-template-columns: 400px 1fr !important;
+            grid-template-rows: auto 1fr !important;
+            max-width: 1280px !important;
+            margin: 0 auto !important;
+          }
+          [data-car-nav] { grid-column: 1 !important; grid-row: 1 !important; padding: 36px 40px 20px !important; }
+          [data-car-specs] { grid-column: 1 !important; grid-row: 2 !important; padding: 20px 40px 40px !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
+          [data-car-gallery-col] { grid-column: 2 !important; grid-row: 1 / span 2 !important; overflow: hidden !important; }
+          [data-gallery-root] { height: 100% !important; }
+          [data-gallery-main] { aspect-ratio: unset !important; flex: 1 !important; min-height: 0 !important; flex-shrink: unset !important; }
+          [data-scroll-hint] { display: none !important; }
+          [data-cta-bar] > div { max-width: 400px !important; }
+        }
+      `}</style>
 
-      {/* ─── Top nav + title ─── */}
-      <div style={{
+      {/* Nav */}
+      <div data-car-nav style={{
         flexShrink: 0,
         padding: 'clamp(8px,1.5vh,12px) 18px clamp(6px,1.2vh,10px)',
         position: 'relative', zIndex: 2,
         background: 'linear-gradient(to bottom, #000 calc(100% - 14px), transparent 100%)',
       }}>
-        {/* Back link */}
         <Link href="/cars" style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,255,255,0.5)',
-          textDecoration: 'none', direction: 'rtl', marginBottom: 6,
+          textDecoration: 'none', direction: 'rtl', marginBottom: 4,
         }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           כל הרכבים
         </Link>
-
         <div style={{ direction: 'ltr', textAlign: 'left' }}>
-          <h1 style={{
-            fontFamily: 'var(--font-heebo)', fontWeight: 900,
-            fontSize: 'clamp(24px, 7vw, 38px)',
-            color: '#fff', margin: 0, lineHeight: 1.0,
-          }}>
+          <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 'clamp(22px,6.5vw,38px)', color: '#fff', margin: 0, lineHeight: 1.0 }}>
             {make.toUpperCase()}
           </h1>
           {model && (
-            <h2 style={{
-              fontFamily: 'var(--font-heebo)', fontWeight: 300,
-              fontSize: 'clamp(18px, 5.5vw, 30px)',
-              color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.0,
-            }}>
+            <h2 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 'clamp(16px,5vw,30px)', color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.0 }}>
               {model}
             </h2>
           )}
-          <div style={{ marginTop: 6, minHeight: 34, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', minHeight: 28 }}>
             {summary.price && (
-              <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
+              <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 20, color: GOLD }}>
                 {summary.price}
               </span>
             )}
@@ -259,106 +236,95 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Gallery — flex:1 fills space between nav and specs ─── */}
-      <div data-car-gallery-col style={{ flex: '1 1 0', minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
+      {/* Gallery — always 3:2 */}
+      <div data-car-gallery-col style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
-      {/* ─── Specs ─── */}
-      <div style={{ flexShrink: 0, padding: 'clamp(8px,1.2vh,16px) 14px 0', position: 'relative' }}>
-        {/* Watermark logo */}
+      {/* Specs — flex:1 so it fills remaining space and compresses on short screens */}
+      <div data-car-specs style={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', padding: 'clamp(6px,1vh,14px) 14px 0', position: 'relative' }}>
+        {/* Watermark */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/LOGO.webp"
-          alt=""
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '95%',
-            maxWidth: 360,
-            opacity: 0.055,
-            pointerEvents: 'none',
-            userSelect: 'none',
-            zIndex: 0,
-          }}
-        />
-        {/* Row 1: יד / שנה / קילומטר */}
+        <img src="/LOGO.webp" alt="" aria-hidden="true" style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '95%', maxWidth: 360, opacity: 0.055,
+          pointerEvents: 'none', userSelect: 'none', zIndex: 0,
+        }} />
         <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
           <SpecCell label="יד" value={yad} />
           <SpecCell label="שנה" value={yearValue} />
           <SpecCell label='ק"מ' value={km} />
         </div>
-
-        {/* Row 2: נפח מנוע / כ"ס / סוג מנוע */}
         <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginTop: 4 }}>
           <SpecCell label="נפח מנוע" value={engineVol} />
           <SpecCell label='כ"ס' value={hp} />
           <SpecCell label="סוג מנוע" value={engineType} />
         </div>
-
-        {/* Row 3: מחירון / המחיר שלנו */}
         <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, marginTop: 4 }}>
           <SpecCell label="מחירון" value={listPrice} />
           <SpecCell label="המחיר שלנו" value={summary.price || null} />
         </div>
       </div>
 
-      <CarCTA carName={summary.name} recNo={params.recNo} />
-      <AccessibilityWidget top={50} right={18} />
-
-      {/* Scroll hint — loading state until video ready, then bounce arrow */}
+      {/* Scroll hint — in flex flow, always visible */}
       {videoUrl && (
         <div
           data-scroll-hint
           data-ready="0"
-          style={{
-            position: 'absolute',
-            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 50,
-            pointerEvents: 'none',
-          }}
+          style={{ flexShrink: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
         >
           <style>{`
-            @keyframes videoHintBounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-5px)} }
+            @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
             @keyframes hintSpin { to { transform: rotate(360deg); } }
-            [data-scroll-hint][data-ready="0"] { animation: none; }
-            [data-scroll-hint][data-ready="1"] { animation: videoHintBounce 2s ease-in-out infinite; }
+            [data-scroll-hint][data-ready="1"] [data-hint-ready] { animation: hintBounce 2s ease-in-out infinite; }
           `}</style>
-
-          {/* Loading state — display set inline so it's applied on first paint, no flash */}
-          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{
-              width: 16, height: 16,
-              border: '2px solid rgba(200,169,110,0.2)',
-              borderTopColor: 'rgba(200,169,110,0.75)',
-              borderRadius: '50%',
-              animation: 'hintSpin 0.9s linear infinite',
-            }} />
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>
-              סרטון בטעינה
-            </span>
+          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <div style={{ width: 14, height: 14, border: '2px solid rgba(200,169,110,0.2)', borderTopColor: 'rgba(200,169,110,0.75)', borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 9, color: 'rgba(200,169,110,0.55)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
           </div>
-
-          {/* Ready state — hidden inline on first paint */}
-          <div data-hint-ready style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <div data-hint-ready style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
+            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 9, color: 'rgba(200,169,110,0.65)' }}>סרטון</span>
           </div>
         </div>
       )}
-    </main>
 
-    {videoUrl && (
-      <CarVideoScreen youtubeUrl={videoUrl} carName={summary.name} />
-    )}
-    <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
-    </div>
+      {/* Spacer for fixed CTA bar */}
+      <div style={{ flexShrink: 0, height: 'calc(76px + env(safe-area-inset-bottom, 0px))' }} aria-hidden="true" />
+    </main>
+  )
+
+  // ─── With video: use CarSlider ────────────────────────────────────────────────
+  if (videoUrl) {
+    return (
+      <>
+        <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://s.ytimg.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://googlevideo.com" />
+        <CarSlider
+          youtubeUrl={videoUrl}
+          carName={summary.name}
+          recNo={params.recNo}
+          pollutionGrade={pollutionGrade}
+          safetyLevel={safetyLevel}
+        >
+          {screen1}
+        </CarSlider>
+      </>
+    )
+  }
+
+  // ─── Without video: render directly ──────────────────────────────────────────
+  return (
+    <>
+      {screen1}
+      <CarCTA carName={summary.name} recNo={params.recNo} />
+      <AccessibilityWidget top={50} right={18} />
+      <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
+    </>
   )
 }
