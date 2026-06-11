@@ -1,11 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 
 export default function CarGallery({ images, name, priority }: { images: string[]; name: string; priority?: boolean }) {
   const [idx, setIdx] = useState(0)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
+  const imagesRef = useRef(images)
+  imagesRef.current = images
+
+  // Keyboard arrow navigation
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const len = imagesRef.current.length
+      if (!len) return
+      if (e.key === 'ArrowLeft')  setIdx(i => (i - 1 + len) % len)
+      if (e.key === 'ArrowRight') setIdx(i => (i + 1) % len)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   if (images.length === 0) return null
 
@@ -20,26 +34,27 @@ export default function CarGallery({ images, name, priority }: { images: string[
     setTouchStartX(null)
   }
 
-  // Preload adjacent images so swipe feels instant
   const prevIdx = (idx - 1 + images.length) % images.length
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column' }}>
-      {/* Preload hints for adjacent images */}
+    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+
       {images.length > 1 && (
         <>
           <link rel="preload" as="image" href={images[nextIdx]} />
           {images.length > 2 && <link rel="preload" as="image" href={images[prevIdx]} />}
         </>
       )}
-      {/* Main image — fixed 3:2 ratio */}
+
+      {/* Main image — flex:1 fills all space above thumbnails, no fixed aspect ratio */}
       <div
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
+        data-gallery-main
+        style={{ position: 'relative', width: '100%', flex: '1 1 0', minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'none' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {/* Blurred backdrop fills black bars around contained image */}
+        {/* Blurred backdrop */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true">
           <Image src={images[idx]} alt="" fill sizes="100vw"
             style={{ objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.08)', opacity: 0.65 }} />
@@ -58,18 +73,19 @@ export default function CarGallery({ images, name, priority }: { images: string[
           />
         </div>
 
-        {/* Stronger top fade — covers the title overlap zone */}
+        {/* Top fade */}
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: '40%', zIndex: 2,
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 55%, transparent 100%)',
           pointerEvents: 'none',
         }} />
+
         {images.length > 1 && (
           <>
             <button
               onClick={prev}
               style={{
-                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 3,
                 width: 36, height: 36, borderRadius: '50%',
                 background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -82,7 +98,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
             <button
               onClick={next}
               style={{
-                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
+                position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 3,
                 width: 36, height: 36, borderRadius: '50%',
                 background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -92,7 +108,6 @@ export default function CarGallery({ images, name, priority }: { images: string[
                 <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            {/* Counter */}
             <div style={{
               position: 'absolute', bottom: 10, right: 12, zIndex: 2,
               fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(255,255,255,0.7)',
@@ -104,9 +119,9 @@ export default function CarGallery({ images, name, priority }: { images: string[
         )}
       </div>
 
-      {/* Thumbnails */}
+      {/* Thumbnails — fixed 62px height, always visible */}
       {images.length >= 2 && (
-        <div style={{ display: 'flex', gap: 4, padding: '5px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
+        <div style={{ height: 62, flexShrink: 0, display: 'flex', gap: 4, padding: '5px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {images.map((src, i) => i === 0 ? null : (
             <button
               key={i}

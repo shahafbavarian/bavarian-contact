@@ -259,8 +259,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Gallery — nav fade reveals top edge ─── */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
+      {/* ─── Gallery — flex:1 fills space between nav and specs ─── */}
+      <div data-car-gallery-col style={{ flex: '1 1 0', minHeight: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
