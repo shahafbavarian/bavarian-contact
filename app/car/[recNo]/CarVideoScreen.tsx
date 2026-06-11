@@ -14,9 +14,17 @@ function extractVideoId(url: string): string | null {
   return null
 }
 
-function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
+function sendCommand(iframe: HTMLIFrameElement | null, func: string, args: unknown[] = []) {
   iframe?.contentWindow?.postMessage(
-    JSON.stringify({ event: 'command', func, args: [] }),
+    JSON.stringify({ event: 'command', func, args }),
+    'https://www.youtube-nocookie.com'
+  )
+}
+
+// YouTube sends no postMessage events until it receives a 'listening' handshake
+function sendListening(iframe: HTMLIFrameElement | null) {
+  iframe?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'listening', id: 'car-video', channel: 'widget' }),
     'https://www.youtube-nocookie.com'
   )
 }
@@ -37,13 +45,21 @@ export default function CarVideoScreen({
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
   const readyFiredRef = useRef(false)
+  const isActiveRef = useRef(isActive)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
+  useEffect(() => { isActiveRef.current = isActive }, [isActive])
+
   function markReady() {
     if (readyFiredRef.current) return
     readyFiredRef.current = true
+    // Buffered — park the video paused at the start until the user reaches screen 2
+    if (!isActiveRef.current) {
+      sendCommand(iframeRef.current, 'pauseVideo')
+      sendCommand(iframeRef.current, 'seekTo', [0, true])
+    }
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
     const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
@@ -57,6 +73,15 @@ export default function CarVideoScreen({
   useEffect(() => {
     const t = setTimeout(markReady, 10000)
     return () => clearTimeout(t)
+  }, [])
+
+  // Handshake — retry until the player responds with onReady
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (readyFiredRef.current) { clearInterval(t); return }
+      sendListening(iframeRef.current)
+    }, 300)
+    return () => clearInterval(t)
   }, [])
 
   // YouTube postMessage events
@@ -102,7 +127,7 @@ export default function CarVideoScreen({
 
   if (!videoId) return null
 
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&enablejsapi=1&vq=hd1080&hl=en`
 
   function toggleMute() {
     const next = !mutedRef.current
@@ -131,14 +156,6 @@ export default function CarVideoScreen({
           border: 'none',
         }}
       />
-
-      {/* Bottom fade */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        height: 'calc(120px + env(safe-area-inset-bottom, 0px))',
-        background: 'linear-gradient(to bottom, transparent 0%, rgba(8,8,8,0.97) 100%)',
-        pointerEvents: 'none', zIndex: 2,
-      }} />
 
       {/* Mute button */}
       {isActive && (
