@@ -244,7 +244,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
               {model}
             </h2>
           )}
-          <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 6, minHeight: 34, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
             {summary.price && (
               <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 22, color: GOLD }}>
                 {summary.price}
@@ -328,14 +328,10 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             @keyframes hintSpin { to { transform: rotate(360deg); } }
             [data-scroll-hint][data-ready="0"] { animation: none; }
             [data-scroll-hint][data-ready="1"] { animation: videoHintBounce 2s ease-in-out infinite; }
-            [data-scroll-hint][data-ready="0"] [data-hint-loading] { display: flex; }
-            [data-scroll-hint][data-ready="0"] [data-hint-ready]   { display: none; }
-            [data-scroll-hint][data-ready="1"] [data-hint-loading] { display: none; }
-            [data-scroll-hint][data-ready="1"] [data-hint-ready]   { display: flex; }
           `}</style>
 
-          {/* Loading state */}
-          <div data-hint-loading style={{ flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          {/* Loading state — display set inline so it's applied on first paint, no flash */}
+          <div data-hint-loading style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <div style={{
               width: 16, height: 16,
               border: '2px solid rgba(200,169,110,0.2)',
@@ -348,8 +344,8 @@ export default async function CarPage({ params }: { params: { recNo: string } })
             </span>
           </div>
 
-          {/* Ready state */}
-          <div data-hint-ready style={{ flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          {/* Ready state — hidden inline on first paint */}
+          <div data-hint-ready style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 13V3M4 7l4-4 4 4" stroke="rgba(200,169,110,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>

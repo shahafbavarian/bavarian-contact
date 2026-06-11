@@ -35,6 +35,10 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     if (container) container.style.overflowY = 'scroll'
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
+    const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
+    const hintReady = document.querySelector<HTMLElement>('[data-hint-ready]')
+    if (hintLoading) hintLoading.style.display = 'none'
+    if (hintReady) hintReady.style.display = 'flex'
   }
 
   // Fallback: unlock after 10s if events never arrive
