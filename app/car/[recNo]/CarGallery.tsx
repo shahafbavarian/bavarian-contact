@@ -38,13 +38,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
   const nextIdx = (idx + 1) % images.length
 
   return (
-    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column' }}>
-      <style>{`
-        @media (min-width: 768px) {
-          [data-gallery-root] { flex: 1; min-height: 0; }
-          [data-gallery-main] { aspect-ratio: unset !important; flex: 1 !important; min-height: 0 !important; }
-        }
-      `}</style>
+    <div data-gallery-root style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', height: '100%' }}>
 
       {images.length > 1 && (
         <>
@@ -56,7 +50,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
       {/* Main image */}
       <div
         data-gallery-main
-        style={{ position: 'relative', width: '100%', aspectRatio: '3/2', background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
+        style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, background: '#000', overflow: 'hidden', touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

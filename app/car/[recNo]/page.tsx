@@ -222,11 +222,12 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           justify-content: center !important;
         }
 
-        /* Right: gallery — spans both rows, full height */
+        /* Right: gallery — spans both rows, full height, no flex constraints from mobile */
         [data-car-gallery-col] {
           grid-column: 2 !important; grid-row: 1 / span 2 !important;
-          display: flex !important;
-          flex-direction: column !important;
+          flex: unset !important;
+          max-height: unset !important;
+          min-height: unset !important;
           overflow: hidden !important;
           margin-top: 0 !important;
         }
@@ -307,13 +308,13 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </div>
       </div>
 
-      {/* ─── Gallery — nav fade reveals top edge ─── */}
-      <div data-car-gallery-col style={{ flexShrink: 0, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
+      {/* ─── Gallery — flex:1 so it shrinks on short screens, never pushes specs into hint area ─── */}
+      <div data-car-gallery-col style={{ flex: '1 1 0', minHeight: 120, maxHeight: 320, position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: -6 }}>
         <CarGallery images={allImages} name={summary.name} priority />
       </div>
 
-      {/* ─── Specs ─── */}
-      <div data-car-specs style={{ flexShrink: 0, padding: 'clamp(8px,1.2vh,16px) 14px 0', position: 'relative' }}>
+      {/* ─── Specs — marginTop:auto keeps them pinned above the hint+CTA zone ─── */}
+      <div data-car-specs style={{ flexShrink: 0, marginTop: 'auto', padding: 'clamp(8px,1.2vh,16px) 14px 0', position: 'relative' }}>
         {/* Watermark logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
