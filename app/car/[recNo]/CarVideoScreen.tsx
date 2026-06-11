@@ -21,88 +21,76 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
   )
 }
 
-export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
-  const [visible, setVisible] = useState(false)
+export default function CarVideoScreen({
+  youtubeUrl,
+  carName,
+  isActive,
+  onReady,
+  onBack,
+}: {
+  youtubeUrl: string
+  carName: string
+  isActive: boolean
+  onReady: () => void
+  onBack: () => void
+}) {
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
-  const visibleRef = useRef(false)
+  const readyFiredRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
   function markReady() {
-    const container = document.querySelector<HTMLElement>('[data-scroll-container]')
-    if (container) container.style.overflowY = 'scroll'
+    if (readyFiredRef.current) return
+    readyFiredRef.current = true
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
     const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
     const hintReady = document.querySelector<HTMLElement>('[data-hint-ready]')
     if (hintLoading) hintLoading.style.display = 'none'
     if (hintReady) hintReady.style.display = 'flex'
+    onReady()
   }
 
-  // Fallback: unlock after 10s if events never arrive
+  // Fallback: mark ready after 10s if YouTube events never arrive
   useEffect(() => {
     const t = setTimeout(markReady, 10000)
     return () => clearTimeout(t)
   }, [])
 
+  // YouTube postMessage events
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof e.data !== 'string') return
       try {
         const d = JSON.parse(e.data)
-        // Player initialised → unlock scroll immediately (video is buffering)
         if (d.event === 'onReady') markReady()
-        // Video started playing → pause it if user is still on screen 1
         const isPlaying =
           (d.event === 'onStateChange' && d.info === 1) ||
           (d.event === 'infoDelivery' && d.info?.playerState === 1)
-        if (isPlaying) {
-          if (!visibleRef.current) {
-            sendCommand(iframeRef.current, 'pauseVideo')
-          } else {
-            sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-          }
-        }
+        if (isPlaying && !isActive) sendCommand(iframeRef.current, 'pauseVideo')
       } catch {}
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [])
+  }, [isActive])
 
-  // Play on scroll-in, pause on scroll-out
+  // Play/pause when screen becomes active/inactive
   useEffect(() => {
-    if (!containerRef.current) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        visibleRef.current = e.isIntersecting
-        setVisible(e.isIntersecting)
-        if (e.isIntersecting) {
-          sendCommand(iframeRef.current, 'playVideo')
-          sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-          setTimeout(() => containerRef.current?.focus(), 400)
-        } else {
-          sendCommand(iframeRef.current, 'pauseVideo')
-        }
-        for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]']) {
-          const el = document.querySelector<HTMLElement>(sel)
-          if (!el) continue
-          el.style.opacity = e.isIntersecting ? '0' : ''
-          el.style.pointerEvents = e.isIntersecting ? 'none' : ''
-          el.style.transition = 'opacity 0.2s'
-        }
-      },
-      { threshold: 0.5 }
-    )
-    obs.observe(containerRef.current)
-    return () => obs.disconnect()
-  }, [])
+    if (isActive) {
+      sendCommand(iframeRef.current, 'playVideo')
+      sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+      setTimeout(() => containerRef.current?.focus(), 400)
+    } else {
+      sendCommand(iframeRef.current, 'pauseVideo')
+    }
+  }, [isActive])
 
-  // Hardware volume key → unmute
+  // Hardware volume keys → unmute
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'AudioVolumeUp' || e.key === 'AudioVolumeDown' || e.key === 'VolumeUp' || e.key === 'VolumeDown') {
+      if (['AudioVolumeUp', 'AudioVolumeDown', 'VolumeUp', 'VolumeDown'].includes(e.key)) {
         mutedRef.current = false
         setMuted(false)
         sendCommand(iframeRef.current, 'unMute')
@@ -114,7 +102,6 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
 
   if (!videoId) return null
 
-  // autoplay=1&mute=1 — starts buffering immediately in background
   const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
 
   function toggleMute() {
@@ -128,7 +115,7 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     <div
       ref={containerRef}
       tabIndex={-1}
-      style={{ height: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always', position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
+      style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
     >
       <iframe
         ref={iframeRef}
@@ -145,32 +132,28 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         }}
       />
 
-      {/* Fade at bottom — blends video into CTA bar */}
+      {/* Bottom fade */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 'calc(120px + env(safe-area-inset-bottom, 0px))',
         background: 'linear-gradient(to bottom, transparent 0%, rgba(8,8,8,0.97) 100%)',
-        pointerEvents: 'none',
-        zIndex: 2,
+        pointerEvents: 'none', zIndex: 2,
       }} />
 
-      {/* Mute button — icon only */}
-      {visible && (
+      {/* Mute button */}
+      {isActive && (
         <button
           onClick={toggleMute}
           style={{
             position: 'absolute',
             bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
-            right: 18,
-            zIndex: 9999,
+            right: 18, zIndex: 9999,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'none',
-            border: 'none',
+            background: 'none', border: 'none',
             color: muted ? 'rgba(255,255,255,0.85)' : 'rgba(200,169,110,1)',
             cursor: 'pointer',
             filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))',
-            transition: 'color 0.2s',
-            padding: 6,
+            transition: 'color 0.2s', padding: 6,
           }}
         >
           {muted ? (
