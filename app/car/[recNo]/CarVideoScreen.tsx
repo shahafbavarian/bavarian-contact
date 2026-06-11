@@ -22,48 +22,29 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
 }
 
 export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: string; carName: string }) {
-  const [loaded, setLoaded] = useState(false)
+  const [visible, setVisible] = useState(false)
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
-  const loadedRef = useRef(false)
-  const visibleRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // Single observer: lazy-load on first scroll in, pause/play on subsequent visits
+  // When video is ready: unlock scroll (snap is already set in CSS) + update hint
+  function markReady() {
+    const container = document.querySelector<HTMLElement>('[data-scroll-container]')
+    if (container) container.style.overflowY = 'scroll'
+    const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
+    if (hint) hint.setAttribute('data-ready', '1')
+  }
+
+  // Fallback: unlock after 8s if YouTube never fires the event
   useEffect(() => {
-    if (!containerRef.current) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        visibleRef.current = e.isIntersecting
-        if (e.isIntersecting) {
-          if (!loadedRef.current) {
-            loadedRef.current = true
-            setLoaded(true)
-          } else {
-            sendCommand(iframeRef.current, 'playVideo')
-            sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-          }
-          setTimeout(() => containerRef.current?.focus(), 400)
-        } else {
-          if (loadedRef.current) sendCommand(iframeRef.current, 'pauseVideo')
-        }
-        for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]']) {
-          const el = document.querySelector<HTMLElement>(sel)
-          if (!el) continue
-          el.style.opacity = e.isIntersecting ? '0' : ''
-          el.style.pointerEvents = e.isIntersecting ? 'none' : ''
-          el.style.transition = 'opacity 0.2s'
-        }
-      },
-      { threshold: 0.5 }
-    )
-    obs.observe(containerRef.current)
-    return () => obs.disconnect()
+    const t = setTimeout(markReady, 8000)
+    return () => clearTimeout(t)
   }, [])
 
-  // If video autoplays while user isn't on the video page, pause it immediately
+  // YouTube events: onStateChange=1 means playing
+  // Handle both raw format and infoDelivery wrapper
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof e.data !== 'string') return
@@ -73,16 +54,34 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
           (d.event === 'onStateChange' && d.info === 1) ||
           (d.event === 'infoDelivery' && d.info?.playerState === 1)
         if (isPlaying) {
-          if (!visibleRef.current) {
-            sendCommand(iframeRef.current, 'pauseVideo')
-          } else {
-            sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-          }
+          markReady()
+          sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
         }
       } catch {}
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  // Track visibility — hide/show fixed widgets when on video screen
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        setVisible(e.isIntersecting)
+        if (e.isIntersecting) setTimeout(() => containerRef.current?.focus(), 400)
+        for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]']) {
+          const el = document.querySelector<HTMLElement>(sel)
+          if (!el) return
+          el.style.opacity = e.isIntersecting ? '0' : ''
+          el.style.pointerEvents = e.isIntersecting ? 'none' : ''
+          el.style.transition = 'opacity 0.2s'
+        }
+      },
+      { threshold: 0.5 }
+    )
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
   }, [])
 
   // Hardware volume key → unmute
@@ -113,34 +112,24 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
     <div
       ref={containerRef}
       tabIndex={-1}
-      style={{
-        height: '100dvh',
-        scrollSnapAlign: 'start',
-        scrollSnapStop: 'always',
-        position: 'relative',
-        background: '#000',
-        overflow: 'hidden',
-        outline: 'none',
-      }}
+      style={{ height: '100dvh', scrollSnapAlign: 'start', position: 'relative', background: '#000', overflow: 'hidden', outline: 'none' }}
     >
-      {loaded && (
-        <iframe
-          ref={iframeRef}
-          src={src}
-          allow="autoplay; fullscreen"
-          style={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 'calc(100dvh * 9 / 16)',
-            height: '100dvh',
-            minWidth: '100%',
-            border: 'none',
-          }}
-        />
-      )}
+      <iframe
+        ref={iframeRef}
+        src={src}
+        allow="autoplay; fullscreen"
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'calc(100dvh * 9 / 16)',
+          height: '100dvh',
+          minWidth: '100%',
+          border: 'none',
+        }}
+      />
 
-      {/* Fade at bottom — blends video into the fixed CTA bar */}
+      {/* Fade at bottom — video blends into the fixed CTA bar */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 'calc(120px + env(safe-area-inset-bottom, 0px))',
@@ -149,8 +138,8 @@ export default function CarVideoScreen({ youtubeUrl, carName }: { youtubeUrl: st
         zIndex: 2,
       }} />
 
-      {/* Mute button — icon only with drop-shadow */}
-      {loaded && (
+      {/* Mute button — minimal floating icon */}
+      {visible && (
         <button
           onClick={toggleMute}
           style={{
