@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    qualities: [85],
     remotePatterns: [
       { hostname: 'www.bavarian-motors.co.il' },
       { hostname: 'bavarian-motors.co.il' },

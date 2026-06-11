@@ -186,6 +186,7 @@ export default function CarsPage() {
                       sizes="(max-width: 500px) 50vw, 250px"
                       style={{ objectFit: 'cover' }}
                       priority={idx < 6}
+                      quality={85}
                     />
                   </div>
 
