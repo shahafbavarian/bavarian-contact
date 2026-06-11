@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { fetchCarList, fetchCarDetail, CarSummary } from '@/lib/scraper'
+import { shouldSync, syncCarImages, getCachedImageUrls } from '@/lib/image-sync'
 
 // Cache the whole response for 5 minutes — same window as car detail pages
 export const revalidate = 300
@@ -48,14 +49,24 @@ export async function GET(req: Request) {
     const filter = searchParams.get('filter') // 'stock' | 'europe' | null = all
     const basic  = searchParams.get('basic') === '1'
 
-    const cars = await fetchCarList()
+    const [cars, cachedUrls] = await Promise.all([fetchCarList(), getCachedImageUrls()])
+
+    // Substitute CDN URLs where available
+    const withCdn = cars.map(c =>
+      cachedUrls[c.recNo] ? { ...c, imageUrl: cachedUrls[c.recNo] } : c
+    )
+
+    // Kick off background sync (throttled to once per 15 min)
+    if (shouldSync()) {
+      syncCarImages(cars).catch(e => console.error('[sync-images]', e))
+    }
 
     // ?basic=1: return raw list immediately (no detail scrapes, no gov.il calls)
     if (basic) {
-      return NextResponse.json({ cars: applyFilter(cars, filter) })
+      return NextResponse.json({ cars: applyFilter(withCdn, filter) })
     }
 
-    const enriched = await pLimit(cars, enrichCar, 10)
+    const enriched = await pLimit(withCdn, enrichCar, 10)
     return NextResponse.json({ cars: applyFilter(enriched, filter) })
   } catch (err) {
     console.error('[/api/cars]', err)

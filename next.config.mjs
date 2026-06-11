@@ -4,6 +4,7 @@ const nextConfig = {
     remotePatterns: [
       { hostname: 'www.bavarian-motors.co.il' },
       { hostname: 'bavarian-motors.co.il' },
+      { hostname: '*.supabase.co' },
     ],
   },
   async redirects() {
