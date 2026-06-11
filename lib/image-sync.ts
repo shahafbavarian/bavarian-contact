@@ -47,7 +47,7 @@ export async function syncCarImages(cars: CarSummary[]): Promise<void> {
     const currentSet = new Set(cars.filter(c => c.imageUrl).map(c => c.recNo))
 
     // Delete removed cars from storage + cache
-    for (const [recNo, row] of cached) {
+    for (const [recNo, row] of Array.from(cached)) {
       if (!currentSet.has(recNo)) {
         await sb.storage.from(BUCKET).remove([row.storage_path])
         await sb.from('car_image_cache').delete().eq('rec_no', recNo)
