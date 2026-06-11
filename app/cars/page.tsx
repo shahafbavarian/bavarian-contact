@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import type { CarSummary } from '@/lib/scraper'
 
 const GOLD = 'rgba(200,169,110,0.9)'
@@ -167,7 +168,7 @@ export default function CarsPage() {
           </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            {filtered.map(car => (
+            {filtered.map((car, idx) => (
               <Link key={car.recNo} href={`/car/${car.recNo}`} style={{ textDecoration: 'none', display: 'block', minWidth: 0, height: '100%' }}>
                 <div style={{
                   background: 'rgba(255,255,255,0.03)',
@@ -178,12 +179,13 @@ export default function CarsPage() {
                 }}>
                   {/* Image */}
                   <div style={{ aspectRatio: '3/2', overflow: 'hidden', background: '#111', position: 'relative', flexShrink: 0 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={car.imageUrl}
                       alt={car.name}
-                      loading="lazy"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      fill
+                      sizes="(max-width: 500px) 50vw, 250px"
+                      style={{ objectFit: 'cover' }}
+                      priority={idx < 6}
                     />
                   </div>
 
