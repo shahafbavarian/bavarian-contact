@@ -92,11 +92,9 @@ export default function CarSlider({
         <style>{`
           @keyframes hintSpin  { to { transform: rotate(360deg); } }
           @keyframes hintBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-          [data-cta-bar]    { display: none !important; }
-          [data-a11y-widget] { display: none !important; }
-          [data-ci-trigger]  { display: none !important; }
-          [data-gallery-root]  { height: 100% !important; }
-          [data-gallery-main]  { aspect-ratio: unset !important; flex: 1 !important; min-height: 0 !important; flex-shrink: unset !important; }
+          [data-cta-bar]     { display: none !important; }
+          [data-a11y-widget]  { display: none !important; }
+          [data-ci-trigger]   { display: none !important; }
         `}</style>
 
         <div style={{
@@ -112,36 +110,42 @@ export default function CarSlider({
             {/* Gallery layer */}
             <div style={{
               position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
               opacity: onVideo ? 0 : 1,
               transition: 'opacity 0.45s ease',
               pointerEvents: onVideo ? 'none' : 'auto',
+              overflow: 'hidden',
             }}>
-              <div style={{ width: '100%', height: '100%' }}>
+              {/* Gallery: natural 3:2 height */}
+              <div style={{ flexShrink: 0 }}>
                 {desktopLeft}
               </div>
 
-              {/* Centered hint: spinner while loading, arrow when ready */}
+              {/* Hint: fills remaining black space below gallery */}
               <div style={{
-                position: 'absolute', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                zIndex: 10, pointerEvents: 'none',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
-                borderRadius: 20, padding: '12px 20px',
+                flex: 1, minHeight: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none', overflow: 'hidden',
               }}>
-                {!videoReady ? (
-                  <>
-                    <div style={{ width: 20, height: 20, border: `2px solid rgba(200,169,110,0.18)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
-                    <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.5)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ animation: 'hintBounce 2s ease-in-out infinite' }}>
-                      <path d="M8 13V3M4 7l4-4 4 4" stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>גלגל לסרטון</span>
-                  </>
-                )}
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+                  borderRadius: 20, padding: '12px 20px',
+                }}>
+                  {!videoReady ? (
+                    <>
+                      <div style={{ width: 20, height: 20, border: `2px solid rgba(200,169,110,0.18)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
+                      <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.5)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ animation: 'hintBounce 2s ease-in-out infinite' }}>
+                        <path d="M8 13V3M4 7l4-4 4 4" stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>גלגל לסרטון</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
