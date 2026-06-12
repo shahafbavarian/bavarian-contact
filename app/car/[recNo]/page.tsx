@@ -265,7 +265,12 @@ export default async function CarPage({ params }: { params: { recNo: string } })
            block that gives up height, so the specs block is never clipped.
            On normal screens the image stays exactly full-width 3:2 as before. */
         [data-car-gallery-col] [data-gallery-root] { flex: 1 1 auto; min-height: 0; }
-        [data-car-gallery-col] [data-gallery-main] { flex: 0 1 auto !important; min-height: 0 !important; }
+        [data-car-gallery-col] [data-gallery-main] { flex: 0 1 auto !important; min-height: 0 !important; container-type: size; }
+        /* When the frame got shrunk (wider than 3:2), fill the full width and
+           crop a little vertically instead of leaving blurred side bars */
+        @container (aspect-ratio > 38/25) {
+          [data-gallery-main] img { object-fit: cover !important; }
+        }
       `}</style>
 
       {/* Nav */}
