@@ -58,9 +58,7 @@ export default function CarVideoScreen({
     // Buffered — park the video paused at the start until the user reaches screen 2
     if (!isActiveRef.current) {
       sendCommand(iframeRef.current, 'pauseVideo')
-      // No seekTo — it triggers a CDN fetch that puts the player into a
-      // seeking state, causing subsequent playVideo commands to be dropped.
-      // The video is already at ~0s since state=1 fires within the first second.
+      sendCommand(iframeRef.current, 'seekTo', [0, true])
     }
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
@@ -93,17 +91,10 @@ export default function CarVideoScreen({
       if (typeof e.data !== 'string') return
       try {
         const d = JSON.parse(e.data)
-        // onReady = player API initialized, NOT buffered. Kick off muted playback
-        // so buffering starts reliably even when autoplay was blocked.
-        if (d.event === 'onReady' && !readyFiredRef.current) {
-          sendCommand(iframeRef.current, 'mute')
-          sendCommand(iframeRef.current, 'playVideo')
-        }
+        if (d.event === 'onReady') markReady()
         const isPlaying =
           (d.event === 'onStateChange' && d.info === 1) ||
           (d.event === 'infoDelivery' && d.info?.playerState === 1)
-        // Only actual playback proves frames were downloaded — that's "ready"
-        if (isPlaying) markReady()
         if (isPlaying && !isActive) sendCommand(iframeRef.current, 'pauseVideo')
       } catch {}
     }
