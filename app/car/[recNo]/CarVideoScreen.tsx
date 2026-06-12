@@ -14,14 +14,13 @@ function extractVideoId(url: string): string | null {
   return null
 }
 
-function sendCommand(iframe: HTMLIFrameElement | null, func: string, args: unknown[] = []) {
+function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
   iframe?.contentWindow?.postMessage(
-    JSON.stringify({ event: 'command', func, args }),
+    JSON.stringify({ event: 'command', func, args: [] }),
     'https://www.youtube-nocookie.com'
   )
 }
 
-// YouTube sends no postMessage events until it receives a 'listening' handshake
 function sendListening(iframe: HTMLIFrameElement | null) {
   iframe?.contentWindow?.postMessage(
     JSON.stringify({ event: 'listening', id: 'car-video', channel: 'widget' }),
@@ -45,18 +44,13 @@ export default function CarVideoScreen({
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
   const readyFiredRef = useRef(false)
-  const isActiveRef = useRef(isActive)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  useEffect(() => { isActiveRef.current = isActive }, [isActive])
-
   function markReady() {
     if (readyFiredRef.current) return
     readyFiredRef.current = true
-    // No pause/seek here — the isPlaying+!isActive check in onMessage handles
-    // pausing. Pausing via seekTo here breaks iOS Safari's autoplay permission.
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
     const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
@@ -82,32 +76,27 @@ export default function CarVideoScreen({
     return () => clearInterval(t)
   }, [])
 
-  // YouTube postMessage events
+  // YouTube postMessage events — onReady triggers markReady for fast scroll-unlock
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof e.data !== 'string') return
       try {
         const d = JSON.parse(e.data)
         if (d.event === 'onReady') markReady()
-        const isPlaying =
-          (d.event === 'onStateChange' && d.info === 1) ||
-          (d.event === 'infoDelivery' && d.info?.playerState === 1)
-        if (isPlaying && !isActive) sendCommand(iframeRef.current, 'pauseVideo')
       } catch {}
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [isActive])
+  }, [])
 
-  // Play/pause when screen becomes active/inactive
+  // Apply mute state and focus when screen becomes active
+  // Video autoplays muted from autoplay=1&mute=1 — never paused via postMessage
+  // so iOS Safari never blocks subsequent playback
   useEffect(() => {
-    if (isActive) {
-      sendCommand(iframeRef.current, 'playVideo')
-      sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-      setTimeout(() => containerRef.current?.focus(), 400)
-    } else {
-      sendCommand(iframeRef.current, 'pauseVideo')
-    }
+    if (!isActive) return
+    sendCommand(iframeRef.current, 'playVideo')
+    sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+    setTimeout(() => containerRef.current?.focus(), 400)
   }, [isActive])
 
   // Hardware volume keys → unmute
@@ -125,7 +114,7 @@ export default function CarVideoScreen({
 
   if (!videoId) return null
 
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&enablejsapi=1&hl=en`
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&disablekb=1&enablejsapi=1&hl=en`
 
   function toggleMute() {
     const next = !mutedRef.current
