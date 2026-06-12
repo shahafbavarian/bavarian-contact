@@ -36,43 +36,51 @@ export default function CarVideoScreen({
 }) {
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
-  const readyFiredRef = useRef(false)
-  // iframe only mounts when user first arrives — guarantees autoplay=1 fires
-  // while the iframe is in the viewport, which iOS Safari requires
-  const [iframeLoaded, setIframeLoaded] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const loadedRef = useRef(false)
+  const visibleRef = useRef(false)
+  const onReadyFiredRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  function markReady() {
-    if (readyFiredRef.current) return
-    readyFiredRef.current = true
-    const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
-    if (hint) hint.setAttribute('data-ready', '1')
-    const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
-    const hintReady = document.querySelector<HTMLElement>('[data-hint-ready]')
-    if (hintLoading) hintLoading.style.display = 'none'
-    if (hintReady) hintReady.style.display = 'flex'
-    onReady()
-  }
-
-  // Unlock scroll after 1s so user doesn't wait for YouTube handshake
+  // Unlock scroll quickly so user doesn't wait long
   useEffect(() => {
-    const t = setTimeout(markReady, 1000)
+    const t = setTimeout(() => {
+      if (onReadyFiredRef.current) return
+      onReadyFiredRef.current = true
+      onReady()
+    }, 800)
     return () => clearTimeout(t)
   }, [])
 
-  // Render iframe on first arrival + apply mute state on every arrival
+  // IntersectionObserver: lazy-load iframe on first scroll-in, pause on scroll-away
   useEffect(() => {
-    if (!isActive) return
-    if (!iframeLoaded) {
-      setIframeLoaded(true)
-      return
-    }
-    // Already loaded on a previous visit — reapply mute state
-    sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-    setTimeout(() => containerRef.current?.focus(), 400)
-  }, [isActive])
+    if (!containerRef.current) return
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        visibleRef.current = e.isIntersecting
+        if (e.isIntersecting) {
+          if (!loadedRef.current) {
+            loadedRef.current = true
+            setLoaded(true)
+            // Signal ready immediately on first arrival
+            if (!onReadyFiredRef.current) {
+              onReadyFiredRef.current = true
+              onReady()
+            }
+          } else {
+            sendCommand(iframeRef.current, 'playVideo')
+            sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+          }
+          setTimeout(() => containerRef.current?.focus(), 400)
+        }
+      },
+      { threshold: 0.5 }
+    )
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
+  }, [])
 
   // Hardware volume keys → unmute
   useEffect(() => {
@@ -104,7 +112,7 @@ export default function CarVideoScreen({
       tabIndex={-1}
       style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
     >
-      {iframeLoaded && (
+      {loaded && (
         <iframe
           ref={iframeRef}
           src={src}
@@ -122,7 +130,7 @@ export default function CarVideoScreen({
       )}
 
       {/* Mute button */}
-      {isActive && iframeLoaded && (
+      {isActive && loaded && (
         <button
           onClick={toggleMute}
           style={{
