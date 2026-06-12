@@ -55,11 +55,8 @@ export default function CarVideoScreen({
   function markReady() {
     if (readyFiredRef.current) return
     readyFiredRef.current = true
-    // Buffered — park the video paused at the start until the user reaches screen 2
-    if (!isActiveRef.current) {
-      sendCommand(iframeRef.current, 'pauseVideo')
-      sendCommand(iframeRef.current, 'seekTo', [0, true])
-    }
+    // No pause/seek here — the isPlaying+!isActive check in onMessage handles
+    // pausing. Pausing via seekTo here breaks iOS Safari's autoplay permission.
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
     const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
