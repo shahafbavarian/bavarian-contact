@@ -128,7 +128,7 @@ export default function CarVideoScreen({
 
   if (!videoId) return null
 
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=1&fs=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&enablejsapi=1&hl=en`
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&enablejsapi=1&hl=en`
 
   function toggleMute() {
     const next = !mutedRef.current
