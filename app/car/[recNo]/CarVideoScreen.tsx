@@ -58,7 +58,9 @@ export default function CarVideoScreen({
     // Buffered — park the video paused at the start until the user reaches screen 2
     if (!isActiveRef.current) {
       sendCommand(iframeRef.current, 'pauseVideo')
-      sendCommand(iframeRef.current, 'seekTo', [0, true])
+      // No seekTo — it triggers a CDN fetch that puts the player into a
+      // seeking state, causing subsequent playVideo commands to be dropped.
+      // The video is already at ~0s since state=1 fires within the first second.
     }
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
