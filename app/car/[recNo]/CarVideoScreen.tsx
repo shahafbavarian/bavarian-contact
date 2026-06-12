@@ -69,9 +69,10 @@ export default function CarVideoScreen({
     onReady()
   }
 
-  // Fallback: mark ready after 10s if YouTube events never arrive
+  // Last-resort fallback: mark ready after 15s if playback evidence never arrives
+  // (e.g. autoplay fully blocked) so the user isn't stuck on the spinner forever
   useEffect(() => {
-    const t = setTimeout(markReady, 10000)
+    const t = setTimeout(markReady, 15000)
     return () => clearTimeout(t)
   }, [])
 
@@ -90,10 +91,17 @@ export default function CarVideoScreen({
       if (typeof e.data !== 'string') return
       try {
         const d = JSON.parse(e.data)
-        if (d.event === 'onReady') markReady()
+        // onReady = player API initialized, NOT buffered. Kick off muted playback
+        // so buffering starts reliably even when autoplay was blocked.
+        if (d.event === 'onReady' && !readyFiredRef.current) {
+          sendCommand(iframeRef.current, 'mute')
+          sendCommand(iframeRef.current, 'playVideo')
+        }
         const isPlaying =
           (d.event === 'onStateChange' && d.info === 1) ||
           (d.event === 'infoDelivery' && d.info?.playerState === 1)
+        // Only actual playback proves frames were downloaded — that's "ready"
+        if (isPlaying) markReady()
         if (isPlaying && !isActive) sendCommand(iframeRef.current, 'pauseVideo')
       } catch {}
     }
@@ -127,7 +135,7 @@ export default function CarVideoScreen({
 
   if (!videoId) return null
 
-  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=1&fs=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&enablejsapi=1&vq=hd1080&hl=en`
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=1&fs=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&enablejsapi=1&hl=en`
 
   function toggleMute() {
     const next = !mutedRef.current
