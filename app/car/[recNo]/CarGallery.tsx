@@ -5,17 +5,9 @@ import Image from 'next/image'
 
 export default function CarGallery({ images, name, priority }: { images: string[]; name: string; priority?: boolean }) {
   const [idx, setIdx] = useState(0)
-  const [preloadAll, setPreloadAll] = useState(false)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const imagesRef = useRef(images)
   imagesRef.current = images
-
-  // After 1s (page settled, YouTube loading), render all images hidden so
-  // Next.js Image requests the same /_next/image?url=… URLs it'll use for display.
-  useEffect(() => {
-    const t = setTimeout(() => setPreloadAll(true), 1000)
-    return () => clearTimeout(t)
-  }, [])
 
   // Keyboard arrow navigation
   useEffect(() => {
@@ -74,14 +66,6 @@ export default function CarGallery({ images, name, priority }: { images: string[
             priority={idx === 0 && priority}
           />
         </div>
-
-        {/* Hidden preload: all non-current images rendered at full size so the
-            browser caches the same /_next/image URLs used for display */}
-        {preloadAll && images.map((src, i) => i === idx ? null : (
-          <div key={src} aria-hidden="true" style={{ position: 'absolute', inset: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }}>
-            <Image src={src} alt="" fill sizes="100vw" style={{ objectFit: 'contain' }} />
-          </div>
-        ))}
 
         {/* Top fade */}
         <div style={{
