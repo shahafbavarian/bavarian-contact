@@ -146,7 +146,7 @@ export default function CarVideoScreen({
       <iframe
         ref={iframeRef}
         src={src}
-        allow="autoplay"
+        allow="autoplay; fullscreen"
         style={{
           position: 'absolute',
           top: '50%', left: '50%',
