@@ -21,13 +21,6 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
   )
 }
 
-function sendListening(iframe: HTMLIFrameElement | null) {
-  iframe?.contentWindow?.postMessage(
-    JSON.stringify({ event: 'listening', id: 'car-video', channel: 'widget' }),
-    'https://www.youtube-nocookie.com'
-  )
-}
-
 export default function CarVideoScreen({
   youtubeUrl,
   carName,
@@ -44,6 +37,9 @@ export default function CarVideoScreen({
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
   const readyFiredRef = useRef(false)
+  // iframe only mounts when user first arrives — guarantees autoplay=1 fires
+  // while the iframe is in the viewport, which iOS Safari requires
+  const [iframeLoaded, setIframeLoaded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
@@ -60,41 +56,20 @@ export default function CarVideoScreen({
     onReady()
   }
 
-  // Last-resort fallback: mark ready after 15s if playback evidence never arrives
-  // (e.g. autoplay fully blocked) so the user isn't stuck on the spinner forever
+  // Unlock scroll after 1s so user doesn't wait for YouTube handshake
   useEffect(() => {
-    const t = setTimeout(markReady, 15000)
+    const t = setTimeout(markReady, 1000)
     return () => clearTimeout(t)
   }, [])
 
-  // Handshake — retry until the player responds with onReady
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (readyFiredRef.current) { clearInterval(t); return }
-      sendListening(iframeRef.current)
-    }, 300)
-    return () => clearInterval(t)
-  }, [])
-
-  // YouTube postMessage events — onReady triggers markReady for fast scroll-unlock
-  useEffect(() => {
-    function onMessage(e: MessageEvent) {
-      if (typeof e.data !== 'string') return
-      try {
-        const d = JSON.parse(e.data)
-        if (d.event === 'onReady') markReady()
-      } catch {}
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [])
-
-  // Apply mute state and focus when screen becomes active
-  // Video autoplays muted from autoplay=1&mute=1 — never paused via postMessage
-  // so iOS Safari never blocks subsequent playback
+  // Render iframe on first arrival + apply mute state on every arrival
   useEffect(() => {
     if (!isActive) return
-    sendCommand(iframeRef.current, 'playVideo')
+    if (!iframeLoaded) {
+      setIframeLoaded(true)
+      return
+    }
+    // Already loaded on a previous visit — reapply mute state
     sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
     setTimeout(() => containerRef.current?.focus(), 400)
   }, [isActive])
@@ -129,23 +104,25 @@ export default function CarVideoScreen({
       tabIndex={-1}
       style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
     >
-      <iframe
-        ref={iframeRef}
-        src={src}
-        allow="autoplay; fullscreen"
-        style={{
-          position: 'absolute',
-          top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'calc(100dvh * 9 / 16)',
-          height: '100dvh',
-          minWidth: '100%',
-          border: 'none',
-        }}
-      />
+      {iframeLoaded && (
+        <iframe
+          ref={iframeRef}
+          src={src}
+          allow="autoplay; fullscreen"
+          style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'calc(100dvh * 9 / 16)',
+            height: '100dvh',
+            minWidth: '100%',
+            border: 'none',
+          }}
+        />
+      )}
 
       {/* Mute button */}
-      {isActive && (
+      {isActive && iframeLoaded && (
         <button
           onClick={toggleMute}
           style={{
