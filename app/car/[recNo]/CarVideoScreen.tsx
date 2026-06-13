@@ -21,6 +21,7 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
   )
 }
 
+// YouTube sends no postMessage events until it receives a 'listening' handshake
 function sendListening(iframe: HTMLIFrameElement | null) {
   iframe?.contentWindow?.postMessage(
     JSON.stringify({ event: 'listening', id: 'car-video', channel: 'widget' }),
@@ -44,9 +45,13 @@ export default function CarVideoScreen({
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
   const readyFiredRef = useRef(false)
+  const parkedRef = useRef(false)
+  const isActiveRef = useRef(isActive)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
+
+  useEffect(() => { isActiveRef.current = isActive }, [isActive])
 
   function markReady() {
     if (readyFiredRef.current) return
@@ -60,43 +65,58 @@ export default function CarVideoScreen({
     onReady()
   }
 
-  // Last-resort fallback: mark ready after 15s if playback evidence never arrives
-  // (e.g. autoplay fully blocked) so the user isn't stuck on the spinner forever
+  // Last-resort fallback: stop the spinner after 12s if playback proof never
+  // arrives (e.g. Low Power Mode blocks autoplay) so the user isn't stuck
   useEffect(() => {
-    const t = setTimeout(markReady, 15000)
+    const t = setTimeout(markReady, 12000)
     return () => clearTimeout(t)
   }, [])
 
-  // Handshake — retry until the player responds with onReady
+  // Handshake — retry until the player starts emitting events
   useEffect(() => {
     const t = setInterval(() => {
-      if (readyFiredRef.current) { clearInterval(t); return }
+      if (parkedRef.current) { clearInterval(t); return }
       sendListening(iframeRef.current)
-    }, 300)
+    }, 400)
     return () => clearInterval(t)
   }, [])
 
-  // YouTube postMessage events — onReady triggers markReady for fast scroll-unlock
+  // The video autoplays muted to buffer the start, then we park it (pause) so it
+  // waits at the beginning. Real playback (state=1) is proof it buffered → stop
+  // the spinner. controls=0 means a parked video shows no YouTube button.
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof e.data !== 'string') return
       try {
         const d = JSON.parse(e.data)
-        if (d.event === 'onReady') markReady()
+        const isPlaying =
+          (d.event === 'onStateChange' && d.info === 1) ||
+          (d.event === 'infoDelivery' && d.info?.playerState === 1)
+        if (isPlaying) {
+          markReady()
+          // Park at the start once — but only if the user isn't already watching
+          if (!parkedRef.current && !isActiveRef.current) {
+            parkedRef.current = true
+            sendCommand(iframeRef.current, 'pauseVideo')
+          }
+        }
       } catch {}
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [])
 
-  // Apply mute state and focus when screen becomes active
-  // Video autoplays muted from autoplay=1&mute=1 — never paused via postMessage
-  // so iOS Safari never blocks subsequent playback
+  // Play when the user reaches the video, pause when they leave. Playback here is
+  // muted, which iOS Safari permits programmatically (no tap needed).
   useEffect(() => {
-    if (!isActive) return
-    sendCommand(iframeRef.current, 'playVideo')
-    sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-    setTimeout(() => containerRef.current?.focus(), 400)
+    if (isActive) {
+      parkedRef.current = true
+      sendCommand(iframeRef.current, 'playVideo')
+      sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+      setTimeout(() => containerRef.current?.focus(), 400)
+    } else if (parkedRef.current) {
+      sendCommand(iframeRef.current, 'pauseVideo')
+    }
   }, [isActive])
 
   // Hardware volume keys → unmute
