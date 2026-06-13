@@ -56,36 +56,36 @@ function IndexBar({ label, value, colors, displayHigh, displayLow, lowLabel, hig
   const activeColor = colors[value + colorOffset] ?? '#888'
 
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#222', fontFamily: 'Heebo, Arial, sans-serif', direction: 'rtl' }}>
-          {label}{noteNum ? <sup style={{ fontSize: 7, marginRight: 1 }}>{'*'.repeat(noteNum)}</sup> : null}
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#222', fontFamily: 'Heebo, Arial, sans-serif', direction: 'rtl' }}>
+          {label}{noteNum ? <sup style={{ fontSize: 6.5, marginRight: 1 }}>{'*'.repeat(noteNum)}</sup> : null}
         </span>
         <span style={{
-          fontSize: 11.5, fontWeight: 900, fontFamily: 'Arial, sans-serif',
+          fontSize: 10, fontWeight: 900, fontFamily: 'Arial, sans-serif',
           color: activeColor, background: activeColor + '18',
-          borderRadius: 5, padding: '0px 8px', border: `1px solid ${activeColor}55`,
+          borderRadius: 4, padding: '0px 6px', border: `1px solid ${activeColor}55`,
         }}>
           {value}
         </span>
       </div>
 
-      <div style={{ position: 'relative', paddingTop: 8 }}>
+      <div style={{ position: 'relative', paddingTop: 6 }}>
         <div style={{
           position: 'absolute', top: 0, left: `${arrowPct}%`,
           transform: 'translateX(-50%)',
           width: 0, height: 0,
-          borderLeft: '4px solid transparent', borderRight: '4px solid transparent',
-          borderTop: `7px solid ${activeColor}`,
+          borderLeft: '3.5px solid transparent', borderRight: '3.5px solid transparent',
+          borderTop: `6px solid ${activeColor}`,
         }} />
-        <div style={{ display: 'flex', gap: 2, direction: 'ltr' }}>
+        <div style={{ display: 'flex', gap: 1.5, direction: 'ltr' }}>
           {Array.from({ length: count }, (_, pos) => {
             const v = displayHigh - pos
             const isActive = v === value
             const color = colors[v + colorOffset] ?? '#888'
             return (
               <div key={pos} style={{
-                flex: 1, height: isActive ? 15 : 10, alignSelf: 'flex-end',
+                flex: 1, height: isActive ? 11 : 7, alignSelf: 'flex-end',
                 background: color, borderRadius: 2,
                 opacity: isActive ? 1 : 0.32,
                 border: isActive ? `1.5px solid #fff` : '1.5px solid transparent',
@@ -93,14 +93,14 @@ function IndexBar({ label, value, colors, displayHigh, displayLow, lowLabel, hig
                 boxSizing: 'border-box',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{ fontSize: 5.5, fontWeight: 700, color: '#fff', fontFamily: 'Arial', lineHeight: 1 }}>{v}</span>
+                <span style={{ fontSize: 5, fontWeight: 700, color: '#fff', fontFamily: 'Arial', lineHeight: 1 }}>{v}</span>
               </div>
             )
           })}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, direction: 'ltr' }}>
-          <span style={{ fontSize: 8, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{highLabel}</span>
-          <span style={{ fontSize: 8, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{lowLabel}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2, direction: 'ltr' }}>
+          <span style={{ fontSize: 7.5, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{highLabel}</span>
+          <span style={{ fontSize: 7.5, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{lowLabel}</span>
         </div>
       </div>
     </div>
@@ -111,10 +111,10 @@ function SpecCell({ label, value }: { label: string; value: string }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '7px 4px', borderBottom: '1px solid #ececec', gap: 10,
+      padding: '4px 4px', borderBottom: '1px solid #ececec', gap: 10,
     }}>
-      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#1a1a1a', fontFamily: 'Heebo, Arial, sans-serif', whiteSpace: 'nowrap' }}>{label}</span>
-      <span style={{ fontSize: 11.5, color: '#555', fontFamily: 'Heebo, Arial, sans-serif', textAlign: 'left', direction: 'ltr' }}>{value}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#1a1a1a', fontFamily: 'Heebo, Arial, sans-serif', whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ fontSize: 11, color: '#555', fontFamily: 'Heebo, Arial, sans-serif', textAlign: 'left', direction: 'ltr' }}>{value}</span>
     </div>
   )
 }
@@ -230,7 +230,8 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           @page { size: A4 portrait; margin: 0; }
           html, body { background: #fff !important; }
           body { padding: 0 !important; }
-          .doc { box-shadow: none !important; margin: 0 !important; }
+          /* Cap to exactly one A4 page so content never spills to a second sheet */
+          .doc { box-shadow: none !important; margin: 0 !important; height: 297mm; overflow: hidden; }
           .no-print { display: none !important; }
         }
       `}</style>
@@ -242,25 +243,28 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         fontFamily: 'Heebo, Arial, sans-serif',
         direction: 'rtl',
         display: 'flex', flexDirection: 'column',
-        padding: '13mm 13mm 0',
+        padding: '9mm 12mm 0',
         WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
       }}>
 
-        {/* ── Header: centered logo ── */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+        {/* ── Header masthead — full-bleed band gives the logo a home so it
+              reads as part of the design instead of floating on white ── */}
+        <div style={{
+          margin: '-9mm -12mm 11px',
+          background: 'linear-gradient(180deg, #fbf9f6 0%, #f3efe8 100%)',
+          borderBottom: `2px solid ${GOLD}`,
+          padding: '15px 0 13px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
+        }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${SITE_URL}/LOGO-black.png`} alt="Bavarian Motors Club"
-            style={{ height: 88, objectFit: 'contain', display: 'block' }} />
+            style={{ height: 66, objectFit: 'contain', display: 'block' }} />
         </div>
-        <div style={{ height: 2, background: `linear-gradient(to left, transparent, ${GOLD}, transparent)`, marginBottom: 12 }} />
 
-        {/* ── Title row: car name (right) · price + ad number (left) ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-          <div style={{ direction: 'ltr', textAlign: 'left' }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: '#0f0f0f', letterSpacing: 0.5, lineHeight: 1 }}>{make}</div>
-            {model && <div style={{ fontSize: 15, fontWeight: 300, color: '#555', marginTop: 3 }}>{model}</div>}
-          </div>
-          <div style={{ textAlign: 'left', flexShrink: 0 }}>
+        {/* ── Title row: price + ad number (right) · car name + model (left) ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
             {summary.price && (
               <div style={{ fontSize: 21, fontWeight: 900, color: '#0f0f0f', lineHeight: 1 }}>{summary.price}</div>
             )}
@@ -268,40 +272,47 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
               מודעה <span style={{ fontWeight: 700, color: '#666' }}>{recNo}</span>
             </div>
           </div>
+          <div style={{ direction: 'ltr', textAlign: 'left' }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: '#0f0f0f', letterSpacing: 0.5, lineHeight: 1 }}>{make}</div>
+            {model && <div style={{ fontSize: 15, fontWeight: 300, color: '#555', marginTop: 3 }}>{model}</div>}
+          </div>
         </div>
 
         {/* ── Cover image — just the image, full width, never cropped ── */}
         {mainImage && (
-          <div style={{ width: '100%', marginBottom: 14 }}>
+          <div style={{ width: '100%', marginBottom: 9 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
               alt={summary.name}
-              style={{ width: '100%', height: 'auto', maxHeight: '90mm', objectFit: 'contain', display: 'block', borderRadius: 6 }}
+              style={{ width: '100%', height: 'auto', maxHeight: '64mm', objectFit: 'contain', display: 'block', borderRadius: 6 }}
             />
           </div>
         )}
 
         {/* ── Specs — two columns ── */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 4, textAlign: 'right' }}>מפרט הרכב</div>
+        <div style={{ marginBottom: 9 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 3, textAlign: 'right' }}>מפרט הרכב</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 28 }}>
             {specs.map((s, i) => <SpecCell key={i} label={s.label} value={s.value} />)}
           </div>
         </div>
 
-        {/* ── Description ── */}
+        {/* ── Description — clamped so it never overflows to a second page ── */}
         {detail?.description && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 5, textAlign: 'right' }}>תיאור</div>
-            <p style={{ fontSize: 11, color: '#444', lineHeight: 1.65, direction: 'rtl', textAlign: 'right' }}>{detail.description}</p>
+          <div style={{ marginBottom: 9 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 3, textAlign: 'right' }}>תיאור</div>
+            <p style={{
+              fontSize: 10.5, color: '#444', lineHeight: 1.55, direction: 'rtl', textAlign: 'right',
+              display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}>{detail.description}</p>
           </div>
         )}
 
         {/* ── Pollution & Safety indices ── */}
         {hasIndices && (
-          <div style={{ background: '#faf8f5', borderRadius: 8, padding: '9px 14px 6px', marginBottom: 10, border: '1px solid #eee6dc' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 7, textAlign: 'right' }}>
+          <div style={{ background: '#faf8f5', borderRadius: 8, padding: '7px 12px 5px', marginBottom: 10, border: '1px solid #eee6dc' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 5, textAlign: 'right' }}>
               מדדי זיהום ובטיחות
             </div>
             {pollutionGrade !== null && (
@@ -326,7 +337,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
                 noteNum={2}
               />
             )}
-            <p style={{ fontSize: 8, color: '#aaa', lineHeight: 1.6, direction: 'rtl', textAlign: 'right', marginTop: 4 }}>
+            <p style={{ fontSize: 7, color: '#aaa', lineHeight: 1.5, direction: 'rtl', textAlign: 'right', marginTop: 3 }}>
               * נתוני זיהום האוויר מבוססים על נתוני היצרן על פי בדיקות מעבדה בהתאם לתקנות EU 2017/1151.<br />
               ** רמת האבזור הבטיחותי מחושבת לפי הוראת נוהל מספר 03/13 של משרד התחבורה.
             </p>
@@ -337,14 +348,14 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
 
         {/* ── Footer: QR (right, large & scannable) · contact (left) ── */}
         <div style={{
-          marginTop: 8, borderTop: `1.5px solid ${GOLD}`,
-          padding: '12px 0 14px',
+          marginTop: 6, borderTop: `1.5px solid ${GOLD}`,
+          padding: '8px 0 8px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${SITE_URL}/api/qr/${recNo}`} alt="QR"
-              style={{ width: 120, height: 120, borderRadius: 8, flexShrink: 0 }} />
+              style={{ width: 108, height: 108, borderRadius: 8, flexShrink: 0 }} />
             <span style={{ fontSize: 12, fontWeight: 500, color: '#777', fontFamily: 'Heebo, Arial, sans-serif', lineHeight: 1.5 }}>
               סרקו לצפייה<br />בפרטים המלאים
             </span>
@@ -352,7 +363,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           <div style={{ textAlign: 'left', direction: 'ltr', fontFamily: 'Heebo, Arial, sans-serif' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>Bavarian Motors Club</div>
             <div style={{ fontSize: 10, color: '#888', marginTop: 3 }}>החושלים 6, הרצליה פיתוח</div>
-            <div style={{ fontSize: 10, color: '#888', marginTop: 1 }}>טלפון: 09-956-1906 · פקס: 09-956-1903</div>
+            <div style={{ fontSize: 10, color: '#888', marginTop: 1 }}>טלפון: 09-956-1906</div>
           </div>
         </div>
       </div>
