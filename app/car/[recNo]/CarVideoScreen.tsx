@@ -45,9 +45,13 @@ export default function CarVideoScreen({
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
   const readyFiredRef = useRef(false)
+  const parkedRef = useRef(false)
+  const isActiveRef = useRef(isActive)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
+
+  useEffect(() => { isActiveRef.current = isActive }, [isActive])
 
   function markReady() {
     if (readyFiredRef.current) return
@@ -71,16 +75,15 @@ export default function CarVideoScreen({
   // Handshake — retry until the player starts emitting events
   useEffect(() => {
     const t = setInterval(() => {
-      if (readyFiredRef.current) { clearInterval(t); return }
+      if (parkedRef.current) { clearInterval(t); return }
       sendListening(iframeRef.current)
     }, 400)
     return () => clearInterval(t)
   }, [])
 
-  // Real playback (state=1) is the only proof the video buffered → stop spinner.
-  // We never send pauseVideo: pausing makes YouTube show its center play button
-  // and makes iOS Safari block the next play. The video just loops silently in
-  // the background until the user arrives, already playing.
+  // The video autoplays muted to buffer the start, then we park it (pause) so it
+  // waits at the beginning. Real playback (state=1) is proof it buffered → stop
+  // the spinner. controls=0 means a parked video shows no YouTube button.
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof e.data !== 'string') return
@@ -89,21 +92,30 @@ export default function CarVideoScreen({
         const isPlaying =
           (d.event === 'onStateChange' && d.info === 1) ||
           (d.event === 'infoDelivery' && d.info?.playerState === 1)
-        if (isPlaying) markReady()
+        if (isPlaying) {
+          markReady()
+          // Park at the start once — but only if the user isn't already watching
+          if (!parkedRef.current && !isActiveRef.current) {
+            parkedRef.current = true
+            sendCommand(iframeRef.current, 'pauseVideo')
+          }
+        }
       } catch {}
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [])
 
-  // Active/inactive: only mute state changes — never pause.
+  // Play when the user reaches the video, pause when they leave. Playback here is
+  // muted, which iOS Safari permits programmatically (no tap needed).
   useEffect(() => {
     if (isActive) {
+      parkedRef.current = true
+      sendCommand(iframeRef.current, 'playVideo')
       sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
       setTimeout(() => containerRef.current?.focus(), 400)
-    } else {
-      // Keep playing in the background, just silence it while reading screen 1
-      sendCommand(iframeRef.current, 'mute')
+    } else if (parkedRef.current) {
+      sendCommand(iframeRef.current, 'pauseVideo')
     }
   }, [isActive])
 
