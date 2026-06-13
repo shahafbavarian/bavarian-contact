@@ -228,10 +228,15 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         }
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          html, body { background: #fff !important; }
-          body { padding: 0 !important; }
-          /* Cap to exactly one A4 page so content never spills to a second sheet */
-          .doc { box-shadow: none !important; margin: 0 !important; height: 297mm; overflow: hidden; }
+          html, body {
+            background: #fff !important; margin: 0 !important; padding: 0 !important;
+            width: 210mm; height: 297mm; overflow: hidden;
+          }
+          /* Lock to exactly one A4 page — content never spills to a second sheet */
+          .doc {
+            box-shadow: none !important; margin: 0 !important;
+            width: 210mm; height: 296mm; min-height: 0 !important; overflow: hidden;
+          }
           .no-print { display: none !important; }
         }
       `}</style>
@@ -278,14 +283,18 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           </div>
         </div>
 
-        {/* ── Cover image — just the image, full width, never cropped ── */}
+        {/* ── Cover image — grows to fill the free vertical space, never cropped ── */}
         {mainImage && (
-          <div style={{ width: '100%', marginBottom: 9 }}>
+          <div style={{
+            width: '100%', marginBottom: 9,
+            flex: '1 1 0', minHeight: '64mm',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
               alt={summary.name}
-              style={{ width: '100%', height: 'auto', maxHeight: '64mm', objectFit: 'contain', display: 'block', borderRadius: 6 }}
+              style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block', borderRadius: 6 }}
             />
           </div>
         )}
@@ -343,8 +352,6 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
             </p>
           </div>
         )}
-
-        <div style={{ flex: 1 }} />
 
         {/* ── Footer: QR (right, large & scannable) · contact (left) ── */}
         <div style={{
