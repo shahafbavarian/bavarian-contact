@@ -21,6 +21,14 @@ function sendCommand(iframe: HTMLIFrameElement | null, func: string) {
   )
 }
 
+// YouTube sends no postMessage events until it receives a 'listening' handshake
+function sendListening(iframe: HTMLIFrameElement | null) {
+  iframe?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'listening', id: 'car-video', channel: 'widget' }),
+    'https://www.youtube-nocookie.com'
+  )
+}
+
 export default function CarVideoScreen({
   youtubeUrl,
   carName,
@@ -36,17 +44,14 @@ export default function CarVideoScreen({
 }) {
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
-  const [loaded, setLoaded] = useState(false)
-  const loadedRef = useRef(false)
-  const visibleRef = useRef(false)
-  const onReadyFiredRef = useRef(false)
+  const readyFiredRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
   function markReady() {
-    if (onReadyFiredRef.current) return
-    onReadyFiredRef.current = true
+    if (readyFiredRef.current) return
+    readyFiredRef.current = true
     const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
     if (hint) hint.setAttribute('data-ready', '1')
     const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
@@ -56,35 +61,51 @@ export default function CarVideoScreen({
     onReady()
   }
 
-  // Unlock scroll after 800ms — don't make user wait for YouTube handshake
+  // Last-resort fallback: stop the spinner after 12s if playback proof never
+  // arrives (e.g. Low Power Mode blocks autoplay) so the user isn't stuck
   useEffect(() => {
-    const t = setTimeout(markReady, 800)
+    const t = setTimeout(markReady, 12000)
     return () => clearTimeout(t)
   }, [])
 
-  // IntersectionObserver: lazy-load iframe on first scroll-in, pause on scroll-away
+  // Handshake — retry until the player starts emitting events
   useEffect(() => {
-    if (!containerRef.current) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        visibleRef.current = e.isIntersecting
-        if (e.isIntersecting) {
-          if (!loadedRef.current) {
-            loadedRef.current = true
-            setLoaded(true)
-            markReady()
-          } else {
-            sendCommand(iframeRef.current, 'playVideo')
-            sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
-          }
-          setTimeout(() => containerRef.current?.focus(), 400)
-        }
-      },
-      { threshold: 0.5 }
-    )
-    obs.observe(containerRef.current)
-    return () => obs.disconnect()
+    const t = setInterval(() => {
+      if (readyFiredRef.current) { clearInterval(t); return }
+      sendListening(iframeRef.current)
+    }, 400)
+    return () => clearInterval(t)
   }, [])
+
+  // Real playback (state=1) is the only proof the video buffered → stop spinner.
+  // We never send pauseVideo: pausing makes YouTube show its center play button
+  // and makes iOS Safari block the next play. The video just loops silently in
+  // the background until the user arrives, already playing.
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (typeof e.data !== 'string') return
+      try {
+        const d = JSON.parse(e.data)
+        const isPlaying =
+          (d.event === 'onStateChange' && d.info === 1) ||
+          (d.event === 'infoDelivery' && d.info?.playerState === 1)
+        if (isPlaying) markReady()
+      } catch {}
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  // Active/inactive: only mute state changes — never pause.
+  useEffect(() => {
+    if (isActive) {
+      sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
+      setTimeout(() => containerRef.current?.focus(), 400)
+    } else {
+      // Keep playing in the background, just silence it while reading screen 1
+      sendCommand(iframeRef.current, 'mute')
+    }
+  }, [isActive])
 
   // Hardware volume keys → unmute
   useEffect(() => {
@@ -116,25 +137,23 @@ export default function CarVideoScreen({
       tabIndex={-1}
       style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
     >
-      {loaded && (
-        <iframe
-          ref={iframeRef}
-          src={src}
-          allow="autoplay; fullscreen"
-          style={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 'calc(100dvh * 9 / 16)',
-            height: '100dvh',
-            minWidth: '100%',
-            border: 'none',
-          }}
-        />
-      )}
+      <iframe
+        ref={iframeRef}
+        src={src}
+        allow="autoplay; fullscreen"
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'calc(100dvh * 9 / 16)',
+          height: '100dvh',
+          minWidth: '100%',
+          border: 'none',
+        }}
+      />
 
       {/* Mute button */}
-      {isActive && loaded && (
+      {isActive && (
         <button
           onClick={toggleMute}
           style={{
