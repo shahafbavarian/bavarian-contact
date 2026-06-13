@@ -1,6 +1,6 @@
 import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import QRCode from 'qrcode'
+import PrintButton from './PrintButton'
 
 const SITE_URL = 'https://contact.bavarian-motors.co.il'
 
@@ -129,9 +129,6 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
   const pollutionGrade = overrides?.pollution_grade ?? detail?.pollutionGrade ?? null
   const safetyLevel    = overrides?.safety_level   ?? detail?.safetyLevel    ?? null
 
-  const carUrl = `${SITE_URL}/car/${recNo}`
-  const qrDataUrl = await QRCode.toDataURL(carUrl, { margin: 1, width: 180, color: { dark: '#000', light: '#fff' } })
-
   const getSpec = (...keys: string[]) => {
     if (!detail?.specs) return null
     for (const [k, v] of Object.entries(detail.specs)) {
@@ -181,26 +178,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         }
       `}</style>
 
-      {/* Print button — hidden on print */}
-      <div className="no-print" style={{
-        position: 'fixed', top: 16, left: 16, zIndex: 100,
-        display: 'flex', gap: 8,
-      }}>
-        <button
-          onClick={() => { /* handled inline */ }}
-          id="printBtn"
-          style={{
-            padding: '8px 20px', borderRadius: 8, cursor: 'pointer',
-            background: '#111', color: '#fff', border: 'none',
-            fontFamily: 'Heebo, Arial, sans-serif', fontSize: 14, fontWeight: 700,
-          }}
-        >
-          🖨️ הדפס
-        </button>
-        <script dangerouslySetInnerHTML={{ __html: `
-          document.getElementById('printBtn').onclick = function(){ window.print() }
-        ` }} />
-      </div>
+      <PrintButton />
 
       {/* A4 page */}
       <div style={{
@@ -214,14 +192,19 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-          {/* QR code */}
+          {/* QR code — reuses the same API route as the slideshow */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrDataUrl} alt="QR" width={72} height={72} style={{ border: '1px solid #eee', borderRadius: 4, flexShrink: 0 }} />
+          <img
+            src={`${SITE_URL}/api/qr/${recNo}`}
+            alt="QR"
+            width={72} height={72}
+            style={{ border: '1px solid #eee', borderRadius: 4, flexShrink: 0 }}
+          />
 
-          {/* Logo center */}
+          {/* Black logo center */}
           <div style={{ textAlign: 'center', flex: 1, padding: '0 12px' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${SITE_URL}/LOGO.PNG`} alt="Bavarian Motors Club" style={{ height: 52, objectFit: 'contain' }} />
+            <img src={`${SITE_URL}/LOGO-black.png`} alt="Bavarian Motors Club" style={{ height: 52, objectFit: 'contain' }} />
           </div>
 
           {/* מודעה number */}
