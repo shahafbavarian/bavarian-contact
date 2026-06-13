@@ -215,12 +215,11 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           print-color-adjust: exact;
         }
 
-        /* Definite height (not min-height) so the cover image's max-height:100%
-           resolves — otherwise it falls back to the natural size and overflows. */
+        /* Screen preview shows a full A4 sheet. The cover image uses a fixed
+           height (below), so the doc never needs a forced height. */
         .doc {
           width: 210mm;
-          height: 297mm;
-          overflow: hidden;
+          min-height: 297mm;
           margin: 0 auto;
           background: #fff;
           box-shadow: 0 10px 50px rgba(0,0,0,0.22);
@@ -231,16 +230,16 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         }
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          /* Body must NOT be pinned to 297mm: at 96dpi that rounds up past the
-             printable area and emits a blank second page. Let it wrap the doc. */
           html, body {
             background: #fff !important; margin: 0 !important; padding: 0 !important;
-            height: auto !important; overflow: hidden !important;
+            height: auto !important;
           }
-          /* Doc a few mm under A4 → guaranteed bottom margin, never a 2nd sheet. */
+          /* Natural, compact height — NOT a forced near-full-page height. The
+             content is well under one page, so it prints on a single sheet
+             regardless of the browser's margin / header-footer settings. */
           .doc {
             box-shadow: none !important; margin: 0 auto !important;
-            width: 210mm; height: 290mm; overflow: hidden;
+            width: 210mm; min-height: 0 !important; height: auto !important;
           }
           .no-print { display: none !important; }
         }
@@ -288,20 +287,15 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           </div>
         </div>
 
-        {/* ── Cover image — grows to fill the free vertical space, never cropped.
-              min-height:0 + overflow:hidden let the flex item shrink so the image
-              can never overflow its box and push the layout to a second page. ── */}
+        {/* ── Cover image — fixed height, full image, never cropped (object-fit
+              contain). A predictable height keeps the whole sheet under one page. ── */}
         {mainImage && (
-          <div style={{
-            width: '100%', marginBottom: 9,
-            flex: '1 1 0', minHeight: 0, overflow: 'hidden',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+          <div style={{ width: '100%', height: '86mm', marginBottom: 9 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
               alt={summary.name}
-              style={{ maxWidth: '100%', maxHeight: '100%', minHeight: 0, objectFit: 'contain', display: 'block', borderRadius: 6 }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 6 }}
             />
           </div>
         )}
