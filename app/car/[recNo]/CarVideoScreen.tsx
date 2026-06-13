@@ -44,13 +44,21 @@ export default function CarVideoScreen({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = extractVideoId(youtubeUrl)
 
-  // Unlock scroll quickly so user doesn't wait long
+  function markReady() {
+    if (onReadyFiredRef.current) return
+    onReadyFiredRef.current = true
+    const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
+    if (hint) hint.setAttribute('data-ready', '1')
+    const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
+    const hintReady = document.querySelector<HTMLElement>('[data-hint-ready]')
+    if (hintLoading) hintLoading.style.display = 'none'
+    if (hintReady) hintReady.style.display = 'flex'
+    onReady()
+  }
+
+  // Unlock scroll after 800ms — don't make user wait for YouTube handshake
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (onReadyFiredRef.current) return
-      onReadyFiredRef.current = true
-      onReady()
-    }, 800)
+    const t = setTimeout(markReady, 800)
     return () => clearTimeout(t)
   }, [])
 
@@ -64,11 +72,7 @@ export default function CarVideoScreen({
           if (!loadedRef.current) {
             loadedRef.current = true
             setLoaded(true)
-            // Signal ready immediately on first arrival
-            if (!onReadyFiredRef.current) {
-              onReadyFiredRef.current = true
-              onReady()
-            }
+            markReady()
           } else {
             sendCommand(iframeRef.current, 'playVideo')
             sendCommand(iframeRef.current, mutedRef.current ? 'mute' : 'unMute')
