@@ -18,7 +18,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Bavarian Motors Club',
-  description: 'מלאי נרחב של רכבי יוקרה וספורט — בוואריאן מוטורס',
+  description: 'מלאי רחב של רכבי יוקרה וספורט — בוואריאן מוטורס',
   openGraph: {
     title: 'Bavarian Motors Club',
     description: 'רכבי יוקרה וספורט 2026 ללא יד — מחכים לכם בבוואריאן מוטורס',
