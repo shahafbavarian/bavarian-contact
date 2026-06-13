@@ -56,27 +56,27 @@ function IndexBar({ label, value, colors, displayHigh, displayLow, lowLabel, hig
   const activeColor = colors[value + colorOffset] ?? '#888'
 
   return (
-    <div style={{ marginBottom: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#222', fontFamily: 'Heebo, Arial, sans-serif', direction: 'rtl' }}>
-          {label}{noteNum ? <sup style={{ fontSize: 6.5, marginRight: 1 }}>{'*'.repeat(noteNum)}</sup> : null}
+    <div style={{ marginBottom: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: '#222', fontFamily: 'Heebo, Arial, sans-serif', direction: 'rtl' }}>
+          {label}{noteNum ? <sup style={{ fontSize: 6, marginRight: 1 }}>{'*'.repeat(noteNum)}</sup> : null}
         </span>
         <span style={{
-          fontSize: 10, fontWeight: 900, fontFamily: 'Arial, sans-serif',
+          fontSize: 9, fontWeight: 900, fontFamily: 'Arial, sans-serif',
           color: activeColor, background: activeColor + '18',
-          borderRadius: 4, padding: '0px 6px', border: `1px solid ${activeColor}55`,
+          borderRadius: 4, padding: '0px 5px', border: `1px solid ${activeColor}55`,
         }}>
           {value}
         </span>
       </div>
 
-      <div style={{ position: 'relative', paddingTop: 6 }}>
+      <div style={{ position: 'relative', paddingTop: 5 }}>
         <div style={{
           position: 'absolute', top: 0, left: `${arrowPct}%`,
           transform: 'translateX(-50%)',
           width: 0, height: 0,
-          borderLeft: '3.5px solid transparent', borderRight: '3.5px solid transparent',
-          borderTop: `6px solid ${activeColor}`,
+          borderLeft: '3px solid transparent', borderRight: '3px solid transparent',
+          borderTop: `5px solid ${activeColor}`,
         }} />
         <div style={{ display: 'flex', gap: 1.5, direction: 'ltr' }}>
           {Array.from({ length: count }, (_, pos) => {
@@ -85,22 +85,22 @@ function IndexBar({ label, value, colors, displayHigh, displayLow, lowLabel, hig
             const color = colors[v + colorOffset] ?? '#888'
             return (
               <div key={pos} style={{
-                flex: 1, height: isActive ? 11 : 7, alignSelf: 'flex-end',
+                flex: 1, height: isActive ? 9 : 5.5, alignSelf: 'flex-end',
                 background: color, borderRadius: 2,
                 opacity: isActive ? 1 : 0.32,
-                border: isActive ? `1.5px solid #fff` : '1.5px solid transparent',
+                border: isActive ? `1px solid #fff` : '1px solid transparent',
                 boxShadow: isActive ? `0 0 0 1px ${color}` : 'none',
                 boxSizing: 'border-box',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{ fontSize: 5, fontWeight: 700, color: '#fff', fontFamily: 'Arial', lineHeight: 1 }}>{v}</span>
+                <span style={{ fontSize: 4.5, fontWeight: 700, color: '#fff', fontFamily: 'Arial', lineHeight: 1 }}>{v}</span>
               </div>
             )
           })}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2, direction: 'ltr' }}>
-          <span style={{ fontSize: 7.5, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{highLabel}</span>
-          <span style={{ fontSize: 7.5, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{lowLabel}</span>
+          <span style={{ fontSize: 7, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{highLabel}</span>
+          <span style={{ fontSize: 7, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{lowLabel}</span>
         </div>
       </div>
     </div>
@@ -231,14 +231,16 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         }
         @media print {
           @page { size: A4 portrait; margin: 0; }
+          /* Body must NOT be pinned to 297mm: at 96dpi that rounds up past the
+             printable area and emits a blank second page. Let it wrap the doc. */
           html, body {
             background: #fff !important; margin: 0 !important; padding: 0 !important;
-            width: 210mm; height: 297mm; overflow: hidden;
+            height: auto !important; overflow: hidden !important;
           }
-          /* Lock to exactly one A4 page — content never spills to a second sheet */
+          /* Doc a few mm under A4 → guaranteed bottom margin, never a 2nd sheet. */
           .doc {
-            box-shadow: none !important; margin: 0 !important;
-            width: 210mm; height: 296mm; overflow: hidden;
+            box-shadow: none !important; margin: 0 auto !important;
+            width: 210mm; height: 290mm; overflow: hidden;
           }
           .no-print { display: none !important; }
         }
@@ -251,7 +253,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         fontFamily: 'Heebo, Arial, sans-serif',
         direction: 'rtl',
         display: 'flex', flexDirection: 'column',
-        padding: '9mm 12mm 0',
+        padding: '9mm 12mm 8mm',
         WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
       }}>
 
@@ -274,15 +276,15 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             {summary.price && (
-              <div style={{ fontSize: 21, fontWeight: 900, color: '#0f0f0f', lineHeight: 1 }}>{summary.price}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#0f0f0f', lineHeight: 1 }}>{summary.price}</div>
             )}
-            <div style={{ fontSize: 10, color: '#999', fontFamily: 'Arial', letterSpacing: 1, marginTop: 4 }}>
+            <div style={{ fontSize: 10.5, color: '#999', fontFamily: 'Arial', letterSpacing: 1, marginTop: 5 }}>
               מודעה <span style={{ fontWeight: 700, color: '#666' }}>{recNo}</span>
             </div>
           </div>
           <div style={{ direction: 'ltr', textAlign: 'left' }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: '#0f0f0f', letterSpacing: 0.5, lineHeight: 1 }}>{make}</div>
-            {model && <div style={{ fontSize: 15, fontWeight: 300, color: '#555', marginTop: 3 }}>{model}</div>}
+            <div style={{ fontSize: 36, fontWeight: 900, color: '#0f0f0f', letterSpacing: 0.5, lineHeight: 1 }}>{make}</div>
+            {model && <div style={{ fontSize: 19, fontWeight: 300, color: '#555', marginTop: 4 }}>{model}</div>}
           </div>
         </div>
 
@@ -325,8 +327,8 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
 
         {/* ── Pollution & Safety indices ── */}
         {hasIndices && (
-          <div style={{ background: '#faf8f5', borderRadius: 8, padding: '7px 12px 5px', marginBottom: 10, border: '1px solid #eee6dc' }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 5, textAlign: 'right' }}>
+          <div style={{ background: '#faf8f5', borderRadius: 7, padding: '5px 10px 4px', marginBottom: 8, border: '1px solid #eee6dc' }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 3, textAlign: 'right' }}>
               מדדי זיהום ובטיחות
             </div>
             {pollutionGrade !== null && (
@@ -351,7 +353,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
                 noteNum={2}
               />
             )}
-            <p style={{ fontSize: 7, color: '#aaa', lineHeight: 1.5, direction: 'rtl', textAlign: 'right', marginTop: 3 }}>
+            <p style={{ fontSize: 6.5, color: '#aaa', lineHeight: 1.45, direction: 'rtl', textAlign: 'right', marginTop: 2 }}>
               * נתוני זיהום האוויר מבוססים על נתוני היצרן על פי בדיקות מעבדה בהתאם לתקנות EU 2017/1151.<br />
               ** רמת האבזור הבטיחותי מחושבת לפי הוראת נוהל מספר 03/13 של משרד התחבורה.
             </p>
