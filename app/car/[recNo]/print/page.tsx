@@ -215,9 +215,12 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           print-color-adjust: exact;
         }
 
+        /* Definite height (not min-height) so the cover image's max-height:100%
+           resolves — otherwise it falls back to the natural size and overflows. */
         .doc {
           width: 210mm;
-          min-height: 297mm;
+          height: 297mm;
+          overflow: hidden;
           margin: 0 auto;
           background: #fff;
           box-shadow: 0 10px 50px rgba(0,0,0,0.22);
@@ -235,7 +238,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           /* Lock to exactly one A4 page — content never spills to a second sheet */
           .doc {
             box-shadow: none !important; margin: 0 !important;
-            width: 210mm; height: 296mm; min-height: 0 !important; overflow: hidden;
+            width: 210mm; height: 296mm; overflow: hidden;
           }
           .no-print { display: none !important; }
         }
@@ -283,18 +286,20 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           </div>
         </div>
 
-        {/* ── Cover image — grows to fill the free vertical space, never cropped ── */}
+        {/* ── Cover image — grows to fill the free vertical space, never cropped.
+              min-height:0 + overflow:hidden let the flex item shrink so the image
+              can never overflow its box and push the layout to a second page. ── */}
         {mainImage && (
           <div style={{
             width: '100%', marginBottom: 9,
-            flex: '1 1 0', minHeight: '64mm',
+            flex: '1 1 0', minHeight: 0, overflow: 'hidden',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
               alt={summary.name}
-              style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block', borderRadius: 6 }}
+              style={{ maxWidth: '100%', maxHeight: '100%', minHeight: 0, objectFit: 'contain', display: 'block', borderRadius: 6 }}
             />
           </div>
         )}
