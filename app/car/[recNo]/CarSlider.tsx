@@ -8,6 +8,40 @@ import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 const GOLD = 'rgba(200,169,110,0.8)'
 
+function PrintButton({ recNo, style }: { recNo: string; style?: React.CSSProperties }) {
+  return (
+    <a
+      href={`/car/${recNo}/print`}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-print-btn
+      style={{
+        position: 'fixed',
+        top: 152,
+        right: 18,
+        zIndex: 9998,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 36, height: 36, borderRadius: '50%',
+        background: 'rgba(14,14,14,0.88)',
+        border: '1px solid rgba(200,169,110,0.28)',
+        backdropFilter: 'blur(10px)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+        cursor: 'pointer',
+        textDecoration: 'none',
+        color: 'rgba(200,169,110,0.7)',
+        ...style,
+      }}
+      aria-label="הדפסה"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
+    </a>
+  )
+}
+
 export default function CarSlider({
   children,
   desktopLeft,
@@ -179,6 +213,7 @@ export default function CarSlider({
         </div>
 
         <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
+        <PrintButton recNo={recNo} style={{ position: 'fixed', top: 16, left: 16 }} />
       </>
     )
   }
@@ -211,6 +246,7 @@ export default function CarSlider({
 
       <CarCTA carName={carName} recNo={recNo} />
       <AccessibilityWidget top={50} right={18} />
+      <PrintButton recNo={recNo} />
       <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
     </div>
   )
