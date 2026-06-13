@@ -56,27 +56,27 @@ function IndexBar({ label, value, colors, displayHigh, displayLow, lowLabel, hig
   const activeColor = colors[value + colorOffset] ?? '#888'
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#222', fontFamily: 'Heebo, Arial, sans-serif', direction: 'rtl' }}>
-          {label}{noteNum ? <sup style={{ fontSize: 8, marginRight: 1 }}>{'*'.repeat(noteNum)}</sup> : null}
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#222', fontFamily: 'Heebo, Arial, sans-serif', direction: 'rtl' }}>
+          {label}{noteNum ? <sup style={{ fontSize: 7, marginRight: 1 }}>{'*'.repeat(noteNum)}</sup> : null}
         </span>
         <span style={{
-          fontSize: 13, fontWeight: 900, fontFamily: 'Arial, sans-serif',
+          fontSize: 11.5, fontWeight: 900, fontFamily: 'Arial, sans-serif',
           color: activeColor, background: activeColor + '18',
-          borderRadius: 6, padding: '1px 9px', border: `1px solid ${activeColor}55`,
+          borderRadius: 5, padding: '0px 8px', border: `1px solid ${activeColor}55`,
         }}>
           {value}
         </span>
       </div>
 
-      <div style={{ position: 'relative', paddingTop: 10 }}>
+      <div style={{ position: 'relative', paddingTop: 8 }}>
         <div style={{
           position: 'absolute', top: 0, left: `${arrowPct}%`,
           transform: 'translateX(-50%)',
           width: 0, height: 0,
-          borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
-          borderTop: `8px solid ${activeColor}`,
+          borderLeft: '4px solid transparent', borderRight: '4px solid transparent',
+          borderTop: `7px solid ${activeColor}`,
         }} />
         <div style={{ display: 'flex', gap: 2, direction: 'ltr' }}>
           {Array.from({ length: count }, (_, pos) => {
@@ -85,22 +85,22 @@ function IndexBar({ label, value, colors, displayHigh, displayLow, lowLabel, hig
             const color = colors[v + colorOffset] ?? '#888'
             return (
               <div key={pos} style={{
-                flex: 1, height: isActive ? 22 : 16, alignSelf: 'flex-end',
-                background: color, borderRadius: 3,
+                flex: 1, height: isActive ? 15 : 10, alignSelf: 'flex-end',
+                background: color, borderRadius: 2,
                 opacity: isActive ? 1 : 0.32,
-                border: isActive ? `2px solid #fff` : '2px solid transparent',
+                border: isActive ? `1.5px solid #fff` : '1.5px solid transparent',
                 boxShadow: isActive ? `0 0 0 1px ${color}` : 'none',
                 boxSizing: 'border-box',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{ fontSize: 6, fontWeight: 700, color: '#fff', fontFamily: 'Arial', lineHeight: 1 }}>{v}</span>
+                <span style={{ fontSize: 5.5, fontWeight: 700, color: '#fff', fontFamily: 'Arial', lineHeight: 1 }}>{v}</span>
               </div>
             )
           })}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, direction: 'ltr' }}>
-          <span style={{ fontSize: 9, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{highLabel}</span>
-          <span style={{ fontSize: 9, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{lowLabel}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, direction: 'ltr' }}>
+          <span style={{ fontSize: 8, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{highLabel}</span>
+          <span style={{ fontSize: 8, color: '#999', fontFamily: 'Heebo, Arial, sans-serif' }}>{lowLabel}</span>
         </div>
       </div>
     </div>
@@ -157,7 +157,8 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
   const engineType = summary.engine ? (ENGINE_LABELS[summary.engine.toLowerCase()] ?? summary.engine) : null
   const km         = summary.mileage ? displayMileage(summary.mileage) : null
   const yad        = getSpec('יד') ?? summary.yad
-  const yearValue  = getSpec('מועד', 'שנת', 'שנה') ?? summary.year ?? null
+  const yearRaw    = getSpec('מועד', 'שנת', 'שנה') ?? summary.year ?? null
+  const yearValue  = yearRaw ? String(yearRaw).replace(/,/g, '') : null
   const engineVol  = getSpec('נפח')
   const hp         = getSpec('הספק', 'כוח סוס')
   const color      = detail?.color ?? getSpec('צבע חיצ')
@@ -246,10 +247,10 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
       }}>
 
         {/* ── Header: centered logo ── */}
-        <div style={{ textAlign: 'center', marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${SITE_URL}/LOGO-black.png`} alt="Bavarian Motors Club"
-            style={{ height: 64, objectFit: 'contain' }} />
+            style={{ height: 88, objectFit: 'contain', display: 'block' }} />
         </div>
         <div style={{ height: 2, background: `linear-gradient(to left, transparent, ${GOLD}, transparent)`, marginBottom: 12 }} />
 
@@ -269,19 +270,14 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           </div>
         </div>
 
-        {/* ── Cover image — shown in full, never cropped ── */}
+        {/* ── Cover image — just the image, full width, never cropped ── */}
         {mainImage && (
-          <div style={{
-            width: '100%', marginBottom: 14,
-            background: '#f4f4f5', borderRadius: 8, border: '1px solid #ececec',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: '78mm', overflow: 'hidden',
-          }}>
+          <div style={{ width: '100%', marginBottom: 14 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
               alt={summary.name}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+              style={{ width: '100%', height: 'auto', maxHeight: '90mm', objectFit: 'contain', display: 'block', borderRadius: 6 }}
             />
           </div>
         )}
@@ -304,8 +300,8 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
 
         {/* ── Pollution & Safety indices ── */}
         {hasIndices && (
-          <div style={{ background: '#faf8f5', borderRadius: 8, padding: '12px 14px 8px', marginBottom: 12, border: '1px solid #eee6dc' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 10, textAlign: 'right' }}>
+          <div style={{ background: '#faf8f5', borderRadius: 8, padding: '9px 14px 6px', marginBottom: 10, border: '1px solid #eee6dc' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 7, textAlign: 'right' }}>
               מדדי זיהום ובטיחות
             </div>
             {pollutionGrade !== null && (
@@ -345,17 +341,17 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
           padding: '12px 0 14px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${SITE_URL}/api/qr/${recNo}`} alt="QR"
-              style={{ width: 92, height: 92, borderRadius: 8, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#777', fontFamily: 'Heebo, Arial, sans-serif', lineHeight: 1.5 }}>
+              style={{ width: 120, height: 120, borderRadius: 8, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontWeight: 500, color: '#777', fontFamily: 'Heebo, Arial, sans-serif', lineHeight: 1.5 }}>
               סרקו לצפייה<br />בפרטים המלאים
             </span>
           </div>
           <div style={{ textAlign: 'left', direction: 'ltr', fontFamily: 'Heebo, Arial, sans-serif' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>Bavarian Motors Club</div>
-            <div style={{ fontSize: 10, color: '#888', marginTop: 3 }}>החושלים 4, הרצליה פיתוח</div>
+            <div style={{ fontSize: 10, color: '#888', marginTop: 3 }}>החושלים 6, הרצליה פיתוח</div>
             <div style={{ fontSize: 10, color: '#888', marginTop: 1 }}>טלפון: 09-956-1906 · פקס: 09-956-1903</div>
           </div>
         </div>
