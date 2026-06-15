@@ -59,59 +59,86 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [slidePos, cars.length, goNext])
 
+  const applyNewCars = useCallback((newCars: CarSummary[], isFirst: boolean) => {
+    const visible = newCars.filter(c => c.imageUrl)
+    if (visible.length === 0) { if (isFirst) setError('אין רכבים זמינים'); return }
+    setCars(prev => {
+      if (isFirst) {
+        setOrder(shuffle(visible.map((_, i) => i)))
+        setLoading(false)
+        return visible
+      }
+      const newRecNos  = new Set(visible.map(c => c.recNo))
+      const prevRecNos = new Set(prev.map(c => c.recNo))
+      const hasChanges = visible.some(c => !prevRecNos.has(c.recNo)) || prev.some(c => !newRecNos.has(c.recNo))
+      if (!hasChanges) {
+        // Merge enriched fields (pollution/safety) without reordering
+        return prev.map(p => visible.find(v => v.recNo === p.recNo) ?? p)
+      }
+      const recNoToIdx = new Map<string, number>(visible.map((c, i) => [c.recNo, i]))
+      setOrder(prevOrder => {
+        const preserved = prevOrder
+          .map(i => recNoToIdx.get(prev[i]?.recNo ?? '') ?? -1)
+          .filter(i => i >= 0)
+        const preservedSet = new Set(preserved)
+        const added = shuffle(
+          visible.map((c, i) => !prevRecNos.has(c.recNo) ? i : -1)
+                 .filter(i => i >= 0 && !preservedSet.has(i))
+        )
+        const merged = [...preserved, ...added]
+        return merged.length > 0 ? merged : shuffle(visible.map((_, i) => i))
+      })
+      return visible
+    })
+    setError(null)
+  }, [])
+
   const fetchCars = useCallback(async (isFirst = false) => {
-    const url = filter ? `/api/cars?filter=${filter}` : '/api/cars'
-    // Retry up to 3 times on transient errors (500, network blip, etc.)
+    const base = filter ? `/api/cars?filter=${filter}` : '/api/cars'
+
+    // Phase 1 (first load only): fetch basic list immediately so the TV
+    // starts showing slides right away instead of waiting for enrichment.
+    if (isFirst) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500))
+          const res = await fetch(`${base}${base.includes('?') ? '&' : '?'}basic=1`)
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const { cars: basic }: { cars: CarSummary[] } = await res.json()
+          applyNewCars(basic, true)
+          break
+        } catch { /* will fall through to Phase 2 */ }
+      }
+    }
+
+    // Phase 2: fetch enriched data (pollution + safety grades).
+    // On first load this runs in parallel with Phase 1 and merges in.
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500))
-        const res = await fetch(url)
+        const res = await fetch(base)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const { cars: newCars }: { cars: CarSummary[] } = await res.json()
-        const visible = newCars.filter(c => c.imageUrl)
-        if (visible.length === 0) { if (isFirst) setError('אין רכבים זמינים'); return }
-        setCars(prev => {
-          if (isFirst) {
-            setOrder(shuffle(visible.map((_, i) => i)))
-            setLoading(false)
-            return visible
-          }
-          const newRecNos  = new Set(visible.map(c => c.recNo))
-          const prevRecNos = new Set(prev.map(c => c.recNo))
-          const hasChanges = visible.some(c => !prevRecNos.has(c.recNo)) || prev.some(c => !newRecNos.has(c.recNo))
-          if (!hasChanges) return prev
-
-          // Remap existing order to new indices (removed cars drop out automatically).
-          // Append newly-added cars in shuffled order at the end.
-          // Never reset slidePos — the show keeps playing from where it is.
-          const recNoToIdx = new Map<string, number>(visible.map((c, i) => [c.recNo, i]))
-          setOrder(prevOrder => {
-            const preserved = prevOrder
-              .map(i => recNoToIdx.get(prev[i]?.recNo ?? '') ?? -1)
-              .filter(i => i >= 0)
-            const preservedSet = new Set(preserved)
-            const added = shuffle(
-              visible.map((c, i) => !prevRecNos.has(c.recNo) ? i : -1)
-                     .filter(i => i >= 0 && !preservedSet.has(i))
-            )
-            const merged = [...preserved, ...added]
-            return merged.length > 0 ? merged : shuffle(visible.map((_, i) => i))
-          })
-          return visible
-        })
-        setError(null)
+        const { cars: enriched }: { cars: CarSummary[] } = await res.json()
+        applyNewCars(enriched, isFirst && cars.length === 0)
         return
       } catch (e) {
-        if (attempt === 2 && isFirst) setError(String(e))
+        if (attempt === 2 && isFirst && cars.length === 0) setError(String(e))
       }
     }
-  }, [filter])
+  }, [filter, applyNewCars, cars.length])
 
   useEffect(() => {
     fetchCars(true)
     const id = setInterval(() => fetchCars(false), POLL_INTERVAL)
     return () => clearInterval(id)
   }, [fetchCars])
+
+  // Auto-retry every 20 s when in error state (unattended TV screens)
+  useEffect(() => {
+    if (!error) return
+    const t = setTimeout(() => fetchCars(true), 20000)
+    return () => clearTimeout(t)
+  }, [error, fetchCars])
 
   useEffect(() => {
     if (cars.length === 0) return
