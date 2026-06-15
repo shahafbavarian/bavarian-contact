@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { fetchCarDetail, fetchCarSummaryByRecNo, fetchCarList } from '@/lib/scraper'
+import { getCachedImageUrls } from '@/lib/image-sync'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
@@ -103,13 +104,14 @@ async function fetchVideoUrl(recNo: string): Promise<string | null> {
 }
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  let summary, detail, videoUrl, carOverride
+  let summary, detail, videoUrl, carOverride, cdnUrls: Record<string, string>
   try {
-    ;[summary, detail, videoUrl, carOverride] = await Promise.all([
+    ;[summary, detail, videoUrl, carOverride, cdnUrls] = await Promise.all([
       fetchCarSummaryByRecNo(params.recNo),
       fetchCarDetail(params.recNo),
       fetchVideoUrl(params.recNo),
       fetchCarOverrides(params.recNo),
+      getCachedImageUrls(),
     ])
   } catch {
     return (
@@ -172,9 +174,11 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     )
   }
 
+  // Prefer Supabase CDN for the hero image — it's faster than the source site
+  const heroImage = cdnUrls[params.recNo] ?? summary.imageUrl
   const allImages = [
-    ...(summary.imageUrl ? [summary.imageUrl] : []),
-    ...(detail?.images ?? []).filter(img => img !== summary.imageUrl),
+    ...(heroImage ? [heroImage] : []),
+    ...(detail?.images ?? []).filter(img => img !== summary.imageUrl && img !== heroImage),
   ]
 
   const getSpec = (...keys: string[]) => {
@@ -426,6 +430,10 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   // ─── Always use CarSlider — handles both desktop/mobile, with or without video ─
   return (
     <>
+      {/* Preload hero image so it starts downloading before the browser parses body */}
+      {heroImage && <link rel="preload" as="image" href={heroImage} fetchPriority="high" />}
+      {/* Preconnect to image origin in case CDN URL isn't available */}
+      <link rel="preconnect" href="https://www.bavarian-motors.co.il" />
       {videoUrl && (
         <>
           <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
