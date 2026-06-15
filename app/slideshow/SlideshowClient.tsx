@@ -140,13 +140,12 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
     return () => clearTimeout(t)
   }, [error, fetchCars])
 
-  useEffect(() => {
-    if (cars.length === 0) return
-    for (let i = 1; i <= 2; i++) {
-      const next = cars[order[(slidePos + i) % order.length]]
-      if (next?.imageUrl) { const img = new window.Image(); img.src = next.imageUrl }
-    }
-  }, [slidePos, cars, order])
+  // Collect up to 3 upcoming cars so we can render hidden preload <img> elements.
+  // Keeping real DOM nodes (vs ephemeral JS Image objects) guarantees the browser
+  // keeps the decoded image in memory and won't evict it under GC pressure.
+  const preloadCars = cars.length > 0
+    ? [1, 2, 3].map(i => cars[order[(slidePos + i) % order.length]]).filter(Boolean)
+    : []
 
   const [make, model] = currentCar ? splitName(currentCar.name) : ['', '']
 
@@ -450,6 +449,18 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
               </div>
             </>
           )}
+
+          {/* Hidden preload layer — keeps next 3 slides' images decoded in memory */}
+          {preloadCars.map(car => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={`preload-${car.recNo}`}
+              src={car.imageUrl}
+              alt=""
+              aria-hidden="true"
+              style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+            />
+          ))}
 
         </div>
       </div>
