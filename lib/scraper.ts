@@ -121,7 +121,11 @@ function buildName(el: cheerio.Cheerio<AnyNode>): string {
 }
 
 export async function fetchCarList(): Promise<CarSummary[]> {
-  const res = await fetch(`${BASE}/He/Available_Cars`, { headers: FETCH_HEADERS, next: { revalidate: 300 } })
+  const res = await fetch(`${BASE}/He/Available_Cars`, {
+    headers: FETCH_HEADERS,
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(15000),
+  })
   if (!res.ok) throw new Error(`fetchCarList: ${res.status}`)
   const html = await res.text()
   const $ = cheerio.load(html)
@@ -188,9 +192,14 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
   const res = await fetch(sourceUrl, {
     headers: FETCH_HEADERS,
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(12000),
   })
   if (!res.ok) return null
   const html = await res.text()
+
+  // Guard against gateway error pages (200 status but HTML error body)
+  if (html.length < 800) return null
+
   const $ = cheerio.load(html)
 
   // Check if sold / not found
@@ -291,12 +300,12 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
     // Try spec table first, then HTML regex (these appear in a separate section below the main table)
     pollutionGrade: (() => {
       const s = findSpec('דרגת זיהום', 'זיהום אוויר')
-      if (s) { const n = parseInt(s); if (n >= 1 && n <= 15) return n }
+      if (s) { const n = parseInt(s, 10); if (!isNaN(n) && n >= 1 && n <= 15) return n }
       return extractIndexValue(html, /דרגת\s*זיהום/i, 1, 15)
     })(),
     safetyLevel: (() => {
       const s = findSpec('דרגת אבזור', 'רמת אבזור', 'אבזור בטיחות')
-      if (s) { const n = parseInt(s); if (n >= 0 && n <= 8) return n }
+      if (s) { const n = parseInt(s, 10); if (!isNaN(n) && n >= 0 && n <= 8) return n }
       return extractIndexValue(html, /(?:דרגת|רמת)\s*אבזור/i, 0, 8)
     })(),
   }

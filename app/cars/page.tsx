@@ -34,7 +34,10 @@ function formatMileage(raw: string): string {
 const YAD_CACHE_KEY = 'bav-yad'
 
 function loadYadCache(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(YAD_CACHE_KEY) ?? '{}') } catch { return {} }
+  try {
+    const raw = JSON.parse(localStorage.getItem(YAD_CACHE_KEY) ?? '{}')
+    return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {}
+  } catch { return {} }
 }
 
 function saveYadCache(cars: CarSummary[]) {

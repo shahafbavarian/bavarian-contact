@@ -143,7 +143,7 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
   // Collect up to 3 upcoming cars so we can render hidden preload <img> elements.
   // Keeping real DOM nodes (vs ephemeral JS Image objects) guarantees the browser
   // keeps the decoded image in memory and won't evict it under GC pressure.
-  const preloadCars = cars.length > 0
+  const preloadCars = cars.length > 0 && order.length > 0
     ? [1, 2, 3].map(i => cars[order[(slidePos + i) % order.length]]).filter(Boolean)
     : []
 
