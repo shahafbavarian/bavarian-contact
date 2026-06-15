@@ -107,13 +107,15 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: 32, textAlign: 'center', direction: 'rtl',
       }}>
+        {/* Auto-reload after 12 s so unattended screens self-recover */}
+        <meta httpEquiv="refresh" content={`12;url=/car/${params.recNo}`} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 56, marginBottom: 28, opacity: 0.5 }} />
         <h1 style={{ fontFamily: 'var(--font-heebo)', fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 10 }}>
           שגיאה זמנית
         </h1>
         <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 32, lineHeight: 1.7 }}>
-          האתר חווה קשיים זמניים בטעינת הנתונים.<br />נסו שוב בעוד מספר שניות.
+          הדף יתרענן אוטומטית בעוד כמה שניות.
         </p>
         <a href={`/car/${params.recNo}`} style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -122,7 +124,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15,
           textDecoration: 'none',
         }}>
-          נסה שוב
+          נסה שוב עכשיו
         </a>
       </main>
     )

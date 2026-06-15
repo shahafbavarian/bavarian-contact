@@ -122,11 +122,20 @@ function SpecCell({ label, value }: { label: string; value: string }) {
 export default async function PrintPage({ params }: { params: { recNo: string } }) {
   const { recNo } = params
 
-  const [summary, detail, overrides] = await Promise.all([
-    fetchCarSummaryByRecNo(recNo),
-    fetchCarDetail(recNo),
-    fetchOverrides(recNo),
-  ])
+  let summary, detail, overrides
+  try {
+    ;[summary, detail, overrides] = await Promise.all([
+      fetchCarSummaryByRecNo(recNo),
+      fetchCarDetail(recNo),
+      fetchOverrides(recNo),
+    ])
+  } catch {
+    return (
+      <div style={{ padding: 40, fontFamily: 'Heebo, Arial', color: '#333', textAlign: 'center' }}>
+        שגיאה בטעינת נתוני הרכב — נסה לרענן את הדף.
+      </div>
+    )
+  }
 
   if (!summary) return <div style={{ padding: 40, fontFamily: 'Heebo, Arial' }}>רכב לא נמצא</div>
 
