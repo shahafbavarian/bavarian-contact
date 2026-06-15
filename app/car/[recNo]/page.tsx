@@ -92,12 +92,41 @@ async function fetchVideoUrl(recNo: string): Promise<string | null> {
 }
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  const [summary, detail, videoUrl, carOverride] = await Promise.all([
-    fetchCarSummaryByRecNo(params.recNo),
-    fetchCarDetail(params.recNo),
-    fetchVideoUrl(params.recNo),
-    fetchCarOverrides(params.recNo),
-  ])
+  let summary, detail, videoUrl, carOverride
+  try {
+    ;[summary, detail, videoUrl, carOverride] = await Promise.all([
+      fetchCarSummaryByRecNo(params.recNo),
+      fetchCarDetail(params.recNo),
+      fetchVideoUrl(params.recNo),
+      fetchCarOverrides(params.recNo),
+    ])
+  } catch {
+    return (
+      <main style={{
+        minHeight: '100vh', background: '#000',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 32, textAlign: 'center', direction: 'rtl',
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/LOGO.webp" alt="Bavarian Motors" style={{ height: 56, marginBottom: 28, opacity: 0.5 }} />
+        <h1 style={{ fontFamily: 'var(--font-heebo)', fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 10 }}>
+          שגיאה זמנית
+        </h1>
+        <p style={{ fontFamily: 'var(--font-heebo)', fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 32, lineHeight: 1.7 }}>
+          האתר חווה קשיים זמניים בטעינת הנתונים.<br />נסו שוב בעוד מספר שניות.
+        </p>
+        <a href={`/car/${params.recNo}`} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '14px 28px', borderRadius: 12,
+          background: GOLD, color: '#000',
+          fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15,
+          textDecoration: 'none',
+        }}>
+          נסה שוב
+        </a>
+      </main>
+    )
+  }
 
   const pollutionGrade = carOverride?.pollutionGrade ?? detail?.pollutionGrade ?? null
   const safetyLevel    = carOverride?.safetyLevel    ?? detail?.safetyLevel    ?? null
@@ -381,36 +410,28 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     </main>
   )
 
-  // ─── With video: use CarSlider ────────────────────────────────────────────────
-  if (videoUrl) {
-    return (
-      <>
-        <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://s.ytimg.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://googlevideo.com" />
-        <CarSlider
-          youtubeUrl={videoUrl}
-          carName={summary.name}
-          recNo={params.recNo}
-          pollutionGrade={pollutionGrade}
-          safetyLevel={safetyLevel}
-          desktopLeft={desktopLeft}
-          desktopRight={desktopRight}
-        >
-          {screen1}
-        </CarSlider>
-      </>
-    )
-  }
-
-  // ─── Without video: render directly ──────────────────────────────────────────
+  // ─── Always use CarSlider — handles both desktop/mobile, with or without video ─
   return (
     <>
-      {screen1}
-      <CarCTA carName={summary.name} recNo={params.recNo} />
-      <AccessibilityWidget top={50} right={18} />
-      <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
+      {videoUrl && (
+        <>
+          <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
+          <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
+          <link rel="preconnect" href="https://s.ytimg.com" crossOrigin="anonymous" />
+          <link rel="dns-prefetch" href="https://googlevideo.com" />
+        </>
+      )}
+      <CarSlider
+        youtubeUrl={videoUrl ?? null}
+        carName={summary.name}
+        recNo={params.recNo}
+        pollutionGrade={pollutionGrade}
+        safetyLevel={safetyLevel}
+        desktopLeft={desktopLeft}
+        desktopRight={desktopRight}
+      >
+        {screen1}
+      </CarSlider>
     </>
   )
 }

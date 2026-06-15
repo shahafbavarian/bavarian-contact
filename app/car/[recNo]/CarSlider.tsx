@@ -55,7 +55,7 @@ export default function CarSlider({
   children: React.ReactNode
   desktopLeft: React.ReactNode
   desktopRight: React.ReactNode
-  youtubeUrl: string
+  youtubeUrl: string | null
   carName: string
   recNo: string
   pollutionGrade: number | null
@@ -107,7 +107,7 @@ export default function CarSlider({
 
   // ── DESKTOP: wheel on left panel toggles gallery ↔ video ────────────
   useEffect(() => {
-    if (!isDesktop) return
+    if (!isDesktop || !youtubeUrl) return
     const el = leftPanelRef.current
     if (!el) return
     function onWheel(e: WheelEvent) {
@@ -117,7 +117,7 @@ export default function CarSlider({
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [isDesktop, onVideo, videoReady])
+  }, [isDesktop, onVideo, videoReady, youtubeUrl])
 
   // ── DESKTOP LAYOUT ──────────────────────────────────────────────────
   if (isDesktop) {
@@ -136,67 +136,73 @@ export default function CarSlider({
           background: '#000', direction: 'ltr',
         }}>
 
-          {/* ── Left panel: gallery ↔ video ── */}
+          {/* ── Left panel: gallery (always) + hint/video (only when video exists) ── */}
           <div
             ref={leftPanelRef}
             style={{ flex: 1, position: 'relative', height: '100dvh', overflow: 'hidden', background: '#000' }}
           >
-            {/* Gallery layer */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              display: 'flex', flexDirection: 'column',
-              opacity: onVideo ? 0 : 1,
-              transition: 'opacity 0.45s ease',
-              pointerEvents: onVideo ? 'none' : 'auto',
-              overflow: 'hidden',
-            }}>
-              {/* Gallery: natural 3:2 height */}
-              <div style={{ flexShrink: 0 }}>
+            {youtubeUrl ? (
+              <>
+                {/* Gallery layer — fades out when video is active */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', flexDirection: 'column',
+                  opacity: onVideo ? 0 : 1,
+                  transition: 'opacity 0.45s ease',
+                  pointerEvents: onVideo ? 'none' : 'auto',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ flexShrink: 0 }}>{desktopLeft}</div>
+
+                  {/* Hint: fills remaining black space below gallery */}
+                  <div style={{
+                    flex: 1, minHeight: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    pointerEvents: 'none', overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+                      borderRadius: 20, padding: '12px 20px',
+                    }}>
+                      {!videoReady ? (
+                        <>
+                          <div style={{ width: 20, height: 20, border: `2px solid rgba(200,169,110,0.18)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
+                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.5)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ animation: 'hintBounce 2s ease-in-out infinite' }}>
+                            <path d="M8 13V3M4 7l4-4 4 4" stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>גלגל לסרטון</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Video layer */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  opacity: onVideo ? 1 : 0,
+                  transition: 'opacity 0.45s ease',
+                  pointerEvents: onVideo ? 'auto' : 'none',
+                }}>
+                  <CarVideoScreen
+                    youtubeUrl={youtubeUrl} carName={carName}
+                    isActive={onVideo}
+                    onReady={() => setVideoReady(true)}
+                    onBack={() => setOnVideo(false)}
+                  />
+                </div>
+              </>
+            ) : (
+              /* No video — gallery fills the full left panel */
+              <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
                 {desktopLeft}
               </div>
-
-              {/* Hint: fills remaining black space below gallery */}
-              <div style={{
-                flex: 1, minHeight: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none', overflow: 'hidden',
-              }}>
-                <div style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                  background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
-                  borderRadius: 20, padding: '12px 20px',
-                }}>
-                  {!videoReady ? (
-                    <>
-                      <div style={{ width: 20, height: 20, border: `2px solid rgba(200,169,110,0.18)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'hintSpin 0.9s linear infinite' }} />
-                      <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.5)', whiteSpace: 'nowrap' }}>סרטון בטעינה</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ animation: 'hintBounce 2s ease-in-out infinite' }}>
-                        <path d="M8 13V3M4 7l4-4 4 4" stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>גלגל לסרטון</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Video layer */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              opacity: onVideo ? 1 : 0,
-              transition: 'opacity 0.45s ease',
-              pointerEvents: onVideo ? 'auto' : 'none',
-            }}>
-              <CarVideoScreen
-                youtubeUrl={youtubeUrl} carName={carName}
-                isActive={onVideo}
-                onReady={() => setVideoReady(true)}
-                onBack={() => setOnVideo(false)}
-              />
-            </div>
+            )}
           </div>
 
           {/* ── Right panel: info + form (always visible) ── */}
@@ -237,12 +243,14 @@ export default function CarSlider({
         {children}
       </div>
 
-      <CarVideoScreen
-        youtubeUrl={youtubeUrl} carName={carName}
-        isActive={onVideo}
-        onReady={() => setVideoReady(true)}
-        onBack={() => mobileContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-      />
+      {youtubeUrl && (
+        <CarVideoScreen
+          youtubeUrl={youtubeUrl} carName={carName}
+          isActive={onVideo}
+          onReady={() => setVideoReady(true)}
+          onBack={() => mobileContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+        />
+      )}
 
       <CarCTA carName={carName} recNo={recNo} />
       <AccessibilityWidget top={50} right={18} />
