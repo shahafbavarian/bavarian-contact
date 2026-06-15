@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { fetchCarList, fetchCarDetail, CarSummary } from '@/lib/scraper'
 import { shouldSync, syncCarImages, getCachedImageUrls } from '@/lib/image-sync'
 
-// Cache the whole response for 5 minutes — same window as car detail pages
-export const revalidate = 300
+// Route reads query params (filter, basic) so it must run dynamically.
+// Data caching is handled inside fetchCarList (next: { revalidate: 300 }).
+export const dynamic = 'force-dynamic'
 
 // Run fn on all items with at most `limit` concurrent promises
 async function pLimit<T>(
