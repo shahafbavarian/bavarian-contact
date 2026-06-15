@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
+import { fetchCarDetail, fetchCarSummaryByRecNo, fetchCarList } from '@/lib/scraper'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
@@ -10,6 +10,17 @@ import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 export const revalidate = 300
 export const dynamicParams = true
+
+// Pre-build all currently listed cars at deploy time so QR scans are instant.
+// New cars added after deploy are still served dynamically (dynamicParams = true).
+export async function generateStaticParams() {
+  try {
+    const cars = await fetchCarList()
+    return cars.map(c => ({ recNo: c.recNo }))
+  } catch {
+    return []
+  }
+}
 
 const GOLD = 'rgba(200,169,110,0.9)'
 const GOLD_DIM = 'rgba(200,169,110,0.5)'

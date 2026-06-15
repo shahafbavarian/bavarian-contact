@@ -121,7 +121,7 @@ function buildName(el: cheerio.Cheerio<AnyNode>): string {
 }
 
 export async function fetchCarList(): Promise<CarSummary[]> {
-  const res = await fetch(`${BASE}/He/Available_Cars`, { headers: FETCH_HEADERS, next: { revalidate: 0 } })
+  const res = await fetch(`${BASE}/He/Available_Cars`, { headers: FETCH_HEADERS, next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`fetchCarList: ${res.status}`)
   const html = await res.text()
   const $ = cheerio.load(html)
