@@ -14,6 +14,9 @@ export async function GET(
   { params }: { params: { recNo: string } }
 ) {
   const { recNo } = params
+  if (!/^\d{1,8}$/.test(recNo)) {
+    return NextResponse.json({ error: 'invalid recNo' }, { status: 400 })
+  }
   const url = `https://contact.bavarian-motors.co.il/car/${recNo}`
 
   try {

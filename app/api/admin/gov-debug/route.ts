@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   try {
     const r = await fetch(`${API}?${new URLSearchParams({ resource_id: RESOURCE, limit: '1' })}`, {
       headers: { Accept: 'application/json' }, cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
     })
     const j = await r.json()
     schema = {
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
   try {
     const r = await fetch(`${API}?${params}`, {
       headers: { Accept: 'application/json' }, cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
     })
     filtered = await r.json()
   } catch (e) { filtered = { error: String(e) } }

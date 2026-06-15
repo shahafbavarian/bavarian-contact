@@ -40,6 +40,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'טלפון הוא שדה חובה' }, { status: 400 })
     }
 
+    const MAX_LENGTHS: Record<string, number> = { name: 200, phone: 20, message: 5000, utm_source: 200, utm_campaign: 200 }
+    for (const [key, max] of Object.entries(MAX_LENGTHS)) {
+      if (body[key] && String(body[key]).length > max) {
+        return NextResponse.json({ error: `שדה ${key} ארוך מדי` }, { status: 400 })
+      }
+    }
+
     // IP rate limiting
     const rawIP =
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||

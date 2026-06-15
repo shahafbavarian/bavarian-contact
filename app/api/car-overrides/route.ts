@@ -25,7 +25,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { rec_no, pollution_grade, safety_level } = await req.json()
-    if (!rec_no) return NextResponse.json({ error: 'missing rec_no' }, { status: 400 })
+    if (!rec_no || !/^\d+$/.test(String(rec_no))) {
+      return NextResponse.json({ error: 'rec_no must be numeric' }, { status: 400 })
+    }
 
     const { getSupabaseAdmin } = await import('@/lib/supabase')
     const sb = getSupabaseAdmin()

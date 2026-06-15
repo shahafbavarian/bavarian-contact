@@ -6,11 +6,18 @@ export function middleware(req: NextRequest) {
   // If no password is set, admin is open (dev mode)
   if (!adminPassword) return NextResponse.next()
 
-  // Protect /admin/* pages AND DELETE requests to /api/leads (lead deletion)
-  const isAdminRoute = req.nextUrl.pathname.startsWith('/admin')
-  const isLeadsDelete = req.method === 'DELETE' && req.nextUrl.pathname.startsWith('/api/leads')
-  const isCarVideosWrite = req.method !== 'GET' && req.nextUrl.pathname.startsWith('/api/car-videos')
-  if (!isAdminRoute && !isLeadsDelete && !isCarVideosWrite) return NextResponse.next()
+  const { pathname } = req.nextUrl
+  const method = req.method
+
+  const isAdminPage      = pathname.startsWith('/admin')
+  const isAdminApi       = pathname.startsWith('/api/admin')
+  const isLeadsDelete    = method === 'DELETE' && pathname.startsWith('/api/leads')
+  const isCarVideosWrite = method !== 'GET'    && pathname.startsWith('/api/car-videos')
+  const isOverridesWrite = method !== 'GET'    && pathname.startsWith('/api/car-overrides')
+
+  if (!isAdminPage && !isAdminApi && !isLeadsDelete && !isCarVideosWrite && !isOverridesWrite) {
+    return NextResponse.next()
+  }
 
   const authHeader = req.headers.get('authorization')
 
@@ -28,5 +35,12 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/leads', '/api/leads/:id*', '/api/car-videos'],
+  matcher: [
+    '/admin/:path*',
+    '/api/admin/:path*',
+    '/api/leads',
+    '/api/leads/:id*',
+    '/api/car-videos',
+    '/api/car-overrides',
+  ],
 }

@@ -8,8 +8,15 @@ export async function GET(req: Request) {
   const year   = searchParams.get('year')   ?? ''
   const engine = searchParams.get('engine') ?? 'petrol'
 
-  if (!name || !year) {
-    return NextResponse.json({ error: 'name and year are required' }, { status: 400 })
+  if (!name || name.length < 1 || name.length > 100) {
+    return NextResponse.json({ error: 'name required (max 100 chars)' }, { status: 400 })
+  }
+  if (!year || !/^\d{4}$/.test(year)) {
+    return NextResponse.json({ error: 'year must be 4 digits' }, { status: 400 })
+  }
+  const VALID_ENGINES = ['petrol', 'diesel', 'bev', 'phev', 'hev', 'mhev']
+  if (!VALID_ENGINES.includes(engine)) {
+    return NextResponse.json({ error: 'invalid engine type' }, { status: 400 })
   }
 
   const result = await fetchGovIndices(name, year, engine)

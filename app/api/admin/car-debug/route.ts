@@ -11,6 +11,9 @@ const HEADERS = {
 
 export async function GET(req: NextRequest) {
   const recNo = req.nextUrl.searchParams.get('recNo') ?? '3159'
+  if (!/^\d{1,8}$/.test(recNo)) {
+    return NextResponse.json({ error: 'invalid recNo' }, { status: 400 })
+  }
   const url = `https://www.bavarian-motors.co.il/He/Car?recNo=${recNo}`
 
   const res = await fetch(url, { headers: HEADERS, cache: 'no-store' })
