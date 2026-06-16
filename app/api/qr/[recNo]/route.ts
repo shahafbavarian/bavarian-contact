@@ -26,22 +26,22 @@ export async function GET(
       width: QR_SIZE,
       margin: 2,
       color: {
-        dark: '#C8A96E',   // gold
-        light: '#0a0a0a',  // near-black background
+        dark: '#000000',   // black
+        light: '#ffffff',  // white background
       },
     })
 
     // Load logo
-    const logoPath = path.join(process.cwd(), 'public', 'LOGO.webp')
+    const logoPath = path.join(process.cwd(), 'public', 'LOGO-black.png')
     let finalBuffer: Buffer
 
     if (fs.existsSync(logoPath)) {
       const logoSize = Math.round(QR_SIZE * LOGO_RATIO)
       const logoBg = Math.round(logoSize * 1.18)
 
-      // White/dark square behind logo for readability
+      // White square behind logo for readability
       const bgSquare = await sharp({
-        create: { width: logoBg, height: logoBg, channels: 4, background: { r: 10, g: 10, b: 10, alpha: 1 } },
+        create: { width: logoBg, height: logoBg, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
       }).png().toBuffer()
 
       const logoResized = await sharp(logoPath)
