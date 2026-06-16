@@ -334,7 +334,7 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                       src={`/api/qr/${currentCar.recNo}`} alt="QR"
                       style={{
                         width: 'clamp(40px,7.5vw,108px)', height: 'clamp(40px,7.5vw,108px)',
-                        borderRadius: 8, background: '#fff', padding: 4,
+                        borderRadius: 8,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.8)',
                         flexShrink: 1,
                       }}
