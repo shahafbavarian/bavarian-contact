@@ -140,6 +140,15 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
         </svg>
       </button>
 
+      {/* Invisible backdrop — any tap outside the panel closes it */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+        />
+      )}
+
       {/* Panel */}
       {open && (
         <div
