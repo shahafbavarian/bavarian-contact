@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 // Mobile-only share control. Visually identical to the accessibility widget
 // trigger, placed immediately to its left. Offers two actions:
@@ -11,21 +11,36 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [loaded, setLoaded] = useState(0)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Prefetch the shareable photos in the background as soon as the page is
+  // ready, so they're already in the browser cache by the time the user
+  // taps "share images" — otherwise the download can outlast the brief
+  // user-activation window navigator.share() requires, and the first tap
+  // fails while a later tap (cache warm) succeeds.
+  const shareableImages = useMemo(() => images.slice(1), [images]) // skip the cover/hero image
+  useEffect(() => {
+    shareableImages.forEach(url => {
+      fetch(`/api/car-image?url=${encodeURIComponent(url)}`).catch(() => {})
+    })
+  }, [shareableImages])
 
   const carUrl = `https://contact.bavarian-motors.co.il/car/${recNo}`
 
   async function shareImages() {
     if (busy) return
     setNote(null)
-    if (!images.length) { setNote('אין תמונות לשיתוף'); return }
+    if (!shareableImages.length) { setNote('אין תמונות לשיתוף'); return }
     setBusy(true)
+    setLoaded(0)
     try {
-      const files = await Promise.all(images.map(async (url, i) => {
+      const files = await Promise.all(shareableImages.map(async (url, i) => {
         const res = await fetch(`/api/car-image?url=${encodeURIComponent(url)}`)
         if (!res.ok) throw new Error('image fetch failed')
         const blob = await res.blob()
+        setLoaded(n => n + 1)
         const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0]
         return new File([blob], `car-${recNo}-${i + 1}.${ext}`, { type: blob.type })
       }))
@@ -163,8 +178,19 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
                 <circle cx="8.5" cy="9" r="1.6" stroke="currentColor" strokeWidth="1.3" />
                 <path d="M21 15l-5-4-5 4-2-1.5L3 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {busy ? 'מכין תמונות…' : 'שיתוף תמונות'}
+              {busy ? `טוען… ${loaded}/${shareableImages.length}` : 'שיתוף תמונות'}
             </button>
+
+            {busy && (
+              <div style={{ width: '100%', height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${shareableImages.length ? (loaded / shareableImages.length) * 100 : 0}%`,
+                  background: 'rgba(200,169,110,0.8)',
+                  transition: 'width 0.2s ease',
+                }} />
+              </div>
+            )}
 
             <button style={rowStyle} onClick={shareLink} disabled={busy}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
