@@ -450,6 +450,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         safetyLevel={safetyLevel}
         desktopLeft={desktopLeft}
         desktopRight={desktopRight}
+        images={allImages}
       >
         {screen1}
       </CarSlider>

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import CarVideoScreen from './CarVideoScreen'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
+import ShareButton from './ShareButton'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
 const GOLD = 'rgba(200,169,110,0.8)'
@@ -51,6 +52,7 @@ export default function CarSlider({
   recNo,
   pollutionGrade,
   safetyLevel,
+  images,
 }: {
   children: React.ReactNode
   desktopLeft: React.ReactNode
@@ -60,6 +62,7 @@ export default function CarSlider({
   recNo: string
   pollutionGrade: number | null
   safetyLevel: number | null
+  images: string[]
 }) {
   const [onVideo, setOnVideo] = useState(false)
   const [videoReady, setVideoReady] = useState(false)
@@ -96,7 +99,7 @@ export default function CarSlider({
   // ── MOBILE: hide/show fixed overlays when switching screens ─────────
   useEffect(() => {
     if (isDesktop) return
-    for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]']) {
+    for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]', '[data-share-btn]']) {
       const el = document.querySelector<HTMLElement>(sel)
       if (!el) continue
       el.style.opacity = onVideo ? '0' : ''
@@ -254,7 +257,7 @@ export default function CarSlider({
 
       <CarCTA carName={carName} recNo={recNo} />
       <AccessibilityWidget top={50} right={18} />
-      <PrintButton recNo={recNo} />
+      <ShareButton images={images} recNo={recNo} />
       <CarIndices pollutionGrade={pollutionGrade} safetyLevel={safetyLevel} />
     </div>
   )
