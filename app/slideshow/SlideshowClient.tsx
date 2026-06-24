@@ -7,6 +7,17 @@ import type { CarSummary } from '@/lib/scraper'
 const SLIDE_DURATION = 8000
 const POLL_INTERVAL  = 5 * 60 * 1000
 
+// Route an image through Next.js' built-in optimizer (/_next/image). Vercel
+// transforms it once per (url,width) and serves every later request from its
+// own CDN cache — so Supabase Storage is hit ~once a month instead of on every
+// slide. Quality 75 = next/image default, so preloads match the main <Image>'s
+// own request URL and warm the same cache entry. Decorative blurred backdrops
+// ask for a tiny width (they're blurred anyway) — near-zero bytes.
+function optimized(url: string, width: number): string {
+  if (!url) return url
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=75`
+}
+
 const POLLUTION_COLORS = [
   '#1a6b1a', '#2a8b2a', '#3ea030', '#68be1a', '#90cc00',
   '#c0d400', '#e0d800', '#f0bc00', '#f08c00', '#e85800',
@@ -210,7 +221,7 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                 {/* Backdrop layer 1 — heavy blur, full saturation */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentCar.imageUrl} alt=""
+                  src={optimized(currentCar.imageUrl, 256)} alt=""
                   style={{
                     position: 'absolute', top: '-8%', left: '-8%',
                     width: '116%', height: '116%',
@@ -222,7 +233,7 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                 {/* Backdrop layer 2 — lighter blur on top for depth and texture */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentCar.imageUrl} alt=""
+                  src={optimized(currentCar.imageUrl, 384)} alt=""
                   style={{
                     position: 'absolute', top: '-6%', left: '-6%',
                     width: '112%', height: '112%',
@@ -450,16 +461,21 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
             </>
           )}
 
-          {/* Hidden preload layer — keeps next 3 slides' images decoded in memory */}
+          {/* Hidden preload layer — warms the exact optimizer URLs the next
+              slides render (main photo + both blurred backdrops), so the swap
+              is instant. All served from Vercel's cache, not Supabase. */}
           {preloadCars.map(car => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={`preload-${car.recNo}`}
-              src={car.imageUrl}
-              alt=""
-              aria-hidden="true"
-              style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-            />
+            <span key={`preload-${car.recNo}`} aria-hidden="true">
+              {[1920, 256, 384].map(w => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={w}
+                  src={optimized(car.imageUrl, w)}
+                  alt=""
+                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                />
+              ))}
+            </span>
           ))}
 
         </div>

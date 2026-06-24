@@ -430,8 +430,9 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   // ─── Always use CarSlider — handles both desktop/mobile, with or without video ─
   return (
     <>
-      {/* Preload hero image so it starts downloading before the browser parses body */}
-      {heroImage && <link rel="preload" as="image" href={heroImage} fetchPriority="high" />}
+      {/* The hero <Image priority> already emits a preload for its optimized
+          URL — a manual preload of the raw original would just pull the
+          full-res source from Supabase (extra egress) and is never displayed. */}
       {/* Preconnect to image origin in case CDN URL isn't available */}
       <link rel="preconnect" href="https://www.bavarian-motors.co.il" />
       {videoUrl && (

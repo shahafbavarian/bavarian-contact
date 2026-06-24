@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 
 // Mobile-only share control. Visually identical to the accessibility widget
 // trigger, placed immediately to its left. Offers two actions:
@@ -15,17 +15,22 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Prefetch the shareable photos in the background as soon as the page is
-  // ready, so they're already in the browser cache by the time the user
-  // taps "share images" — otherwise the download can outlast the brief
-  // user-activation window navigator.share() requires, and the first tap
-  // fails while a later tap (cache warm) succeeds.
   const shareableImages = useMemo(() => images.slice(1), [images]) // skip the cover/hero image
+
+  // Warm the shareable photos into the browser cache the moment the menu is
+  // opened — not on page load, so visitors who never share don't trigger any
+  // downloads. By the time the user reads the two options and taps "share
+  // images", the photos are ready, so the download doesn't outlast the brief
+  // user-activation window navigator.share() needs (the cause of the original
+  // "first tap fails, second works" bug). Runs once per mount.
+  const prefetchedRef = useRef(false)
   useEffect(() => {
+    if (!open || prefetchedRef.current) return
+    prefetchedRef.current = true
     shareableImages.forEach(url => {
       fetch(`/api/car-image?url=${encodeURIComponent(url)}`).catch(() => {})
     })
-  }, [shareableImages])
+  }, [open, shareableImages])
 
   const carUrl = `https://contact.bavarian-motors.co.il/car/${recNo}`
 
