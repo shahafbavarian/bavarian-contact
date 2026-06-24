@@ -83,13 +83,12 @@ export async function syncCarImages(cars: CarSummary[]): Promise<void> {
         const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg'
         const path = `${car.recNo}.${ext}`
 
-        // 7-day cache header (default is 1 h). Vercel's image optimizer caches
-        // the transformed result for this long, so it re-pulls the full-size
-        // source from Supabase ~weekly instead of hourly — far less egress.
-        // Content changes are caught by the daily hash re-check above.
+        // 1-day cache header (default is 1 h). Matches the daily hash re-check
+        // cadence so updated images appear within ~24 h while still cutting
+        // Supabase egress 24× vs the default hourly refetch.
         const { error: uploadErr } = await sb.storage
           .from(BUCKET)
-          .upload(path, buf, { contentType: ct, upsert: true, cacheControl: '604800' })
+          .upload(path, buf, { contentType: ct, upsert: true, cacheControl: '86400' })
         if (uploadErr) { console.error('[image-sync] upload', car.recNo, uploadErr.message); continue }
 
         const { data: { publicUrl } } = sb.storage.from(BUCKET).getPublicUrl(path)
