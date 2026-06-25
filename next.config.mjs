@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    minimumCacheTTL: 86400,
     remotePatterns: [
       { hostname: 'www.bavarian-motors.co.il' },
       { hostname: 'bavarian-motors.co.il' },
