@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { track } from '@/lib/track'
 import CarVideoScreen from './CarVideoScreen'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
@@ -75,6 +76,15 @@ export default function CarSlider({
   const wheelLockRef = useRef(false)
 
   const onVideo = screen > 0
+
+  // Track video engagement — fire once the first time each video is reached.
+  const seenVideos = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    if (screen > 0 && !seenVideos.current.has(screen)) {
+      seenVideos.current.add(screen)
+      track('video_view', { recNo, source: String(screen) })
+    }
+  }, [screen, recNo])
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768)

@@ -6,6 +6,7 @@ import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
 import CarSlider from './CarSlider'
+import CarTracker from './CarTracker'
 import DesktopContactForm from './DesktopContactForm'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
@@ -347,12 +348,15 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           </svg>
           כל הרכבים
         </Link>
-        <div style={{ direction: 'ltr', textAlign: 'left' }}>
-          <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 'clamp(22px,6.5vw,38px)', color: '#fff', margin: 0, lineHeight: 1.0 }}>
+        {/* Reserve the top-right corner where the share + accessibility buttons
+            sit (fixed at top:50, right:18/72) so long car names wrap to a second
+            line instead of sliding underneath them. */}
+        <div style={{ direction: 'ltr', textAlign: 'left', paddingRight: 108, boxSizing: 'border-box' }}>
+          <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 900, fontSize: 'clamp(22px,6.5vw,38px)', color: '#fff', margin: 0, lineHeight: 1.05, overflowWrap: 'anywhere' }}>
             {make.toUpperCase()}
           </h1>
           {model && (
-            <h2 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 'clamp(16px,5vw,30px)', color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.0 }}>
+            <h2 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 'clamp(16px,5vw,30px)', color: 'rgba(255,255,255,0.8)', margin: '1px 0 0', lineHeight: 1.1, overflowWrap: 'anywhere' }}>
               {model}
             </h2>
           )}
@@ -441,6 +445,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   // ─── Always use CarSlider — handles both desktop/mobile, with or without video ─
   return (
     <>
+      <CarTracker recNo={params.recNo} />
       {/* The hero <Image priority> already emits a preload for its optimized
           URL — a manual preload of the raw original would just pull the
           full-res source from Supabase (extra egress) and is never displayed. */}

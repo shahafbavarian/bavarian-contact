@@ -29,7 +29,7 @@ async function recordRateLimit(ipHash: string): Promise<void> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, phone, message, utm_source, utm_campaign, device, website } = body
+    const { name, phone, message, utm_source, utm_campaign, device, website, rec_no } = body
 
     // Honeypot: bots fill this hidden field, humans don't
     if (website) {
@@ -67,12 +67,20 @@ export async function POST(req: NextRequest) {
       utm_campaign: utm_campaign || null,
     }
 
-    let { data, error } = await getSupabaseAdmin().from('leads').insert({ ...base, device: device || null }).select()
+    let { data, error } = await getSupabaseAdmin()
+      .from('leads')
+      .insert({ ...base, device: device || null, rec_no: rec_no || null })
+      .select()
 
-    // Fallback: if device column doesn't exist yet, retry without it
+    // Fallback for older schemas: drop rec_no first, then device, so the lead
+    // is never lost just because an optional column hasn't been migrated yet.
     if (error?.code === '42703') {
-      const r2 = await getSupabaseAdmin().from('leads').insert(base).select()
+      const r2 = await getSupabaseAdmin().from('leads').insert({ ...base, device: device || null }).select()
       data = r2.data; error = r2.error
+      if (error?.code === '42703') {
+        const r3 = await getSupabaseAdmin().from('leads').insert(base).select()
+        data = r3.data; error = r3.error
+      }
     }
 
     if (error) {

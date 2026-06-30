@@ -47,6 +47,9 @@ const NAV_ITEMS = [
 export default function AdminNav() {
   const path = usePathname()
 
+  // The car-fleet section (/admin/cars) is its own area with its own nav.
+  if (path?.startsWith('/admin/cars')) return null
+
   return (
     <nav style={{
       height: 52,

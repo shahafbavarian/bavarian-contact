@@ -342,7 +342,7 @@ export default function SlideshowClient({ filter, imageFit = 'cover' }: { filter
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 1, marginTop: '3%' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`/api/qr/${currentCar.recNo}`} alt="QR"
+                      src={`/api/qr/${currentCar.recNo}?src=slideshow`} alt="QR"
                       style={{
                         width: 'clamp(40px,7.5vw,108px)', height: 'clamp(40px,7.5vw,108px)',
                         borderRadius: 2,

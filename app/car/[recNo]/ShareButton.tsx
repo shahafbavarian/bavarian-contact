@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { track } from '@/lib/track'
 
 // Mobile-only share control. Visually identical to the accessibility widget
 // trigger, placed immediately to its left. Offers two actions:
@@ -38,6 +39,7 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
     if (busy) return
     setNote(null)
     if (!shareableImages.length) { setNote('אין תמונות לשיתוף'); return }
+    track('share', { recNo, source: 'images' })
     setBusy(true)
     setLoaded(0)
     try {
@@ -70,6 +72,7 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
 
   async function shareLink() {
     setNote(null)
+    track('share', { recNo, source: 'link' })
     try {
       if (navigator.share) {
         await navigator.share({ url: carUrl }) // link only — no images

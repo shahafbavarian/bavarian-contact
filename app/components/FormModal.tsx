@@ -18,10 +18,12 @@ export default function FormModal({
   onClose,
   utmSource,
   utmCampaign,
+  recNo,
 }: {
   onClose: () => void
   utmSource: string
   utmCampaign: string
+  recNo?: string
 }) {
   const [form, setForm] = useState({ name: '', phone: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -54,6 +56,7 @@ export default function FormModal({
           name: form.name.trim() || 'ללא שם',
           utm_source: utmSource,
           utm_campaign: utmCampaign,
+          rec_no: recNo || null,
           device: getDevice(),
           website: honeypotRef.current?.value || '',
         }),

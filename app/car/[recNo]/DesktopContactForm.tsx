@@ -52,6 +52,7 @@ export default function DesktopContactForm({ carName, recNo }: { carName: string
           name: form.name.trim() || 'ללא שם',
           utm_source: carName,
           utm_campaign: `https://bavarian-motors.co.il/He/Car?recNo=${recNo}`,
+          rec_no: recNo,
           device: 'desktop',
           website: honeypotRef.current?.value || '',
         }),

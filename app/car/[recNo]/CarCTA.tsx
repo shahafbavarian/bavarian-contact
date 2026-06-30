@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import FormModal from '@/app/components/FormModal'
+import { track } from '@/lib/track'
 
 const WHATSAPP_NUMBER = '97299561906'
 const PHONE_NUMBER = '099561906'
@@ -36,6 +37,7 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
             href={`https://wa.me/${WHATSAPP_NUMBER}`}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => track('wa_click', { recNo })}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: 5, padding: '10px 6px',
@@ -55,6 +57,7 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
           {/* Phone */}
           <a
             href={`tel:+972${PHONE_NUMBER}`}
+            onClick={() => track('phone_click', { recNo })}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: 5, padding: '10px 6px',
@@ -72,7 +75,7 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
 
           {/* Leave details */}
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => { track('form_open', { recNo }); setShowModal(true) }}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: 5, padding: '10px 6px',
@@ -95,6 +98,7 @@ export default function CarCTA({ carName, recNo }: { carName: string; recNo: str
           onClose={() => setShowModal(false)}
           utmSource={utmSource}
           utmCampaign={utmCampaign}
+          recNo={recNo}
         />
       )}
     </>

@@ -371,7 +371,7 @@ export default async function PrintPage({ params }: { params: { recNo: string } 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${SITE_URL}/api/qr/${recNo}`} alt="QR"
+            <img src={`${SITE_URL}/api/qr/${recNo}?src=print`} alt="QR"
               style={{ width: 108, height: 108, borderRadius: 8, flexShrink: 0 }} />
             <span style={{ fontSize: 12, fontWeight: 500, color: '#777', fontFamily: 'Heebo, Arial, sans-serif', lineHeight: 1.5 }}>
               סרקו לצפייה<br />בפרטים המלאים

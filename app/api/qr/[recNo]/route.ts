@@ -10,14 +10,21 @@ const QR_SIZE = 400
 const LOGO_RATIO = 0.30
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { recNo: string } }
 ) {
   const { recNo } = params
   if (!/^\d{1,8}$/.test(recNo)) {
     return NextResponse.json({ error: 'invalid recNo' }, { status: 400 })
   }
-  const url = `https://contact.bavarian-motors.co.il/car/${recNo}`
+  // Optional source tag (e.g. ?src=print / ?src=slideshow) — encoded into the
+  // scanned URL so each QR is a distinct code and scans are attributable to the
+  // surface they came from. Sanitised to a short safe token.
+  const rawSrc = req.nextUrl.searchParams.get('src') ?? ''
+  const src = rawSrc.replace(/[^a-z0-9_-]/gi, '').slice(0, 24)
+  const url = src
+    ? `https://contact.bavarian-motors.co.il/car/${recNo}?src=${src}`
+    : `https://contact.bavarian-motors.co.il/car/${recNo}`
 
   try {
     // Generate QR as PNG buffer
