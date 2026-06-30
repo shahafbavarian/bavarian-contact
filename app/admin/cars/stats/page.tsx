@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { fetchCarList } from '@/lib/scraper'
+import { getCachedImageUrls } from '@/lib/image-sync'
 import FleetDashboard from './FleetDashboard'
 
 export const dynamic = 'force-dynamic'
@@ -69,12 +70,21 @@ async function loadLeads(): Promise<LeadRow[]> {
 export default async function FleetStatsPage() {
   const [{ events, migrated }, leads] = await Promise.all([loadEvents(), loadLeads()])
 
-  // Resolve rec_no → human car name. Best-effort; the dashboard falls back to
-  // "רכב <recNo>" / the lead's stored car name when a car is no longer listed.
+  // Resolve rec_no → human car name + thumbnail. Best-effort; the dashboard
+  // falls back gracefully when a car is no longer listed. Thumbnails prefer the
+  // Supabase CDN URL (cheaper egress than the source site).
   let carNames: Record<string, string> = {}
+  let carImages: Record<string, string> = {}
   try {
-    const cars = await fetchCarList()
-    carNames = Object.fromEntries(cars.map(c => [c.recNo, c.name]))
+    const [cars, cdn] = await Promise.all([
+      fetchCarList(),
+      getCachedImageUrls().catch(() => ({} as Record<string, string>)),
+    ])
+    for (const c of cars) {
+      carNames[c.recNo] = c.name
+      const img = cdn[c.recNo] ?? c.imageUrl
+      if (img) carImages[c.recNo] = img
+    }
   } catch {}
 
   return (
@@ -96,7 +106,7 @@ export default async function FleetStatsPage() {
           עד אז אירועים נשמרים אך אינם משויכים לרכב.
         </div>
       )}
-      <FleetDashboard events={events} leads={leads} carNames={carNames} />
+      <FleetDashboard events={events} leads={leads} carNames={carNames} carImages={carImages} />
     </div>
   )
 }

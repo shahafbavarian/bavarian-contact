@@ -19,16 +19,19 @@ export default function CarTracker({ recNo }: { recNo: string }) {
     } catch {}
 
     track('pageview', { recNo })
-    if (src) {
-      track('qr_scan', { recNo, source: src })
-      // Strip ?src so a reload / bookmark / re-share doesn't re-count the scan.
-      try {
-        const params = new URLSearchParams(window.location.search)
+    if (src) track('qr_scan', { recNo, source: src })
+
+    // Clean the tracking params from the URL (already consumed above): ?src so a
+    // reload doesn't re-count a scan, ?notrack so an admin-shared link looks clean.
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('src') || params.has('notrack')) {
         params.delete('src')
+        params.delete('notrack')
         const q = params.toString()
         window.history.replaceState({}, '', window.location.pathname + (q ? `?${q}` : ''))
-      } catch {}
-    }
+      }
+    } catch {}
   }, [recNo])
 
   return null

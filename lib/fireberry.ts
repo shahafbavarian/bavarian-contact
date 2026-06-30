@@ -16,11 +16,19 @@ export async function pushLeadToFireberry(lead: {
   phone: string
   message: string | null
   utm_source: string | null
+  carName?: string | null
+  recNo?: string | null
 }): Promise<void> {
   const key = process.env.FIREBERRY_API_KEY
   if (!key) return
 
   const noteLines: string[] = []
+  // Which car the lead came from (so the sales rep sees it directly in the CRM).
+  if (lead.recNo) {
+    const carLabel = (lead.carName || lead.utm_source || '').trim()
+    if (carLabel) noteLines.push(`רכב: ${carLabel}`)
+    noteLines.push(`קישור למודעה: https://contact.bavarian-motors.co.il/car/${lead.recNo}`)
+  }
   const sourceLabel = lead.utm_source ? SOURCE_LABEL_MAP[lead.utm_source] : null
   if (sourceLabel) noteLines.push(`מקור הגעה: ${sourceLabel}`)
   if (lead.message?.trim()) noteLines.push(`הודעה: ${lead.message.trim()}`)

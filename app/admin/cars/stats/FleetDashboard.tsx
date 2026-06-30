@@ -73,8 +73,8 @@ function StatCard({ label, value, sub, accent }: { label: string; value: number 
 }
 
 export default function FleetDashboard({
-  events, leads: initialLeads, carNames,
-}: { events: EventRow[]; leads: LeadRow[]; carNames: Record<string, string> }) {
+  events, leads: initialLeads, carNames, carImages,
+}: { events: EventRow[]; leads: LeadRow[]; carNames: Record<string, string>; carImages: Record<string, string> }) {
   const [period, setPeriod] = useState<Period>('30d')
   const [leads, setLeads] = useState(initialLeads)
   const [sortKey, setSortKey] = useState<SortKey>('views')
@@ -251,7 +251,7 @@ export default function FleetDashboard({
         </div>
       ) : (
         <div style={{ overflowX: 'auto', border: `1px solid ${GOLD_BORDER}`, borderRadius: 10, marginBottom: 40 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)' }}>
                 <th style={{ ...th, textAlign: 'right', paddingRight: 14 }} onClick={() => toggleSort('name')}>רכב{arrow('name')}</th>
@@ -269,8 +269,24 @@ export default function FleetDashboard({
             <tbody>
               {sortedCars.map((c, i) => (
                 <tr key={c.recNo} style={{ borderBottom: i < sortedCars.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                  <td style={{ ...td, textAlign: 'right', paddingRight: 14, color: '#fff', fontFamily: 'var(--font-heebo)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {c.name}
+                  <td style={{ ...td, textAlign: 'right', paddingRight: 14, maxWidth: 240 }}>
+                    {/* Opens the car page in a new tab; ?notrack=1 keeps the
+                        manager's own visit out of the statistics. */}
+                    <a
+                      href={`/car/${c.recNo}?notrack=1`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="פתח עמוד רכב (לא נספר)"
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', minWidth: 0 }}
+                    >
+                      {carImages[c.recNo] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={carImages[c.recNo]} alt="" style={{ width: 46, height: 32, objectFit: 'cover', borderRadius: 5, flexShrink: 0, border: '1px solid rgba(255,255,255,0.08)' }} />
+                      ) : (
+                        <div style={{ width: 46, height: 32, borderRadius: 5, flexShrink: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }} />
+                      )}
+                      <span style={{ color: '#fff', fontFamily: 'var(--font-heebo)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                    </a>
                   </td>
                   <td style={{ ...td, color: GOLD, fontWeight: 600 }}>{c.views}</td>
                   <td style={td}>{c.slideshow + c.print}</td>

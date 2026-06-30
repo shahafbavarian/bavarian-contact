@@ -16,11 +16,26 @@ function detectDevice(): 'mobile' | 'desktop' {
   return window.innerWidth < 1024 ? 'mobile' : 'desktop'
 }
 
+// Internal preview (e.g. opening a car from the admin dashboard with ?notrack=1)
+// must not pollute the stats. Once seen, remember it for the whole tab session
+// so every later action on that visit is skipped too — not just the first.
+function trackingDisabled(): boolean {
+  try {
+    if (sessionStorage.getItem('bav_notrack') === '1') return true
+    if (new URLSearchParams(window.location.search).get('notrack') === '1') {
+      sessionStorage.setItem('bav_notrack', '1')
+      return true
+    }
+  } catch {}
+  return false
+}
+
 export function track(
   type: TrackType,
   opts: { recNo?: string | null; source?: string | null } = {},
 ): void {
   if (typeof window === 'undefined') return
+  if (trackingDisabled()) return
   try {
     const payload = JSON.stringify({
       type,
