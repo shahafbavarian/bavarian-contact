@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSupabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     if (urls.length === 0) {
       const { error } = await sb.from('car_videos').delete().eq('rec_no', rec_no)
       if (error) throw error
+      revalidatePath(`/car/${rec_no}`)
       return NextResponse.json({ ok: true })
     }
 
@@ -77,6 +79,7 @@ export async function POST(req: Request) {
         .upsert({ rec_no, youtube_url: urls[0] }, { onConflict: 'rec_no' })
       if (fallback.error) throw fallback.error
     }
+    revalidatePath(`/car/${rec_no}`)
     return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

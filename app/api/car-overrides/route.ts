@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
         { onConflict: 'rec_no' }
       )
     }
+    revalidatePath(`/car/${rec_no}`)
     return NextResponse.json({ ok: true })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
