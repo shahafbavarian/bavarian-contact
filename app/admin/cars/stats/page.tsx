@@ -52,11 +52,11 @@ async function fetchAllPaged<T>(table: string, columns: string): Promise<T[] | '
   return out
 }
 
-async function loadEvents(): Promise<EventRow[]> {
+async function loadEvents(): Promise<{ events: EventRow[]; migrated: boolean }> {
   const withRec = await fetchAllPaged<EventRow>('events', 'id, type, device, utm_source, rec_no, created_at')
-  if (withRec !== 'columnMissing') return withRec
+  if (withRec !== 'columnMissing') return { events: withRec, migrated: true }
   const legacy = await fetchAllPaged<Omit<EventRow, 'rec_no'>>('events', 'id, type, device, utm_source, created_at')
-  return legacy === 'columnMissing' ? [] : legacy.map(e => ({ ...e, rec_no: null }))
+  return { events: legacy === 'columnMissing' ? [] : legacy.map(e => ({ ...e, rec_no: null })), migrated: false }
 }
 
 async function loadLeads(): Promise<LeadRow[]> {
@@ -67,7 +67,7 @@ async function loadLeads(): Promise<LeadRow[]> {
 }
 
 export default async function FleetStatsPage() {
-  const [events, leads] = await Promise.all([loadEvents(), loadLeads()])
+  const [{ events, migrated }, leads] = await Promise.all([loadEvents(), loadLeads()])
 
   // Resolve rec_no → human car name. Best-effort; the dashboard falls back to
   // "רכב <recNo>" / the lead's stored car name when a car is no longer listed.
@@ -85,6 +85,17 @@ export default async function FleetStatsPage() {
       <h1 style={{ fontFamily: 'var(--font-heebo)', fontWeight: 300, fontSize: 22, color: '#fff', margin: '0 0 24px' }}>
         מעקב ונתונים
       </h1>
+      {!migrated && (
+        <div style={{
+          border: '1px solid rgba(248,180,80,0.4)', background: 'rgba(248,180,80,0.07)',
+          borderRadius: 10, padding: '14px 16px', marginBottom: 20,
+          fontFamily: 'var(--font-heebo)', fontSize: 13, color: 'rgba(255,210,140,0.95)', lineHeight: 1.6,
+        }}>
+          ⚠️ מעקב לפי רכב לא פעיל עדיין — חסרה עמודת <code style={{ direction: 'ltr', display: 'inline-block' }}>rec_no</code>.
+          הרץ ב-Supabase: <code style={{ direction: 'ltr', display: 'inline-block' }}>ALTER TABLE events ADD COLUMN rec_no text;</code> ו-<code style={{ direction: 'ltr', display: 'inline-block' }}>ALTER TABLE leads ADD COLUMN rec_no text;</code>
+          עד אז אירועים נשמרים אך אינם משויכים לרכב.
+        </div>
+      )}
       <FleetDashboard events={events} leads={leads} carNames={carNames} />
     </div>
   )
