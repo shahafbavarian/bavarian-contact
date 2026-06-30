@@ -24,11 +24,18 @@ function getMake(name: string): string {
   return name.split(' ')[0] ?? name
 }
 
-function formatMileage(raw: string): string {
-  if (!raw) return ''
-  const n = parseInt(raw.replace(/[^\d]/g, ''), 10)
-  if (isNaN(n) || n === 0) return 'חדש'
-  return n.toLocaleString('he-IL')
+// Returns the km chip text ("14,700" / "חדש") or null when truly unknown.
+// New cars sometimes arrive from the source with an empty km field — if the
+// car is otherwise flagged new (year/yad say "חדש"), show "חדש" so the km
+// field stays consistent across all cards instead of vanishing.
+function mileageChip(car: CarSummary): string | null {
+  if (car.mileage) {
+    const n = parseInt(car.mileage.replace(/[^\d]/g, ''), 10)
+    if (!isNaN(n) && n > 0) return n.toLocaleString('he-IL')
+    return 'חדש' // 0 km
+  }
+  if (/חדש/.test(car.year ?? '') || /חדש/.test(car.yad ?? '')) return 'חדש'
+  return null
 }
 
 const YAD_CACHE_KEY = 'bav-yad'
@@ -293,29 +300,34 @@ export default function CarsPage() {
                       </div>
                     )}
 
-                    <div style={{ marginTop: 4, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', direction: 'rtl' }}>
-                      {car.year && (
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                          שנה: {car.year}
-                        </span>
-                      )}
-                      {car.year && car.mileage && (
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>·</span>
-                      )}
-                      {car.mileage && (
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                          {formatMileage(car.mileage) === 'חדש' ? 'חדש' : `ק"מ: ${formatMileage(car.mileage)}`}
-                        </span>
-                      )}
-                      {car.yad && (car.year || car.mileage) && (
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>·</span>
-                      )}
-                      {car.yad && (
-                        <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                          יד: {car.yad}
-                        </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const km = mileageChip(car)
+                      return (
+                        <div style={{ marginTop: 4, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', direction: 'rtl' }}>
+                          {car.year && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                              שנה: {car.year}
+                            </span>
+                          )}
+                          {car.year && km !== null && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>·</span>
+                          )}
+                          {km !== null && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                              ק"מ: {km}
+                            </span>
+                          )}
+                          {car.yad && (car.year || km !== null) && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>·</span>
+                          )}
+                          {car.yad && (
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                              יד: {car.yad}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               </Link>
