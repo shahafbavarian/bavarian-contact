@@ -35,12 +35,16 @@ export default function CarVideoScreen({
   isActive,
   onReady,
   onBack,
+  load = true,
+  drivesHint = true,
 }: {
   youtubeUrl: string
   carName: string
   isActive: boolean
   onReady: () => void
   onBack: () => void
+  load?: boolean       // mount the iframe only when the user is on/near this screen
+  drivesHint?: boolean // only the first video updates the "scroll for video" hint
 }) {
   const [muted, setMuted] = useState(true)
   const mutedRef = useRef(true)
@@ -56,30 +60,34 @@ export default function CarVideoScreen({
   function markReady() {
     if (readyFiredRef.current) return
     readyFiredRef.current = true
-    const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
-    if (hint) hint.setAttribute('data-ready', '1')
-    const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
-    const hintReady = document.querySelector<HTMLElement>('[data-hint-ready]')
-    if (hintLoading) hintLoading.style.display = 'none'
-    if (hintReady) hintReady.style.display = 'flex'
+    if (drivesHint) {
+      const hint = document.querySelector<HTMLElement>('[data-scroll-hint]')
+      if (hint) hint.setAttribute('data-ready', '1')
+      const hintLoading = document.querySelector<HTMLElement>('[data-hint-loading]')
+      const hintReady = document.querySelector<HTMLElement>('[data-hint-ready]')
+      if (hintLoading) hintLoading.style.display = 'none'
+      if (hintReady) hintReady.style.display = 'flex'
+    }
     onReady()
   }
 
   // Last-resort fallback: stop the spinner after 12s if playback proof never
   // arrives (e.g. Low Power Mode blocks autoplay) so the user isn't stuck
   useEffect(() => {
+    if (!load) return
     const t = setTimeout(markReady, 12000)
     return () => clearTimeout(t)
-  }, [])
+  }, [load])
 
   // Handshake — retry until the player starts emitting events
   useEffect(() => {
+    if (!load) return
     const t = setInterval(() => {
       if (parkedRef.current) { clearInterval(t); return }
       sendListening(iframeRef.current)
     }, 400)
     return () => clearInterval(t)
-  }, [])
+  }, [load])
 
   // The video autoplays muted to buffer the start, then we park it (pause) so it
   // waits at the beginning. Real playback (state=1) is proof it buffered → stop
@@ -109,6 +117,7 @@ export default function CarVideoScreen({
   // Play when the user reaches the video, pause when they leave. Playback here is
   // muted, which iOS Safari permits programmatically (no tap needed).
   useEffect(() => {
+    if (!load) return
     if (isActive) {
       parkedRef.current = true
       sendCommand(iframeRef.current, 'playVideo')
@@ -117,7 +126,7 @@ export default function CarVideoScreen({
     } else if (parkedRef.current) {
       sendCommand(iframeRef.current, 'pauseVideo')
     }
-  }, [isActive])
+  }, [isActive, load])
 
   // Hardware volume keys → unmute
   useEffect(() => {
@@ -149,23 +158,25 @@ export default function CarVideoScreen({
       tabIndex={-1}
       style={{ height: '100dvh', flexShrink: 0, position: 'relative', background: '#000', overflow: 'hidden', outline: 'none', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
     >
-      <iframe
-        ref={iframeRef}
-        src={src}
-        allow="autoplay; fullscreen"
-        style={{
-          position: 'absolute',
-          top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'calc(100dvh * 9 / 16)',
-          height: '100dvh',
-          minWidth: '100%',
-          border: 'none',
-        }}
-      />
+      {load && (
+        <iframe
+          ref={iframeRef}
+          src={src}
+          allow="autoplay; fullscreen"
+          style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'calc(100dvh * 9 / 16)',
+            height: '100dvh',
+            minWidth: '100%',
+            border: 'none',
+          }}
+        />
+      )}
 
       {/* Mute button */}
-      {isActive && (
+      {isActive && load && (
         <button
           onClick={toggleMute}
           style={{

@@ -47,7 +47,7 @@ export default function CarSlider({
   children,
   desktopLeft,
   desktopRight,
-  youtubeUrl,
+  videoUrls,
   carName,
   recNo,
   pollutionGrade,
@@ -57,18 +57,24 @@ export default function CarSlider({
   children: React.ReactNode
   desktopLeft: React.ReactNode
   desktopRight: React.ReactNode
-  youtubeUrl: string | null
+  videoUrls: string[]
   carName: string
   recNo: string
   pollutionGrade: number | null
   safetyLevel: number | null
   images: string[]
 }) {
-  const [onVideo, setOnVideo] = useState(false)
-  const [videoReady, setVideoReady] = useState(false)
+  // Fixed screens: 0 = car details, 1..N = videos. No free scrolling — only
+  // absolute jumps between full screens (project rule #2).
+  const N = videoUrls.length
+  const [screen, setScreen] = useState(0)
+  const [videoReady, setVideoReady] = useState(false) // first video buffered
   const [isDesktop, setIsDesktop] = useState(false)
   const mobileContainerRef = useRef<HTMLDivElement>(null)
   const leftPanelRef = useRef<HTMLDivElement>(null)
+  const wheelLockRef = useRef(false)
+
+  const onVideo = screen > 0
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768)
@@ -77,26 +83,26 @@ export default function CarSlider({
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // ── MOBILE: enable scroll when video ready ──────────────────────────
+  // ── MOBILE: enable scroll only once the first video is ready ─────────
   useEffect(() => {
     if (isDesktop || !mobileContainerRef.current) return
-    mobileContainerRef.current.style.overflowY = videoReady ? 'scroll' : 'hidden'
-  }, [videoReady, isDesktop])
+    mobileContainerRef.current.style.overflowY = (N > 0 && videoReady) ? 'scroll' : 'hidden'
+  }, [videoReady, isDesktop, N])
 
-  // ── MOBILE: detect active screen via scroll position ────────────────
+  // ── MOBILE: derive the active screen from scroll position ───────────
   useEffect(() => {
     if (isDesktop) return
     const el = mobileContainerRef.current
     if (!el) return
     function onScroll() {
-      const isVideo = el!.scrollTop > el!.clientHeight / 2
-      setOnVideo(isVideo)
+      const idx = Math.round(el!.scrollTop / el!.clientHeight)
+      setScreen(prev => (prev === idx ? prev : idx))
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
   }, [isDesktop])
 
-  // ── MOBILE: hide/show fixed overlays when switching screens ─────────
+  // ── MOBILE: hide/show fixed overlays whenever we leave the car screen ─
   useEffect(() => {
     if (isDesktop) return
     for (const sel of ['[data-a11y-widget]', '[data-ci-trigger]', '[data-scroll-hint]', '[data-share-btn]']) {
@@ -108,19 +114,26 @@ export default function CarSlider({
     }
   }, [onVideo, isDesktop])
 
-  // ── DESKTOP: wheel on left panel toggles gallery ↔ video ────────────
+  // ── DESKTOP: wheel steps one screen at a time (gallery → v1 → v2 …) ──
   useEffect(() => {
-    if (!isDesktop || !youtubeUrl) return
+    if (!isDesktop || N === 0) return
     const el = leftPanelRef.current
     if (!el) return
     function onWheel(e: WheelEvent) {
       e.preventDefault()
-      if (!onVideo && videoReady && e.deltaY > 30) setOnVideo(true)
-      if (onVideo && e.deltaY < -30) setOnVideo(false)
+      if (wheelLockRef.current) return
+      if (Math.abs(e.deltaY) < 30) return
+      const dir = e.deltaY > 0 ? 1 : -1
+      setScreen(s => {
+        if (dir > 0 && s === 0 && !videoReady) return 0 // wait for first video
+        return Math.max(0, Math.min(s + dir, N))
+      })
+      wheelLockRef.current = true
+      setTimeout(() => { wheelLockRef.current = false }, 700)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [isDesktop, onVideo, videoReady, youtubeUrl])
+  }, [isDesktop, videoReady, N])
 
   // ── DESKTOP LAYOUT ──────────────────────────────────────────────────
   if (isDesktop) {
@@ -139,20 +152,20 @@ export default function CarSlider({
           background: '#000', direction: 'ltr',
         }}>
 
-          {/* ── Left panel: gallery (always) + hint/video (only when video exists) ── */}
+          {/* ── Left panel: gallery (always) + video layers (one per video) ── */}
           <div
             ref={leftPanelRef}
             style={{ flex: 1, position: 'relative', height: '100dvh', overflow: 'hidden', background: '#000' }}
           >
-            {youtubeUrl ? (
+            {N > 0 ? (
               <>
-                {/* Gallery layer — fades out when video is active */}
+                {/* Gallery layer — fades out when any video is active */}
                 <div style={{
                   position: 'absolute', inset: 0,
                   display: 'flex', flexDirection: 'column',
-                  opacity: onVideo ? 0 : 1,
+                  opacity: screen === 0 ? 1 : 0,
                   transition: 'opacity 0.45s ease',
-                  pointerEvents: onVideo ? 'none' : 'auto',
+                  pointerEvents: screen === 0 ? 'auto' : 'none',
                   overflow: 'hidden',
                 }}>
                   <div style={{ flexShrink: 0 }}>{desktopLeft}</div>
@@ -178,27 +191,36 @@ export default function CarSlider({
                           <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ animation: 'hintBounce 2s ease-in-out infinite' }}>
                             <path d="M8 13V3M4 7l4-4 4 4" stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>גלגל לסרטון</span>
+                          <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(200,169,110,0.7)', whiteSpace: 'nowrap' }}>
+                            {N > 1 ? 'גלגל לסרטונים' : 'גלגל לסרטון'}
+                          </span>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Video layer */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  opacity: onVideo ? 1 : 0,
-                  transition: 'opacity 0.45s ease',
-                  pointerEvents: onVideo ? 'auto' : 'none',
-                }}>
-                  <CarVideoScreen
-                    youtubeUrl={youtubeUrl} carName={carName}
-                    isActive={onVideo}
-                    onReady={() => setVideoReady(true)}
-                    onBack={() => setOnVideo(false)}
-                  />
-                </div>
+                {/* Video layers — one per URL */}
+                {videoUrls.map((url, i) => (
+                  <div
+                    key={`${recNo}-vid-${i}`}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      opacity: screen === i + 1 ? 1 : 0,
+                      transition: 'opacity 0.45s ease',
+                      pointerEvents: screen === i + 1 ? 'auto' : 'none',
+                    }}
+                  >
+                    <CarVideoScreen
+                      youtubeUrl={url} carName={carName}
+                      isActive={screen === i + 1}
+                      load={screen >= i}
+                      drivesHint={i === 0}
+                      onReady={() => { if (i === 0) setVideoReady(true) }}
+                      onBack={() => setScreen(i)}
+                    />
+                  </div>
+                ))}
               </>
             ) : (
               /* No video — gallery fills the full left panel */
@@ -246,14 +268,17 @@ export default function CarSlider({
         {children}
       </div>
 
-      {youtubeUrl && (
+      {videoUrls.map((url, i) => (
         <CarVideoScreen
-          youtubeUrl={youtubeUrl} carName={carName}
-          isActive={onVideo}
-          onReady={() => setVideoReady(true)}
-          onBack={() => mobileContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          key={`${recNo}-vid-${i}`}
+          youtubeUrl={url} carName={carName}
+          isActive={screen === i + 1}
+          load={screen >= i}
+          drivesHint={i === 0}
+          onReady={() => { if (i === 0) setVideoReady(true) }}
+          onBack={() => mobileContainerRef.current?.scrollTo({ top: i * (mobileContainerRef.current?.clientHeight ?? 0), behavior: 'smooth' })}
         />
-      )}
+      ))}
 
       <CarCTA carName={carName} recNo={recNo} />
       <AccessibilityWidget top={50} right={18} />

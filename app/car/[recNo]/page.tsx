@@ -91,25 +91,36 @@ async function fetchCarOverrides(recNo: string): Promise<{ pollutionGrade: numbe
   } catch { return null }
 }
 
-async function fetchVideoUrl(recNo: string): Promise<string | null> {
+async function fetchVideoUrls(recNo: string): Promise<string[]> {
   try {
     const { getSupabaseAdmin } = await import('@/lib/supabase')
-    const { data } = await getSupabaseAdmin()
+    const sb = getSupabaseAdmin()
+    // Try both columns; fall back to the legacy single column if the
+    // youtube_url_2 migration hasn't run yet (keeps existing videos working).
+    const withBoth = await sb
+      .from('car_videos')
+      .select('youtube_url, youtube_url_2')
+      .eq('rec_no', recNo)
+      .maybeSingle()
+    if (!withBoth.error) {
+      return [withBoth.data?.youtube_url, withBoth.data?.youtube_url_2].filter(Boolean) as string[]
+    }
+    const single = await sb
       .from('car_videos')
       .select('youtube_url')
       .eq('rec_no', recNo)
-      .single()
-    return data?.youtube_url ?? null
-  } catch { return null }
+      .maybeSingle()
+    return [single.data?.youtube_url].filter(Boolean) as string[]
+  } catch { return [] }
 }
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  let summary, detail, videoUrl, carOverride, cdnUrls: Record<string, string>
+  let summary, detail, videoUrls: string[], carOverride, cdnUrls: Record<string, string>
   try {
-    ;[summary, detail, videoUrl, carOverride, cdnUrls] = await Promise.all([
+    ;[summary, detail, videoUrls, carOverride, cdnUrls] = await Promise.all([
       fetchCarSummaryByRecNo(params.recNo),
       fetchCarDetail(params.recNo),
-      fetchVideoUrl(params.recNo),
+      fetchVideoUrls(params.recNo),
       fetchCarOverrides(params.recNo),
       getCachedImageUrls(),
     ])
@@ -392,7 +403,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
       </div>
 
       {/* Scroll hint + CTA spacer merged — content is flex-centered in the visible zone above the CTA bar */}
-      {videoUrl ? (
+      {videoUrls.length > 0 ? (
         <div
           data-scroll-hint
           data-ready="0"
@@ -435,7 +446,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           full-res source from Supabase (extra egress) and is never displayed. */}
       {/* Preconnect to image origin in case CDN URL isn't available */}
       <link rel="preconnect" href="https://www.bavarian-motors.co.il" />
-      {videoUrl && (
+      {videoUrls.length > 0 && (
         <>
           <link rel="preconnect" href="https://www.youtube-nocookie.com" crossOrigin="anonymous" />
           <link rel="preconnect" href="https://www.youtube.com" crossOrigin="anonymous" />
@@ -444,7 +455,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
         </>
       )}
       <CarSlider
-        youtubeUrl={videoUrl ?? null}
+        videoUrls={videoUrls}
         carName={summary.name}
         recNo={params.recNo}
         pollutionGrade={pollutionGrade}

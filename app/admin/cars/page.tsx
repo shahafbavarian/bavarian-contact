@@ -27,12 +27,15 @@ function extractVideoId(url: string): string | null {
 
 type Override = { pollutionGrade: number | null; safetyLevel: number | null }
 
+type VideoLinks = { url1: string | null; url2: string | null }
+
 export default function AdminCarsPage() {
   const [cars, setCars] = useState<CarSummary[]>([])
-  const [videos, setVideos] = useState<Record<string, string>>({})
+  const [videos, setVideos] = useState<Record<string, VideoLinks>>({})
   const [overrides, setOverrides] = useState<Record<string, Override>>({})
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [draft2, setDraft2] = useState('')
   const [draftPollution, setDraftPollution] = useState<number | ''>('')
   const [draftSafety, setDraftSafety] = useState<number | ''>('')
   const [saving, setSaving] = useState(false)
@@ -52,35 +55,46 @@ export default function AdminCarsPage() {
     })
   }, [])
 
-  async function save(recNo: string) {
+  // Explicit args (defaulting to the current drafts) so callers like "הסר הכל"
+  // can pass empty values without racing React's async setState.
+  async function save(
+    recNo: string,
+    v1: string = draft,
+    v2: string = draft2,
+    pg: number | '' = draftPollution,
+    sl: number | '' = draftSafety,
+  ) {
     setSaving(true)
+    const url1 = v1.trim()
+    const url2 = v2.trim()
     await Promise.all([
       fetch('/api/car-videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rec_no: recNo, youtube_url: draft.trim() }),
+        body: JSON.stringify({ rec_no: recNo, youtube_url: url1, youtube_url_2: url2 }),
       }),
       fetch('/api/car-overrides', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rec_no: recNo,
-          pollution_grade: draftPollution === '' ? null : draftPollution,
-          safety_level: draftSafety === '' ? null : draftSafety,
+          pollution_grade: pg === '' ? null : pg,
+          safety_level: sl === '' ? null : sl,
         }),
       }),
     ])
-    setVideos((prev: Record<string, string>) => {
+    setVideos((prev: Record<string, VideoLinks>) => {
       const next = { ...prev }
-      if (draft.trim()) next[recNo] = draft.trim()
+      const urls = [url1, url2].filter(Boolean)
+      if (urls.length) next[recNo] = { url1: urls[0], url2: urls[1] ?? null }
       else delete next[recNo]
       return next
     })
     setOverrides((prev: Record<string, Override>) => {
       const next = { ...prev }
-      const pg = draftPollution === '' ? null : draftPollution
-      const sl = draftSafety === '' ? null : draftSafety
-      if (pg !== null || sl !== null) next[recNo] = { pollutionGrade: pg, safetyLevel: sl }
+      const pgVal = pg === '' ? null : pg
+      const slVal = sl === '' ? null : sl
+      if (pgVal !== null || slVal !== null) next[recNo] = { pollutionGrade: pgVal, safetyLevel: slVal }
       else delete next[recNo]
       return next
     })
@@ -161,7 +175,9 @@ export default function AdminCarsPage() {
             {filtered.map(car => {
               const make = getMake(car.name)
               const model = car.name.slice(make.length).trim()
-              const hasVideo = !!videos[car.recNo]
+              const vid = videos[car.recNo]
+              const videoCount = (vid?.url1 ? 1 : 0) + (vid?.url2 ? 1 : 0)
+              const hasVideo = videoCount > 0
               const hasOverride = !!overrides[car.recNo]
               const isEditing = editing === car.recNo
 
@@ -193,7 +209,7 @@ export default function AdminCarsPage() {
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
                                 <polygon points="5,3 19,12 5,21" fill="rgba(200,169,110,0.8)" />
                               </svg>
-                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: GOLD_DIM }}>סרטון</span>
+                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: 10, color: GOLD_DIM }}>{videoCount > 1 ? `${videoCount} סרטונים` : 'סרטון'}</span>
                             </div>
                           )}
                           {hasOverride && (
@@ -207,7 +223,8 @@ export default function AdminCarsPage() {
                       onClick={() => {
                         if (isEditing) { setEditing(null); return }
                         setEditing(car.recNo)
-                        setDraft(videos[car.recNo] ?? '')
+                        setDraft(videos[car.recNo]?.url1 ?? '')
+                        setDraft2(videos[car.recNo]?.url2 ?? '')
                         setDraftPollution(overrides[car.recNo]?.pollutionGrade ?? '')
                         setDraftSafety(overrides[car.recNo]?.safetyLevel ?? '')
                       }}
@@ -231,10 +248,10 @@ export default function AdminCarsPage() {
                     <div style={{ padding: '0 12px 12px', borderTop: `1px solid ${GOLD_BORDER}` }}>
                       <div style={{ paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-                        {/* YouTube URL */}
+                        {/* YouTube URL 1 */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           <label style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(255,255,255,0.45)', direction: 'rtl' }}>
-                            קישור YouTube (Shorts או Watch)
+                            קישור סרטון 1 (Shorts או Watch)
                           </label>
                           <input
                             type="url"
@@ -257,6 +274,36 @@ export default function AdminCarsPage() {
                           {draft && extractVideoId(draft) && (
                             <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(100,200,100,0.8)' }}>
                               ✓ מזוהה: {extractVideoId(draft)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* YouTube URL 2 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontFamily: 'var(--font-heebo)', fontSize: 12, color: 'rgba(255,255,255,0.45)', direction: 'rtl' }}>
+                            קישור סרטון 2 (אופציונלי)
+                          </label>
+                          <input
+                            type="url"
+                            value={draft2}
+                            onChange={e => setDraft2(e.target.value)}
+                            placeholder="https://www.youtube.com/shorts/..."
+                            dir="ltr"
+                            style={{
+                              width: '100%', boxSizing: 'border-box',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: `1px solid ${draft2 && !extractVideoId(draft2) ? 'rgba(255,80,80,0.5)' : GOLD_BORDER}`,
+                              borderRadius: 8, padding: '8px 10px',
+                              fontFamily: 'var(--font-inter)', fontSize: 12,
+                              color: '#fff', outline: 'none',
+                            }}
+                          />
+                          {draft2 && !extractVideoId(draft2) && (
+                            <span style={{ fontFamily: 'var(--font-heebo)', fontSize: 11, color: 'rgba(255,100,100,0.8)' }}>קישור לא תקין</span>
+                          )}
+                          {draft2 && extractVideoId(draft2) && (
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: 11, color: 'rgba(100,200,100,0.8)' }}>
+                              ✓ מזוהה: {extractVideoId(draft2)}
                             </span>
                           )}
                         </div>
@@ -298,20 +345,20 @@ export default function AdminCarsPage() {
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             onClick={() => save(car.recNo)}
-                            disabled={saving || (!!draft && !extractVideoId(draft))}
+                            disabled={saving || (!!draft && !extractVideoId(draft)) || (!!draft2 && !extractVideoId(draft2))}
                             style={{
                               flex: 1, padding: '8px 0', borderRadius: 8,
                               background: GOLD, color: '#000',
                               fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 13,
                               border: 'none', cursor: saving ? 'wait' : 'pointer',
-                              opacity: saving || (!!draft && !extractVideoId(draft)) ? 0.5 : 1,
+                              opacity: saving || (!!draft && !extractVideoId(draft)) || (!!draft2 && !extractVideoId(draft2)) ? 0.5 : 1,
                             }}
                           >
                             {saving ? 'שומר...' : 'שמור'}
                           </button>
                           {(hasVideo || hasOverride) && (
                             <button
-                              onClick={() => { setDraft(''); setDraftPollution(''); setDraftSafety(''); save(car.recNo) }}
+                              onClick={() => { setDraft(''); setDraft2(''); setDraftPollution(''); setDraftSafety(''); save(car.recNo, '', '', '', '') }}
                               style={{
                                 padding: '8px 14px', borderRadius: 8,
                                 background: 'rgba(255,255,255,0.05)',
