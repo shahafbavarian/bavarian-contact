@@ -1,6 +1,21 @@
-import { fetchCarDetail, fetchCarSummaryByRecNo } from '@/lib/scraper'
+import { fetchCarDetail, fetchCarList, fetchCarSummaryByRecNo } from '@/lib/scraper'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import PrintButton from './PrintButton'
+
+export const revalidate = 300
+export const dynamicParams = true
+
+// Pre-build print sheets for all currently listed cars at deploy time, same
+// as the main car page — otherwise every print click is a live, blocking
+// scrape of the source site with a hard timeout, which is flaky under load.
+export async function generateStaticParams() {
+  try {
+    const cars = await fetchCarList()
+    return cars.map(c => ({ recNo: c.recNo }))
+  } catch {
+    return []
+  }
+}
 
 const SITE_URL = 'https://contact.bavarian-motors.co.il'
 const GOLD = '#C8A96E'
@@ -122,20 +137,38 @@ function SpecCell({ label, value }: { label: string; value: string }) {
 export default async function PrintPage({ params }: { params: { recNo: string } }) {
   const { recNo } = params
 
-  let summary, detail, overrides
-  try {
-    ;[summary, detail, overrides] = await Promise.all([
-      fetchCarSummaryByRecNo(recNo),
-      fetchCarDetail(recNo),
-      fetchOverrides(recNo),
-    ])
-  } catch {
+  // Each source is fetched independently — a timeout/failure on one (e.g. the
+  // source site being slow for this specific car) shouldn't take down the
+  // whole sheet, since `detail` and `overrides` are already treated as
+  // optional everywhere below. Only `summary` is actually required.
+  const [summaryResult, detailResult, overridesResult] = await Promise.allSettled([
+    fetchCarSummaryByRecNo(recNo),
+    fetchCarDetail(recNo),
+    fetchOverrides(recNo),
+  ])
+
+  if (summaryResult.status === 'rejected') {
     return (
-      <div style={{ padding: 40, fontFamily: 'Heebo, Arial', color: '#333', textAlign: 'center' }}>
-        שגיאה בטעינת נתוני הרכב — נסה לרענן את הדף.
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 18,
+        padding: 40, fontFamily: 'Heebo, Arial', color: '#333', textAlign: 'center',
+      }}>
+        <p>שגיאה זמנית בטעינת נתוני הרכב — ייתכן שאתר המקור אינו זמין כרגע.</p>
+        <a href={`/car/${recNo}/print`} style={{
+          display: 'inline-flex', alignItems: 'center', padding: '10px 24px',
+          borderRadius: 999, background: GOLD, color: '#000',
+          fontWeight: 700, textDecoration: 'none',
+        }}>
+          נסה שוב
+        </a>
       </div>
     )
   }
+
+  const summary   = summaryResult.value
+  const detail    = detailResult.status === 'fulfilled' ? detailResult.value : null
+  const overrides = overridesResult.status === 'fulfilled' ? overridesResult.value : null
 
   if (!summary) return <div style={{ padding: 40, fontFamily: 'Heebo, Arial' }}>רכב לא נמצא</div>
 
