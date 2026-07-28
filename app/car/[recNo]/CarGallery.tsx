@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 
+// The gallery frame is never full-viewport-width: mobile caps at a 480px
+// column, desktop leaves room for the fixed-width info panel. Declaring that
+// stops the browser from picking the 1920px variant on wide screens.
+const GALLERY_SIZES = '(max-width: 767px) 100vw, 65vw'
+
 export default function CarGallery({ images, name, priority }: { images: string[]; name: string; priority?: boolean }) {
   const [idx, setIdx] = useState(0)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
@@ -48,9 +53,11 @@ export default function CarGallery({ images, name, priority }: { images: string[
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {/* Blurred backdrop */}
+        {/* Blurred backdrop — MUST keep the exact same src+sizes as the main
+            image below, so both resolve to the identical optimized URL and cost
+            a single image transformation instead of two. */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true">
-          <Image src={images[idx]} alt="" fill sizes="100vw"
+          <Image src={images[idx]} alt="" fill sizes={GALLERY_SIZES}
             style={{ objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.08)', opacity: 0.65 }} />
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.38)' }} />
         </div>
@@ -61,7 +68,7 @@ export default function CarGallery({ images, name, priority }: { images: string[
             src={images[idx]}
             alt={`${name} תמונה ${idx + 1}`}
             fill
-            sizes="100vw"
+            sizes={GALLERY_SIZES}
             style={{ objectFit: 'contain' }}
             priority={idx === 0 && priority}
           />

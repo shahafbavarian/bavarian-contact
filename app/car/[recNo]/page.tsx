@@ -7,6 +7,8 @@ import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
 import CarSlider from './CarSlider'
 import CarTracker from './CarTracker'
+import CarPrintButton from './CarPrintButton'
+import CarPrintSheet from './CarPrintSheet'
 import DesktopContactForm from './DesktopContactForm'
 import AccessibilityWidget from '@/app/components/AccessibilityWidget'
 
@@ -459,6 +461,18 @@ export default async function CarPage({ params }: { params: { recNo: string } })
           <link rel="dns-prefetch" href="https://googlevideo.com" />
         </>
       )}
+      {/* Printing renders from the data above — no extra fetch, so it works
+          whenever this page does. */}
+      <CarPrintButton>
+        <CarPrintSheet
+          recNo={params.recNo}
+          summary={summary}
+          detail={detail ?? null}
+          pollutionGrade={pollutionGrade}
+          safetyLevel={safetyLevel}
+          coverImage={heroImage}
+        />
+      </CarPrintButton>
       <CarSlider
         videoUrls={videoUrls}
         carName={summary.name}
