@@ -26,6 +26,9 @@ export async function getCachedImageUrls(): Promise<Record<string, string>> {
     const { data } = await getSupabaseAdmin()
       .from('car_image_cache')
       .select('rec_no, storage_url')
+      // Bounded: this only upgrades image URLs, so a slow Supabase must never
+      // hold up a page render.
+      .abortSignal(AbortSignal.timeout(5000))
     return Object.fromEntries((data ?? []).map(r => [r.rec_no, r.storage_url]))
   } catch {
     return {}

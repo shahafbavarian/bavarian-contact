@@ -95,6 +95,7 @@ async function fetchCarOverrides(recNo: string): Promise<{ pollutionGrade: numbe
       .from('car_overrides')
       .select('pollution_grade, safety_level')
       .eq('rec_no', recNo)
+      .abortSignal(AbortSignal.timeout(5000))
       .single()
     if (!data) return null
     return { pollutionGrade: data.pollution_grade ?? null, safetyLevel: data.safety_level ?? null }
@@ -111,6 +112,7 @@ async function fetchVideoUrls(recNo: string): Promise<string[]> {
       .from('car_videos')
       .select('youtube_url, youtube_url_2')
       .eq('rec_no', recNo)
+      .abortSignal(AbortSignal.timeout(5000))
       .maybeSingle()
     if (!withBoth.error) {
       return [withBoth.data?.youtube_url, withBoth.data?.youtube_url_2].filter(Boolean) as string[]
@@ -119,22 +121,37 @@ async function fetchVideoUrls(recNo: string): Promise<string[]> {
       .from('car_videos')
       .select('youtube_url')
       .eq('rec_no', recNo)
+      .abortSignal(AbortSignal.timeout(5000))
       .maybeSingle()
     return [single.data?.youtube_url].filter(Boolean) as string[]
   } catch { return [] }
 }
 
 export default async function CarPage({ params }: { params: { recNo: string } }) {
-  let summary, detail, videoUrls: string[], carOverride, cdnUrls: Record<string, string>
-  try {
-    ;[summary, detail, videoUrls, carOverride, cdnUrls] = await Promise.all([
-      fetchCarSummaryByRecNo(params.recNo),
-      fetchCarDetail(params.recNo),
-      fetchVideoUrls(params.recNo),
-      fetchCarOverrides(params.recNo),
-      getCachedImageUrls(),
-    ])
-  } catch {
+  // Settled, not all: only the car's own identity is required to render this
+  // page. Videos, overrides, CDN URLs and the detail scrape are all optional,
+  // and a Promise.all let any one of them replace the whole page with an
+  // error screen.
+  const [summaryRes, detailRes, videosRes, overrideRes, cdnRes] = await Promise.allSettled([
+    fetchCarSummaryByRecNo(params.recNo),
+    fetchCarDetail(params.recNo),
+    fetchVideoUrls(params.recNo),
+    fetchCarOverrides(params.recNo),
+    getCachedImageUrls(),
+  ])
+
+  const listLoaded  = summaryRes.status === 'fulfilled'
+  const detail      = detailRes.status   === 'fulfilled' ? detailRes.value   : null
+  const videoUrls   = videosRes.status   === 'fulfilled' ? videosRes.value   : []
+  const carOverride = overrideRes.status === 'fulfilled' ? overrideRes.value : null
+  const cdnUrls     = cdnRes.status      === 'fulfilled' ? cdnRes.value      : {}
+
+  // CarDetail is a superset of CarSummary, so when the list scrape fails but
+  // the car's own page came through, that alone is enough to render.
+  const summary = (listLoaded ? summaryRes.value : null) ?? detail
+
+  // Nothing identifying the car survived — only now is this a real error.
+  if (!summary && !listLoaded) {
     return (
       <main style={{
         minHeight: '100vh', background: '#000',
@@ -167,6 +184,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const pollutionGrade = carOverride?.pollutionGrade ?? detail?.pollutionGrade ?? null
   const safetyLevel    = carOverride?.safetyLevel    ?? detail?.safetyLevel    ?? null
 
+  // The list loaded and this car simply isn't in it — genuinely sold.
   if (!summary) {
     return (
       <main style={{

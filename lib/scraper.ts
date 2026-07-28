@@ -120,17 +120,29 @@ function buildName(el: cheerio.Cheerio<AnyNode>): string {
   return el.find('h5').first().text().trim()
 }
 
+// The list page is the one genuinely load-bearing scrape: without it there is
+// no car. Give it room and one retry — a single transient hiccup must not be
+// enough to take a page down. Callers still have to treat it as fallible.
+async function fetchCarListHtml(): Promise<string> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${BASE}/He/Available_Cars`, {
+        headers: FETCH_HEADERS,
+        next: { revalidate: 300 },
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!res.ok) throw new Error(`fetchCarList: ${res.status}`)
+      return await res.text()
+    } catch (e) {
+      lastErr = e
+    }
+  }
+  throw lastErr
+}
+
 export async function fetchCarList(): Promise<CarSummary[]> {
-  const res = await fetch(`${BASE}/He/Available_Cars`, {
-    headers: FETCH_HEADERS,
-    next: { revalidate: 300 },
-    // Deliberately shorter than the serverless function budget: failing fast
-    // lets the caller serve cached/partial data, whereas overrunning the
-    // platform limit kills the request outright and shows the user nothing.
-    signal: AbortSignal.timeout(10000),
-  })
-  if (!res.ok) throw new Error(`fetchCarList: ${res.status}`)
-  const html = await res.text()
+  const html = await fetchCarListHtml()
   const $ = cheerio.load(html)
 
   const cars: CarSummary[] = []
@@ -190,13 +202,24 @@ export async function fetchCarList(): Promise<CarSummary[]> {
   })
 }
 
+// Optional data by contract — every caller already treats null as "no extra
+// detail available". It must therefore never reject: a thrown timeout here used
+// to reject the car page's Promise.all and replace the entire page with an
+// error screen over a field that is not required to render it.
 export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
+  try {
+    return await fetchCarDetailInner(recNo)
+  } catch {
+    return null
+  }
+}
+
+async function fetchCarDetailInner(recNo: string): Promise<CarDetail | null> {
   const sourceUrl = `${BASE}/He/Car?recNo=${recNo}`
   const res = await fetch(sourceUrl, {
     headers: FETCH_HEADERS,
     next: { revalidate: 300 },
-    // Must fit inside one enrichment budget slot in /api/cars.
-    signal: AbortSignal.timeout(7000),
+    signal: AbortSignal.timeout(10000),
   })
   if (!res.ok) return null
   const html = await res.text()

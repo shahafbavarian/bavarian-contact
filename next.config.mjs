@@ -35,6 +35,14 @@ const nextConfig = {
         destination: '/?utm_source=ins-portal',
         permanent: false,
       },
+      {
+        // Printing moved onto the car page itself. Handled here rather than by
+        // a route so old links and bookmarks get a real HTTP redirect at the
+        // edge — no function invocation, no client-side hop.
+        source: '/car/:recNo/print',
+        destination: '/car/:recNo?print=1',
+        permanent: false,
+      },
     ]
   },
 }
