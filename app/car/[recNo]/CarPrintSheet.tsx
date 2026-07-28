@@ -217,8 +217,15 @@ export default function CarPrintSheet({
             position: absolute !important; top: 0 !important; left: 0 !important;
             width: 210mm !important; margin: 0 !important;
           }
+          /* A hard one-page box with a deliberate margin at the foot of the
+             sheet. Letting the height be content-driven left only ~6% of slack,
+             so a long car name, a full spec table or a longer description
+             tipped the sheet onto a second page. The cover image below absorbs
+             the variation instead. */
           [data-print-sheet] .doc {
-            width: 210mm; min-height: 0 !important; height: auto !important;
+            width: 210mm;
+            height: 285mm !important;
+            overflow: hidden;
             margin: 0 auto !important; box-shadow: none !important;
           }
         }
@@ -264,9 +271,11 @@ export default function CarPrintSheet({
           </div>
         </div>
 
-        {/* ── Cover image — fixed height keeps the sheet on a single page ── */}
+        {/* ── Cover image — the sheet's shock absorber. It takes whatever
+              height is left over, so a taller spec table or description
+              shrinks the photo rather than spilling onto a second page. ── */}
         {coverImage && (
-          <div style={{ width: '100%', height: '86mm', marginBottom: 9 }}>
+          <div style={{ width: '100%', flex: '1 1 auto', minHeight: '40mm', maxHeight: '86mm', marginBottom: 9 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
@@ -332,9 +341,12 @@ export default function CarPrintSheet({
 
         {/* ── Footer: QR + contact ── */}
         <div style={{
-          marginTop: 6, borderTop: `1.5px solid ${GOLD}`,
-          padding: '8px 0 8px',
+          // Pinned to the bottom of the fixed-height sheet, so it is always
+          // present and always the same distance from the paper edge.
+          marginTop: 'auto', borderTop: `1.5px solid ${GOLD}`,
+          padding: '8px 0 0',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
