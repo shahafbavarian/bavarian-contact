@@ -55,11 +55,18 @@ function splitCarName(name: string): [string, string] {
 }
 
 export async function generateMetadata({ params }: { params: { recNo: string } }): Promise<Metadata> {
-  const summary = await fetchCarSummaryByRecNo(params.recNo)
-  if (!summary) return { title: 'בוואריאן מוטורס' }
-  return {
-    title: `${summary.name} | בוואריאן מוטורס`,
-    openGraph: { images: summary.imageUrl ? [summary.imageUrl] : [] },
+  // Must never throw: an unhandled rejection here fails the whole route with a
+  // 500 before the page body runs, so the page's own error screen never gets a
+  // chance to render.
+  try {
+    const summary = await fetchCarSummaryByRecNo(params.recNo)
+    if (!summary) return { title: 'בוואריאן מוטורס' }
+    return {
+      title: `${summary.name} | בוואריאן מוטורס`,
+      openGraph: { images: summary.imageUrl ? [summary.imageUrl] : [] },
+    }
+  } catch {
+    return { title: 'בוואריאן מוטורס' }
   }
 }
 

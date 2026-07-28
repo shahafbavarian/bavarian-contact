@@ -6,6 +6,15 @@ import { shouldSync, syncCarImages, getCachedImageUrls } from '@/lib/image-sync'
 // Data caching is handled inside fetchCarList (next: { revalidate: 300 }).
 export const dynamic = 'force-dynamic'
 
+// Enrichment fans out one request per car. Give the function room, but never
+// rely on that room — ENRICH_BUDGET_MS below is what actually keeps us safe.
+export const maxDuration = 30
+
+// How long the per-car enrichment pass may run before we return what we have.
+// Serving a partially enriched list instantly beats timing out the whole
+// request: the only field it adds for the car list is `yad`.
+const ENRICH_BUDGET_MS = 8000
+
 // Run fn on all items with at most `limit` concurrent promises
 async function pLimit<T>(
   items: T[],
@@ -24,17 +33,22 @@ async function pLimit<T>(
   return results
 }
 
-async function enrichCar(car: CarSummary): Promise<CarSummary> {
-  try {
-    const detail = await fetchCarDetail(car.recNo)
-    return {
-      ...car,
-      yad:            car.yad || (detail?.yad ?? ''),
-      pollutionGrade: detail?.pollutionGrade ?? null,
-      safetyLevel:    detail?.safetyLevel    ?? null,
+function makeEnricher(deadline: number) {
+  return async function enrichCar(car: CarSummary): Promise<CarSummary> {
+    // Past the budget: hand the car back untouched instead of starting another
+    // scrape. Workers drain the queue quickly once this trips.
+    if (Date.now() >= deadline) return car
+    try {
+      const detail = await fetchCarDetail(car.recNo)
+      return {
+        ...car,
+        yad:            car.yad || (detail?.yad ?? ''),
+        pollutionGrade: detail?.pollutionGrade ?? null,
+        safetyLevel:    detail?.safetyLevel    ?? null,
+      }
+    } catch {
+      return car
     }
-  } catch {
-    return car
   }
 }
 
@@ -43,6 +57,10 @@ function applyFilter(cars: CarSummary[], filter: string | null): CarSummary[] {
   if (filter === 'europe') return cars.filter(c => !c.status.includes('מלאי'))
   return cars
 }
+
+// Let Vercel's CDN answer repeat polls (every open tab refreshes on a 5-minute
+// timer) instead of waking the function for each one.
+const CDN_CACHE = 'public, s-maxage=300, stale-while-revalidate=600'
 
 export async function GET(req: Request) {
   try {
@@ -64,11 +82,17 @@ export async function GET(req: Request) {
 
     // ?basic=1: return raw list immediately (no detail scrapes, no gov.il calls)
     if (basic) {
-      return NextResponse.json({ cars: applyFilter(withCdn, filter) })
+      return NextResponse.json(
+        { cars: applyFilter(withCdn, filter) },
+        { headers: { 'Cache-Control': CDN_CACHE } },
+      )
     }
 
-    const enriched = await pLimit(withCdn, enrichCar, 10)
-    return NextResponse.json({ cars: applyFilter(enriched, filter) })
+    const enriched = await pLimit(withCdn, makeEnricher(Date.now() + ENRICH_BUDGET_MS), 10)
+    return NextResponse.json(
+      { cars: applyFilter(enriched, filter) },
+      { headers: { 'Cache-Control': CDN_CACHE } },
+    )
   } catch (err) {
     console.error('[/api/cars]', err)
     return NextResponse.json({ cars: [], error: String(err) }, { status: 500 })

@@ -124,7 +124,10 @@ export async function fetchCarList(): Promise<CarSummary[]> {
   const res = await fetch(`${BASE}/He/Available_Cars`, {
     headers: FETCH_HEADERS,
     next: { revalidate: 300 },
-    signal: AbortSignal.timeout(15000),
+    // Deliberately shorter than the serverless function budget: failing fast
+    // lets the caller serve cached/partial data, whereas overrunning the
+    // platform limit kills the request outright and shows the user nothing.
+    signal: AbortSignal.timeout(10000),
   })
   if (!res.ok) throw new Error(`fetchCarList: ${res.status}`)
   const html = await res.text()
@@ -192,7 +195,8 @@ export async function fetchCarDetail(recNo: string): Promise<CarDetail | null> {
   const res = await fetch(sourceUrl, {
     headers: FETCH_HEADERS,
     next: { revalidate: 300 },
-    signal: AbortSignal.timeout(12000),
+    // Must fit inside one enrichment budget slot in /api/cars.
+    signal: AbortSignal.timeout(7000),
   })
   if (!res.ok) return null
   const html = await res.text()
