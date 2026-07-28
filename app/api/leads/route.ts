@@ -95,14 +95,21 @@ export async function POST(req: NextRequest) {
 
     await recordRateLimit(ipHash)
 
-    // Push to Fireberry CRM — fire and forget, never blocks the response.
-    // For car leads, utm_source holds the car name; rec_no ties it to the ad.
-    pushLeadToFireberry({
-      name: base.name, phone: base.phone, message: base.message,
-      utm_source: base.utm_source,
-      carName: base.utm_source,
-      recNo: rec_no || null,
-    }).catch(e => console.error('[fireberry]', e))
+    // Awaited on purpose. This used to be fire-and-forget, but a serverless
+    // function is frozen the moment it responds, so the CRM push frequently
+    // never ran and the lead existed only in Supabase. The call is capped at
+    // 8s, and a CRM failure must never fail the customer's submission — the
+    // lead is already safely stored by this point.
+    try {
+      await pushLeadToFireberry({
+        name: base.name, phone: base.phone, message: base.message,
+        utm_source: base.utm_source,
+        carName: base.utm_source,
+        recNo: rec_no || null,
+      })
+    } catch (e) {
+      console.error('[fireberry] lead saved but CRM push failed:', e)
+    }
 
     return NextResponse.json({ ok: true, id: data[0].id }, { status: 201 })
   } catch (err) {

@@ -1,15 +1,8 @@
 import type { CarSummary } from './scraper'
 
-// Module-level throttle — prevents multiple concurrent syncs
-let lastSyncStartedAt = 0
-const MIN_INTERVAL_MS = 15 * 60 * 1000 // at most once per 15 min
-
-export function shouldSync(): boolean {
-  const now = Date.now()
-  if (now - lastSyncStartedAt < MIN_INTERVAL_MS) return false
-  lastSyncStartedAt = now
-  return true
-}
+// The old module-level throttle lived here. It could not work: each serverless
+// instance holds its own copy, so every cold start believed it was allowed to
+// sync. Scheduling is now the cron's job, which actually is global.
 
 async function sha256short(buf: ArrayBuffer): Promise<string> {
   const hash = await crypto.subtle.digest('SHA-256', buf)
@@ -52,7 +45,13 @@ export async function getCachedImageUrls(): Promise<Record<string, string>> {
   }
 }
 
-export async function syncCarImages(cars: CarSummary[]): Promise<void> {
+export async function syncCarImages(
+  cars: CarSummary[],
+  deadline = Date.now() + 50_000,
+): Promise<{ synced: number; skipped: number; ranOutOfTime: boolean }> {
+  let synced = 0
+  let skipped = 0
+  let ranOutOfTime = false
   try {
     const { getSupabaseAdmin } = await import('./supabase')
     const sb = getSupabaseAdmin()
@@ -76,13 +75,20 @@ export async function syncCarImages(cars: CarSummary[]): Promise<void> {
 
     // Process each car (sequential to avoid hammering the source server)
     for (const car of cars) {
+      // Stop cleanly rather than being killed mid-upload; whatever is left is
+      // picked up by the next run, since progress is recorded per car.
+      if (Date.now() >= deadline) {
+        ranOutOfTime = true
+        console.log('[image-sync] budget reached, resuming next run')
+        break
+      }
       if (!car.imageUrl) continue
       const row = cached.get(car.recNo)
       const ageMs = row ? Date.now() - new Date(row.synced_at).getTime() : Infinity
       const urlChanged = row?.original_url !== car.imageUrl
 
       // Re-check daily to catch silent image replacements on the source site
-      if (row && !urlChanged && ageMs < 23 * 60 * 60 * 1000) continue
+      if (row && !urlChanged && ageMs < 23 * 60 * 60 * 1000) { skipped++; continue }
 
       try {
         const res = await fetch(car.imageUrl, { signal: AbortSignal.timeout(15000) })
@@ -122,14 +128,16 @@ export async function syncCarImages(cars: CarSummary[]): Promise<void> {
           synced_at: new Date().toISOString(),
         }, { onConflict: 'rec_no' })
 
+        synced++
         console.log('[image-sync] updated', car.recNo, urlChanged ? '(url changed)' : '(content changed)')
       } catch (e) {
         console.error('[image-sync] skip', car.recNo, String(e))
       }
     }
 
-    console.log('[image-sync] done')
+    console.log('[image-sync] done', { synced, skipped, ranOutOfTime })
   } catch (e) {
     console.error('[image-sync] fatal', e)
   }
+  return { synced, skipped, ranOutOfTime }
 }

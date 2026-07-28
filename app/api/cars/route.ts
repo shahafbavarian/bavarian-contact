@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { fetchCarList, fetchCarDetail, CarSummary } from '@/lib/scraper'
-import { shouldSync, syncCarImages, getCachedImageUrls } from '@/lib/image-sync'
+import { getCachedImageUrls } from '@/lib/image-sync'
 
 // Route reads query params (filter, basic) so it must run dynamically.
 // Data caching is handled inside fetchCarList (next: { revalidate: 300 }).
@@ -75,11 +75,11 @@ export async function GET(req: Request) {
       cachedUrls[c.recNo] ? { ...c, imageUrl: cachedUrls[c.recNo] } : c
     )
 
-    // Kick off background sync (throttled to once per 15 min)
-    if (shouldSync()) {
-      syncCarImages(cars).catch(e => console.error('[sync-images]', e))
-    }
-
+    // Image syncing deliberately does NOT happen here. It used to be kicked off
+    // unawaited on every call, which meant it was killed the moment the function
+    // responded, and its once-per-15-min guard is a module-level variable that
+    // each serverless instance holds its own copy of — so instead of one sync,
+    // every cold instance started another. It now runs from a daily cron.
     // ?basic=1: return raw list immediately (no detail scrapes, no gov.il calls)
     if (basic) {
       return NextResponse.json(

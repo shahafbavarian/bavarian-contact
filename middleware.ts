@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export function middleware(req: NextRequest) {
-  const adminPassword = process.env.ADMIN_PASSWORD
-
-  // If no password is set, admin is open (dev mode)
-  if (!adminPassword) return NextResponse.next()
-
   const { pathname } = req.nextUrl
   const method = req.method
 
@@ -17,6 +12,18 @@ export function middleware(req: NextRequest) {
 
   if (!isAdminPage && !isAdminApi && !isLeadsDelete && !isCarVideosWrite && !isOverridesWrite) {
     return NextResponse.next()
+  }
+
+  const adminPassword = process.env.ADMIN_PASSWORD
+
+  if (!adminPassword) {
+    // Open admin is a local-development convenience. In production a missing
+    // password used to silently expose everything behind this middleware —
+    // including the leads table, which holds customer names and phone numbers.
+    // Fail closed instead: locking the owner out is recoverable, publishing
+    // customer contact details is not.
+    if (process.env.NODE_ENV !== 'production') return NextResponse.next()
+    return new NextResponse('Admin is not configured: set ADMIN_PASSWORD.', { status: 503 })
   }
 
   const authHeader = req.headers.get('authorization')

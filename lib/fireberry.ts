@@ -51,6 +51,9 @@ export async function pushLeadToFireberry(lead: {
     method: 'POST',
     headers: { tokenId: key, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    // The lead route awaits this, so an unresponsive CRM must not be able to
+    // hold the customer's submission open.
+    signal: AbortSignal.timeout(8000),
   })
 
   if (!res.ok) {
