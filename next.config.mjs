@@ -3,11 +3,13 @@ const nextConfig = {
   images: {
     minimumCacheTTL: 86400,
     // Every (source image × width × format) combination is billed as a separate
-    // image transformation. The defaults emit 8 device widths (up to 3840px),
-    // which multiplies fast across the fleet. These lists cover every layout we
-    // actually render — the gallery frame never exceeds ~1000px CSS px — while
-    // cutting the generated variants per image by half.
-    deviceSizes: [640, 828, 1200, 1920],
+    // image transformation, and the defaults emit 8 device widths up to 3840px.
+    // This ladder is trimmed to the widths our layouts actually select, keeping
+    // 2560 because the car gallery on a retina desktop genuinely needs it —
+    // without it that hero image gets upscaled and looks soft. Variants are
+    // only generated when a device actually requests one, so phones never pay
+    // for the large end of this list.
+    deviceSizes: [640, 828, 1200, 1920, 2560],
     imageSizes: [96, 256],
     remotePatterns: [
       { hostname: 'www.bavarian-motors.co.il' },

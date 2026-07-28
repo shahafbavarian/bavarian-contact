@@ -95,28 +95,25 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
   useEffect(() => {
     let alive = true
 
-    // The server already rendered the list. These requests only refresh it, so
-    // they run in the background and never block what's on screen.
-    const refresh = async (isFirst: boolean) => {
-      // Cheap list refresh — no per-car scraping behind it.
-      if (isFirst && initialCars.length === 0) {
-        const basic = await fetchJson<{ cars: CarSummary[] }>('/api/cars?basic=1', 12000)
-        if (!alive) return
-        if (basic?.cars?.length) setCars(basic.cars.filter(c => c.imageUrl))
-        setLoading(false)
+    // Only the cheap list endpoint. The enriched one scrapes a detail page per
+    // car; running that per visitor to fill an occasional "יד" chip is wildly
+    // disproportionate, and the list scrape already carries that field.
+    const refresh = async () => {
+      const data = await fetchJson<{ cars: CarSummary[] }>('/api/cars?basic=1', 12000)
+      if (!alive) return
+      if (data?.cars?.length) {
+        saveYadCache(data.cars)
+        setCars(data.cars.filter(c => c.imageUrl))
       }
-
-      // Enriched pass (fills `yad`). Slow by nature — it is never awaited by
-      // anything the user is looking at, and a failure changes nothing.
-      const full = await fetchJson<{ cars: CarSummary[] }>('/api/cars', 30000)
-      if (!alive || !full?.cars?.length) { if (alive) setLoading(false); return }
-      saveYadCache(full.cars)
-      setCars(full.cars.filter(c => c.imageUrl))
       setLoading(false)
     }
 
-    refresh(true)
-    const id = setInterval(() => refresh(false), POLL_INTERVAL)
+    // The server already rendered a list at most 5 minutes old, so a visitor
+    // costs zero requests. Only fetch when the server handed us nothing.
+    if (initialCars.length === 0) refresh()
+
+    // Keeps a long-lived tab (showroom screen) current.
+    const id = setInterval(refresh, POLL_INTERVAL)
     return () => { alive = false; clearInterval(id) }
   }, [initialCars.length])
 
@@ -284,7 +281,12 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
                       src={car.imageUrl}
                       alt={car.name}
                       fill
-                      sizes="(max-width: 500px) 50vw, 250px"
+                      // The grid is two equal columns at every width with no
+                      // max-width, so a card is always ~half the viewport. The
+                      // old fixed "250px" under-requested on anything wider
+                      // than a phone and the browser upscaled it — that is what
+                      // made these look soft on desktop.
+                      sizes="50vw"
                       style={{ objectFit: 'cover' }}
                       priority={idx < 6}
                       quality={85}

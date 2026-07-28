@@ -19,6 +19,23 @@ async function sha256short(buf: ArrayBuffer): Promise<string> {
     .slice(0, 16)
 }
 
+// Single-car lookup. A car page needs exactly one row, so it must not pull the
+// whole table the way the list pages legitimately do.
+export async function getCachedImageUrl(recNo: string): Promise<string | null> {
+  try {
+    const { getSupabaseAdmin } = await import('./supabase')
+    const { data } = await getSupabaseAdmin()
+      .from('car_image_cache')
+      .select('storage_url')
+      .eq('rec_no', recNo)
+      .abortSignal(AbortSignal.timeout(5000))
+      .maybeSingle()
+    return data?.storage_url ?? null
+  } catch {
+    return null
+  }
+}
+
 // Returns map of recNo → Supabase CDN URL for all cached cars
 export async function getCachedImageUrls(): Promise<Record<string, string>> {
   try {

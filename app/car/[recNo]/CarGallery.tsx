@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 
-// The gallery frame is never full-viewport-width: mobile caps at a 480px
-// column, desktop leaves room for the fixed-width info panel. Declaring that
-// stops the browser from picking the 1920px variant on wide screens.
-const GALLERY_SIZES = '(max-width: 767px) 100vw, 65vw'
+// Mobile caps at a 480px column; on desktop the gallery takes everything left
+// of the info panel (100vw minus clamp(380px,36vw,480px)), which is ~75vw on a
+// typical laptop. Under-declaring here costs sharpness, so this errs high.
+const GALLERY_SIZES = '(max-width: 767px) 100vw, 75vw'
 
 export default function CarGallery({ images, name, priority }: { images: string[]; name: string; priority?: boolean }) {
   const [idx, setIdx] = useState(0)
