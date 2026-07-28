@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
+// Fired by other controls that want to open the print sheet — the mobile share
+// menu, which has no room for a button of its own. Kept as an event so those
+// callers don't need a wiring path down to this component.
+export const PRINT_EVENT = 'bav:print'
+
 // Print control for the car page.
 //
 // The sheet markup is rendered on the server and handed in as `children`, so
@@ -27,6 +32,13 @@ export default function CarPrintButton({ children }: { children: React.ReactNode
       return true
     })
   }, [])
+
+  // Triggered from the mobile share menu.
+  useEffect(() => {
+    function onExternalRequest() { startPrint() }
+    window.addEventListener(PRINT_EVENT, onExternalRequest)
+    return () => window.removeEventListener(PRINT_EVENT, onExternalRequest)
+  }, [startPrint])
 
   // Legacy entry point: /car/[recNo]/print now redirects here with ?print=1,
   // so old links and bookmarks still land on a working print dialog.

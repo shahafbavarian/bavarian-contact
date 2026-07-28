@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { track } from '@/lib/track'
+import { PRINT_EVENT } from './CarPrintButton'
 
 // Mobile-only share control. Visually identical to the accessibility widget
 // trigger, placed immediately to its left. Offers two actions:
@@ -90,6 +91,14 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
         setOpen(false)
       }
     }
+  }
+
+  // The print sheet lives on the car page (CarPrintButton) — its own circular
+  // trigger is desktop-only, so on mobile this menu is the way in.
+  function printSheet() {
+    setNote(null)
+    setOpen(false)
+    window.dispatchEvent(new CustomEvent(PRINT_EVENT))
   }
 
   const rowStyle: React.CSSProperties = {
@@ -215,6 +224,15 @@ export default function ShareButton({ images, recNo }: { images: string[]; recNo
                 <path d="M15 12a4 4 0 01-4 4H9a4 4 0 010-8h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               שיתוף קישור
+            </button>
+
+            <button style={rowStyle} onClick={printSheet} disabled={busy}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              הורד / הדפס PDF
             </button>
           </div>
 
