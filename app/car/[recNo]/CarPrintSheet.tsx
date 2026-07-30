@@ -217,14 +217,17 @@ export default function CarPrintSheet({
             position: absolute !important; top: 0 !important; left: 0 !important;
             width: 210mm !important; margin: 0 !important;
           }
-          /* A hard one-page box with a deliberate margin at the foot of the
-             sheet. Letting the height be content-driven left only ~6% of slack,
-             so a long car name, a full spec table or a longer description
-             tipped the sheet onto a second page. The cover image below absorbs
-             the variation instead. */
+          /* A hard one-page box, sized for the WORST printable area rather than
+             the best. @page asks for zero margins, but the margin setting in
+             the browser's print dialog overrides it, and "Default" margins plus
+             optional headers/footers can cut the usable height of an A4 sheet
+             from 297mm to roughly 257mm. Sizing to 297mm — or even 285mm — is
+             what kept producing a second page on real printers.
+             250mm fits every common combination: no margins, default margins,
+             and default margins with headers and footers switched on. */
           [data-print-sheet] .doc {
             width: 210mm;
-            height: 285mm !important;
+            height: 250mm !important;
             overflow: hidden;
             margin: 0 auto !important; box-shadow: none !important;
           }
@@ -275,7 +278,7 @@ export default function CarPrintSheet({
               height is left over, so a taller spec table or description
               shrinks the photo rather than spilling onto a second page. ── */}
         {coverImage && (
-          <div style={{ width: '100%', flex: '1 1 auto', minHeight: '40mm', maxHeight: '86mm', marginBottom: 9 }}>
+          <div style={{ width: '100%', flex: '1 1 auto', minHeight: '30mm', maxHeight: '78mm', marginBottom: 9 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImage}
