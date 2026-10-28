@@ -127,11 +127,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           font: getComputedStyle(root.current!).fontFamily,
           onGallery: y => { if (arrows.current) arrows.current.style.top = `${y}px` },
           onReady: () => setState('ready'),
-          // the sign's letters and halo follow the hall's light, frame by frame
-          onSignPower: k => {
-            const el = sign.current; if (!el) return
-            el.style.filter = `brightness(${0.38 + 0.77 * k}) drop-shadow(0 0 6.5px rgba(255,255,255,${0.65 * k})) drop-shadow(0 0 35px rgba(255,255,255,${0.4 * k}))`
-          },
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })

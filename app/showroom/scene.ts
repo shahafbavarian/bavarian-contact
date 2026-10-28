@@ -42,8 +42,6 @@ type Opts = {
   onGallery?: (y: number) => void
   /** every texture of the opening view has loaded: show the canvas */
   onReady?: () => void
-  /** the sign's light, 0..1, on the same clock as the hall's (drives the page's sign) */
-  onSignPower?: (k: number) => void
   /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
   manual?: boolean
   dpr?: number
@@ -333,10 +331,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
   signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
-  power(0, k => {                        // the sign first, with the doors' lights
-    opts.onSignPower?.(k)
-    for (const l of signLamps) l.intensity = 0.9 * k; (signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.24 * k
-  })
+  // the street side is lit already when the page opens: only the hall's lights run
   const signL = new THREE.Vector3(), signR = new THREE.Vector3()
   const reportSign = () => {
     if (!opts.onSign) return
@@ -438,7 +433,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const bounce = new THREE.DirectionalLight('#ffe2c6', 0.9); bounce.position.set(0, -10, -12); bounce.target.position.set(0, 0, -12); scene.add(bounce, bounce.target)
   power(0.1, k => { bounce.intensity = 0.9 * k }, 0.7)
   power(0.1, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k }, 0.7)
-  power(0, k => { scene.environmentIntensity = 0.14 + 0.21 * k; mats.wall.envMapIntensity = 0.1 + 0.18 * k }, 0.8)
+  power(0, k => { mats.wall.envMapIntensity = 0.1 + 0.18 * k }, 0.8)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at

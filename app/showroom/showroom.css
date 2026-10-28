@@ -38,7 +38,7 @@ html:has(.sr) { overflow: auto; }
   position: absolute; z-index: 2; left: 0; top: 0; width: 1000px; max-width: none; height: auto; display: block;
   transform-origin: 50% 50%; will-change: transform; pointer-events: none; visibility: hidden;
   opacity: 0; transition: opacity 400ms cubic-bezier(.22,1,.36,1);
-  filter: brightness(.38) drop-shadow(0 0 6.5px rgba(255,255,255,0)) drop-shadow(0 0 35px rgba(255,255,255,0));
+  filter: brightness(1.15) drop-shadow(0 0 6.5px rgba(255,255,255,.65)) drop-shadow(0 0 35px rgba(255,255,255,.4));
 }
 .sr[data-state="ready"] .sr-sign { opacity: 1; }
 
@@ -68,7 +68,7 @@ html:has(.sr) { overflow: auto; }
 }
 @keyframes sr-menu-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 @media (hover: hover) and (pointer: fine) { .sr-menu a:hover { color: var(--muted); } }
-.sr-logo { display: inline-flex; min-height: 44px; align-items: center; }
+.sr-logo { display: flex; height: 44px; align-items: center; }   /* the same 44px box as the hamburger: both centre on one line */
 .sr-logo img { height: clamp(22px, 2.2vw, 28px); width: auto; display: block; }
 
 .sr-hint {
