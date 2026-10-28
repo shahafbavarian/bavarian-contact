@@ -17,16 +17,29 @@ html:has(.sr) { overflow: auto; }
 .sr a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .sr :focus-visible { outline: 2px solid #6aa6ff; outline-offset: 3px; border-radius: 6px; }
 
-.sr-track { position: relative; height: 100svh; }
-.sr-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; background: #06080c; touch-action: none; overscroll-behavior: none; }
+/* The page never scrolls: the stage is pinned to the whole window, in any
+   orientation (a fixed box follows Safari's real viewport, svh did not) */
+.sr-track { position: relative; height: 100%; }
+.sr-stage { position: fixed; inset: 0; overflow: hidden; background: #06080c; touch-action: none; overscroll-behavior: none; }
 .sr-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; touch-action: pan-y; cursor: grab; transition: opacity 900ms cubic-bezier(.22,1,.36,1); }
 .sr[data-state="ready"] .sr-canvas { opacity: 1; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
    which also keeps the eye off the unimportant background at the margins */
 .sr-canvas {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 84%, transparent 100%);
-          mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 84%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 86%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 86%, transparent 100%);
 }
+
+/* The sign on the building: the live header's lit look, moved every frame by
+   the scene onto its spot of the stone (scaled from a 1000px base, so it stays
+   sharp as it grows) */
+.sr-sign {
+  position: absolute; z-index: 2; left: 0; top: 0; width: 1000px; max-width: none; height: auto; display: block;
+  transform-origin: 50% 50%; will-change: transform; pointer-events: none; visibility: hidden;
+  opacity: 0; transition: opacity 900ms cubic-bezier(.22,1,.36,1);
+  filter: brightness(1.15) drop-shadow(0 0 6.5px rgba(255,255,255,.65)) drop-shadow(0 0 35px rgba(255,255,255,.4));
+}
+.sr[data-state="ready"] .sr-sign { opacity: 1; }
 
 .sr-top {
   position: absolute; inset: 0 0 auto 0; z-index: 3;
@@ -34,17 +47,6 @@ html:has(.sr) { overflow: auto; }
   padding: calc(8px + env(safe-area-inset-top)) clamp(16px, 4vw, 56px) 0;
 }
 .sr-logo { display: inline-flex; min-height: 44px; align-items: center; opacity: 0; visibility: hidden; }
-/* The wide logo as the page header outside (transparent PNG made from the
-   supplied file by removing its black background only) */
-.sr-head {
-  position: absolute; z-index: 4; inset: 0 0 auto 0; display: flex; justify-content: center;
-  padding: calc(34px + env(safe-area-inset-top)) 16px 0; pointer-events: none;
-}
-.sr-head img {
-  width: min(72vw, 460px); height: auto; display: block;
-  /* lit like the sign on the real building: a soft halo around the letters */
-  filter: brightness(1.15) drop-shadow(0 0 3px rgba(255,255,255,.65)) drop-shadow(0 0 16px rgba(255,255,255,.4));
-}
 .sr-logo img { height: clamp(36px, 4vw, 48px); width: auto; display: block; }
 
 .sr-hint {

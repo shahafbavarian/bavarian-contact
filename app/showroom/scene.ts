@@ -33,9 +33,11 @@ export type SceneHandle = {
 // = a photo card, several = a mosaic, none = a typographic card.
 export type Card = { title: string; sub: string; href: string; external?: boolean; images: string[] }
 type Opts = {
-  mobile: boolean; logoUrl: string; signUrl: string; cards: Card[]; font: string
+  mobile: boolean; logoUrl: string; cards: Card[]; font: string
   onFront: (i: number) => void
   onOpen: (i: number) => void
+  /** where the sign on the building lands on screen (css px: centre, width) */
+  onSign?: (x: number, y: number, w: number, visible: boolean) => void
   /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
   manual?: boolean
   dpr?: number
@@ -70,25 +72,18 @@ function noise(c: CanvasRenderingContext2D, w: number, h: number, amt: number) {
 
 // Large-format porcelain, warm graphite, hairline grout. One texture = 2x2 tiles.
 const floorTex = (rx: number, ry: number) => canvasTex(512, 512, c => {
-  c.fillStyle = '#211f1d'; c.fillRect(0, 0, 512, 512)
+  c.fillStyle = '#3b3a38'; c.fillRect(0, 0, 512, 512)
   for (let i = 0; i < 4; i++) {
     const x = (i % 2) * 256, y = Math.floor(i / 2) * 256
     c.fillStyle = `rgba(${i % 3 ? 255 : 0},${i % 3 ? 245 : 0},${i % 3 ? 235 : 0},0.025)`
     c.fillRect(x, y, 256, 256)
   }
   noise(c, 512, 512, 10)
-  c.fillStyle = '#121110'
+  c.fillStyle = '#242322'
   c.fillRect(0, 0, 512, 3); c.fillRect(0, 256, 512, 3); c.fillRect(0, 0, 3, 512); c.fillRect(256, 0, 3, 512)
 }, [rx, ry])
 
-// The showroom's grooved wall: groups of three dark lines.
-const wallTex = (rx: number) => canvasTex(256, 512, c => {
-  c.fillStyle = '#d2d0cb'; c.fillRect(0, 0, 256, 512)
-  noise(c, 256, 512, 5)
-  c.fillStyle = 'rgba(40,38,36,.55)'
-  for (const g of [120, 300]) for (let k = 0; k < 3; k++) c.fillRect(0, g + k * 14, 256, 2)
-}, [rx, 1])
-
+// Street pavers outside (as on the live page)
 const paverTex = (rx: number, ry: number) => canvasTex(1024, 1024, c => {
   c.fillStyle = '#3c3d3d'; c.fillRect(0, 0, 1024, 1024)
   for (let y = 0; y < 1024; y += 32) for (let x = 0; x < 1024; x += 64) {
@@ -98,6 +93,14 @@ const paverTex = (rx: number, ry: number) => canvasTex(1024, 1024, c => {
   }
   noise(c, 512, 512, 14)
 }, [rx, ry])
+
+// The showroom's grooved wall: groups of three dark lines.
+const wallTex = (rx: number) => canvasTex(256, 512, c => {
+  c.fillStyle = '#d2d0cb'; c.fillRect(0, 0, 256, 512)
+  noise(c, 256, 512, 5)
+  c.fillStyle = 'rgba(40,38,36,.55)'
+  for (const g of [120, 300]) for (let k = 0; k < 3; k++) c.fillRect(0, g + k * 14, 256, 2)
+}, [rx, 1])
 
 const stripeTex = () => canvasTex(64, 256, c => {
   c.clearRect(0, 0, 64, 256)
@@ -139,8 +142,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const scene = new THREE.Scene()
   const pmrem = new THREE.PMREMGenerator(renderer)
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  // the studio environment lights every surface softly, as on the live page
   scene.environment = env
   scene.environmentIntensity = 0.35
+  // Scanned materials (Poly Haven, CC0)
+  const texLoader = new THREE.TextureLoader()
+  const scanned = (url: string, rx: number, ry: number, srgb = false) => {
+    const t = texLoader.load(url, () => { dirty = true })
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 16
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace
+    return t
+  }
 
   // Two-tone night background (Bruno's radial fog colours, as a gradient dome)
   scene.background = canvasTex(4, 256, c => {
@@ -157,13 +169,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const half = W / 2
 
   const mats = {
-    // dark anodised aluminium (frames, mullions, head band)
+    // dark anodised aluminium (frames, mullions)
     metal: new THREE.MeshStandardMaterial({ color: '#2a2d31', roughness: 0.38, metalness: 0.85, envMapIntensity: 1.1 }),
     // black piano lacquer (columns, stand): a clear coat over a satin base
     gloss: new THREE.MeshPhysicalMaterial({ color: '#050506', roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.6 }),
     glass: new THREE.MeshStandardMaterial({ color: '#6f8496', roughness: 0.04, metalness: 1, transparent: true, opacity: 0.12, envMapIntensity: 3, depthWrite: false }),
-    ceiling: new THREE.MeshStandardMaterial({ color: '#c9c6c0', roughness: 0.95 }),
-    wall: new THREE.MeshStandardMaterial({ map: wallTex(6), roughness: 0.85 }),
+    // matte surfaces take their light from the room's own lights, as in the live
+    // version; the environment photo is only for the glossy ones
+    ceiling: new THREE.MeshStandardMaterial({ color: '#c9c6c0', roughness: 0.95, envMapIntensity: 0.25 }),
+    // the hall's walls take their light only from its own (symmetric) downlights
+    wall: new THREE.MeshStandardMaterial({ map: wallTex(6), roughness: 0.85, envMapIntensity: 0.08 }),
   }
 
   const add = <T extends THREE.Object3D>(o: T) => { scene.add(o); return o }
@@ -202,6 +217,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   scene.add(tile)
 
   // Street paving outside
+  // concrete slabs scanned from a real pavement, ~2.5 m per tile
   const pave = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({ map: paverTex(9, 4.5), roughness: 0.55, envMapIntensity: 0.15 }))
   pave.rotation.x = -Math.PI / 2; pave.position.set(0, 0, FRONT + 15)
   scene.add(pave)
@@ -220,7 +236,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     sits back under a deep canopy; above it, warm sand-coloured stone in
   //     large panels runs up the full height; (no outside columns:
   //     only the black ones inside) ───
-  const CANOPY = 2.4, TOP = H + 0.7
+  const CANOPY = 2.4
   const stoneTex = canvasTex(1024, 1024, c => {
     const cols = 4, rows = 4, pw = 1024 / cols, ph = 1024 / rows
     for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
@@ -234,17 +250,18 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     for (let k = 0; k <= cols; k++) c.fillRect(k * pw - 2, 0, 4, 1024)
   }, [(W + 16) / 4.8, 34 / 3.6])
   const stone = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, 34), new THREE.MeshStandardMaterial({
-    map: stoneTex, roughness: 0.85, emissiveMap: stoneTex, emissive: new THREE.Color('#5a4c3c'), emissiveIntensity: 0.55,
+    map: stoneTex, normalMap: scanned('/showroom/stone_nor.jpg', (W + 16) / 2.4, 34 / 2.4), normalScale: new THREE.Vector2(0.7, 0.7),
+    roughness: 0.85, emissiveMap: stoneTex, emissive: new THREE.Color('#5a4c3c'), emissiveIntensity: 0.55,
   }))
-  stone.position.set(0, TOP + 17, FRONT + CANOPY); scene.add(stone)
+  // the stone comes down to the canopy's edge: stone, then the soffit, then the glass
+  stone.position.set(0, H + 17, FRONT + CANOPY); scene.add(stone)
   // canopy soffit: dark grey panels over the pavement, catching the shop light
   const soffitTex = canvasTex(512, 256, c => {
     c.fillStyle = '#2b2e31'; c.fillRect(0, 0, 512, 256); noise(c, 512, 256, 8)
     c.fillStyle = 'rgba(0,0,0,.6)'; for (let x = 0; x <= 512; x += 128) c.fillRect(x - 2, 0, 3, 256)
   }, [(W + 16) / 3, 1])
   const soffit = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, CANOPY), new THREE.MeshStandardMaterial({ map: soffitTex, roughness: 0.7 }))
-  soffit.rotation.x = Math.PI / 2 - 0.06; soffit.position.set(0, TOP - 0.05, FRONT + CANOPY / 2); scene.add(soffit)
-  box(W + 16, 0.7, 0.3, mats.metal, 0, H + 0.35, FRONT - 0.1)     // head band above the glass
+  soffit.rotation.x = Math.PI / 2 - 0.03; soffit.position.set(0, H + 0.04, FRONT + CANOPY / 2); scene.add(soffit)
   box(4, H, 0.6, mats.metal, -half - 2, H / 2, FRONT - 0.3)
   box(4, H, 0.6, mats.metal, half + 2, H / 2, FRONT - 0.3)
 
@@ -276,39 +293,53 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   box(2.5, 0.1, 0.16, mats.metal, 0, 2.75, FRONT + 0.02)
 
-  // ─── The sign: the wide logo as supplied (white on black). Drawn additively,
-  //     so the black adds nothing and only the letters light up and bloom. ───
+  // ─── The sign on the stone over the canopy. The letters are the page's own
+  //     logo image (with the lit look approved on the live page), placed every
+  //     frame exactly where this spot of the wall lands on screen, so it sits
+  //     on the building and moves with it ───
   const loader = new THREE.TextureLoader()
-  const signTex = loader.load(opts.signUrl)
-  signTex.colorSpace = THREE.SRGBColorSpace; signTex.anisotropy = 16
-  const signW = 7.2, signH = signW * (232 / 1283)
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), new THREE.MeshBasicMaterial({
-    map: signTex, color: new THREE.Color(1.5, 1.5, 1.5), blending: THREE.AdditiveBlending, transparent: true, toneMapped: false, depthWrite: false,
-  }))
-  // The wide logo is the page's header (DOM) above the building, so the
-  // facade itself carries no sign
-  sign.visible = false
-  const logoTex = loader.load(opts.logoUrl)
-  logoTex.colorSpace = THREE.SRGBColorSpace; logoTex.anisotropy = 8
-
-  // Entrance mat with the logo, just inside
-  // black fibre with a bound edge; the logo printed on it, lit by the room
-  const fibre = canvasTex(256, 256, c => {
-    c.fillStyle = '#121213'; c.fillRect(0, 0, 256, 256)
-    for (let k = 0; k < 2600; k++) {
-      const v = 18 + Math.random() * 22
-      c.fillStyle = `rgb(${v},${v},${v + 1})`
-      c.fillRect(Math.random() * 256, Math.random() * 256, 1, 2 + Math.random() * 2)
+  const signW = 4.4
+  const SIGN_Y = H + 1.55, SIGN_Z = FRONT + CANOPY
+  const signL = new THREE.Vector3(), signR = new THREE.Vector3()
+  const reportSign = () => {
+    if (!opts.onSign) return
+    signL.set(-signW / 2, SIGN_Y, SIGN_Z).project(camera); signR.set(signW / 2, SIGN_Y, SIGN_Z).project(camera)
+    const cw = canvas.clientWidth, ch = canvas.clientHeight
+    opts.onSign(((signL.x + signR.x) / 4 + 0.5) * cw, (0.5 - (signL.y + signR.y) / 4) * ch, (signR.x - signL.x) / 2 * cw, signL.z < 1 && signR.z < 1)
+  }
+  // Entrance mat, just inside: a needle-punch carpet. Charcoal pile you can
+  // see the fibres of, the logo woven in a lighter yarn (the pile runs through
+  // it, nothing is printed on top), a black rubber edge
+  const MW = 3.08, MD = 1.48
+  const matCv = document.createElement('canvas'); matCv.width = 1024; matCv.height = Math.round(1024 * MD / MW)
+  const mc = matCv.getContext('2d')!
+  const weave = (c: CanvasRenderingContext2D, base: number, spread: number, n: number) => {
+    for (let k = 0; k < n; k++) {
+      const v = base + Math.random() * spread, a = Math.random() * Math.PI
+      c.fillStyle = `rgb(${v},${v - 1},${v - 3})`
+      c.setTransform(Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), Math.random() * matCv.width, Math.random() * matCv.height)
+      c.fillRect(0, 0, 1.4, 3 + Math.random() * 5)
     }
-  }, [6, 3])
-  const matEdge = new THREE.Mesh(new THREE.BoxGeometry(3.24, 0.014, 1.64), new THREE.MeshStandardMaterial({ color: '#070708', roughness: 0.75 }))
+    c.setTransform(1, 0, 0, 1, 0, 0)
+  }
+  mc.fillStyle = '#2c2b2a'; mc.fillRect(0, 0, matCv.width, matCv.height); weave(mc, 22, 40, 60000)
+  const matTex = new THREE.CanvasTexture(matCv); matTex.colorSpace = THREE.SRGBColorSpace; matTex.anisotropy = 16
+  const logoImg = new Image()
+  logoImg.onload = () => {
+    const lc = document.createElement('canvas'); lc.width = matCv.width; lc.height = matCv.height
+    const l = lc.getContext('2d')!
+    l.fillStyle = '#8f8b86'; l.fillRect(0, 0, lc.width, lc.height); weave(l, 105, 70, 60000)
+    // keep the light yarn only inside the logo (turned to read from the hall, as before)
+    const lw = lc.width * (2.2 / MW), lh = lw * (logoImg.height / logoImg.width)
+    l.globalCompositeOperation = 'destination-in'
+    l.translate(lc.width / 2, lc.height / 2); l.rotate(Math.PI); l.drawImage(logoImg, -lw / 2, -lh / 2, lw, lh)
+    mc.drawImage(lc, 0, 0); matTex.needsUpdate = true; dirty = true
+  }
+  logoImg.src = opts.logoUrl
+  const matEdge = new THREE.Mesh(new THREE.BoxGeometry(MW + 0.16, 0.014, MD + 0.16), new THREE.MeshStandardMaterial({ color: '#0b0b0c', roughness: 0.8 }))
   matEdge.position.set(0, 0.007, FRONT - 1.3); scene.add(matEdge)
-  const mat = new THREE.Mesh(new THREE.PlaneGeometry(3.08, 1.48), new THREE.MeshStandardMaterial({ map: fibre, roughness: 1, color: '#bbbbbb' }))
+  const mat = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), new THREE.MeshStandardMaterial({ map: matTex, roughness: 1, envMapIntensity: 0 }))
   mat.rotation.x = -Math.PI / 2; mat.position.set(0, 0.0145, FRONT - 1.3); scene.add(mat)
-  const matLogo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2 / (1189 / 553)), new THREE.MeshStandardMaterial({
-    map: logoTex, transparent: true, color: '#d8d8d8', roughness: 0.95, depthWrite: false,
-  }))
-  matLogo.rotation.x = -Math.PI / 2; matLogo.rotation.z = Math.PI; matLogo.position.set(0, 0.0155, FRONT - 1.3); scene.add(matLogo)
 
   // ─── Columns: black gloss, two on the floor ───
   const colGeo = new THREE.CylinderGeometry(0.34, 0.34, H, 48)
@@ -358,7 +389,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   for (const [x, z] of [[-5, -4], [5, -4], [-5, -13], [5, -13], [0, -20]]) {
     const l = new THREE.PointLight('#ffcf98', 5, 11, 1.8); l.position.set(x, H - 0.4, z); scene.add(l)
   }
-  const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(-6, 10, 12); scene.add(moon)
+  // night sky light from straight in front: it lights the facade evenly and
+  // falls on neither inner wall more than the other
+  const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at
   //     its edge, and the gallery hovering above it ───
@@ -576,8 +609,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       moved = true
     }
     const k = STEP / Math.max(160, canvas.clientWidth * 0.32)   // one card per ~third of the screen
-    drag -= dx * k                                              // the ring follows the finger
-    vel = (-dx * k) / Math.max(1, now - lastT) * 1000
+    drag += dx * k                                              // the ring follows the finger: swipe right, cards go right
+    vel = (dx * k) / Math.max(1, now - lastT) * 1000
     lastX = e.clientX; lastT = now; dirty = true
   }
   const onUp = (e: PointerEvent) => {
@@ -615,13 +648,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!moving) return
     dirty = false
     place(progress, dt); shown = progress
-    composer.render()
+    composer.render(); reportSign()
     frames.push(dt * 1000); if (frames.length > 600) frames.shift()
   }
   if (!opts.manual) raf = requestAnimationFrame(tick)
 
   return {
-    renderFrame(p) { progress = p; time = 0; place(p, 1 / 30); composer.render() },
+    renderFrame(p) { progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
     step(dir) { settle(); drag += dir * STEP; dirty = true },

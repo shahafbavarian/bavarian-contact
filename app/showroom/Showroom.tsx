@@ -19,8 +19,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const bar = useRef<HTMLDivElement>(null)
   const hint = useRef<HTMLParagraphElement>(null)
   const logo = useRef<HTMLAnchorElement>(null)
-  const head = useRef<HTMLDivElement>(null)
-  const top = useRef<HTMLElement>(null)
+  const sign = useRef<HTMLImageElement>(null)
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [front, setFront] = useState(0)
@@ -55,11 +54,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         c.style.opacity = String(s); c.style.visibility = s > 0.01 ? 'visible' : 'hidden'
         c.style.transform = `translateY(${(1 - s) * 14}px)`
       }
-      // Outside, the wide logo is the page's header; it lifts away as the doors
-      // open, and the compact logo takes its place in the bar once inside
-      if (head.current) { const h = fit(current, 0.14, 0.34); head.current.style.opacity = String(1 - h); head.current.style.transform = `translateY(${-h * 40}px)`; head.current.style.visibility = h < 0.99 ? 'visible' : 'hidden'
-        // the bar sits under the header outside and rises to the top once inside
-        if (top.current) top.current.style.transform = `translateY(${(1 - h) * head.current.offsetHeight}px)` }
+      // The sign lives on the building (in the scene); the compact logo joins
+      // the bar only once you are inside
       if (logo.current) { const l = fit(current, 0.4, 0.5); logo.current.style.opacity = String(l); logo.current.style.visibility = l > 0.01 ? 'visible' : 'hidden' }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       if (hint.current) hint.current.style.opacity = String(1 - fit(current, 0.02, 0.08))
@@ -67,7 +63,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
     const onPointer = (e: PointerEvent) => handle.current?.setPointer((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1))
     let rTimer = 0
-    const onResize = () => { clearTimeout(rTimer); rTimer = window.setTimeout(() => handle.current?.resize(), 150) }
+    // Resize at once (a delayed resize showed a stretched frame while turning
+    // the phone), and again once Safari has settled its bars after a rotation
+    const onResize = () => { handle.current?.resize(); clearTimeout(rTimer); rTimer = window.setTimeout(() => handle.current?.resize(), 350) }
     // gestures: wheel, a vertical swipe, keys
     const onWheel = (e: WheelEvent) => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) go(e.deltaY > 0 ? 1 : 0) }
     let ty = 0, tx = 0
@@ -88,7 +86,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         handle.current = createShowroom(cv, {
           mobile, cards,
           logoUrl: '/brand/logo-light.png',
-          signUrl: '/brand/logo-wide-light.jpg',
+          // the sign rides on its spot of the stone: centre and width come from the scene
+          onSign: (x, y, w, visible) => {
+            const el = sign.current; if (!el) return
+            el.style.visibility = visible ? 'visible' : 'hidden'
+            el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
+          },
           font: getComputedStyle(root.current!).fontFamily,
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
@@ -104,13 +107,16 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     addEventListener('touchend', onTouchEnd)
     addEventListener('keydown', onKey)
     addEventListener('resize', onResize)
+    addEventListener('orientationchange', onResize)
+    visualViewport?.addEventListener('resize', onResize)
     addEventListener('pointermove', onPointer, { passive: true })
     raf = requestAnimationFrame(frame)
     return () => {
       alive = false; cancelAnimationFrame(raf)
       removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart); removeEventListener('touchmove', onTouchMove)
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
-      removeEventListener('resize', onResize); removeEventListener('pointermove', onPointer)
+      removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
+      removeEventListener('pointermove', onPointer)
       handle.current?.dispose(); handle.current = null
     }
   }, [cards, router])
@@ -123,17 +129,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />
 
-          <header ref={top} className="sr-top">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img ref={sign} className="sr-sign" src="/brand/logo-wide-light.png" alt="" width={1000} height={181} />
+
+          <header className="sr-top">
             <Link ref={logo} href="/cars" className="sr-logo" aria-label="בוואריאן מוטורס">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/logo-full-light-sm.png" alt="" width={420} height={195} />
             </Link>
           </header>
-
-          <div ref={head} className="sr-head">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo-wide-light.png" alt="Bavarian Motors Club" width={1283} height={232} />
-          </div>
 
           <p ref={hint} className="sr-hint">גללו כדי להיכנס</p>
 
