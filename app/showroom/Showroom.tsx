@@ -228,11 +228,14 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           {/* the front card's name over the floor; tapping the card (or the name) opens it */}
           {card && (
             <div ref={cap} className="sr-cap" aria-live="polite">
+              {/* keyed by the card: a short fade from blur as the next one comes to the front */}
+              <div key={front} className="sr-cap-in">
               <p className="sr-count"><bdi>{front + 1} / {cards.length}</bdi></p>
               {card.external
                 ? <a href={card.href} className="sr-name" target="_blank" rel="noopener noreferrer">{card.title}</a>
                 : <Link href={card.href} className="sr-name">{card.title}</Link>}
               <p className="sr-price"><bdi>{card.sub}</bdi></p>
+              </div>
             </div>
           )}
 

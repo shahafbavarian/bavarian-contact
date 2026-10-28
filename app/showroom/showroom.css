@@ -134,12 +134,25 @@ html:has(.sr) { overflow: auto; }
   opacity: 0; visibility: hidden; font-variant-numeric: tabular-nums; pointer-events: none;
 }
 .sr-cap > * { pointer-events: auto; }
-.sr-count { margin: 0; font-size: 13px; color: var(--muted); letter-spacing: .08em; }
+/* Lit like the street's buttons and the sign: white light, zero-offset glows
+   stacked from a tight edge to a wide soft halo (no frame; the dark floor
+   behind is what lets the glow read), and a short line of light between name
+   and line, an echo of the stand's ring */
+.sr-cap-in { display: flex; flex-direction: column; align-items: center; animation: sr-cap-in 280ms cubic-bezier(.23,1,.32,1) both; }
+@keyframes sr-cap-in { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+.sr-count { margin: 0; font-size: 12px; color: rgba(255,255,255,.62); letter-spacing: .18em; text-shadow: 0 0 8px rgba(255,255,255,.22); }
 .sr-name {
-  margin: 8px 0 0; font-size: clamp(34px, 9vw, 56px); font-weight: 600; line-height: 1.05; letter-spacing: -.025em;
-  text-shadow: 0 2px 24px rgba(0,0,0,.45);
+  display: block; margin: 10px 0 0; font-size: clamp(34px, 9vw, 56px); font-weight: 600; line-height: 1.05; letter-spacing: -.02em;
+  color: #fff; text-shadow: 0 0 2px rgba(255,255,255,.45), 0 0 14px rgba(255,255,255,.34), 0 0 38px rgba(255,255,255,.14);
 }
-.sr-price { margin: 8px 0 0; font-size: clamp(17px, 4.4vw, 20px); color: var(--muted); }
+.sr-name::after {
+  content: ''; display: block; width: 44px; height: 1px; margin: 16px auto 0; border-radius: 1px;
+  background: rgba(255,255,255,.9); box-shadow: 0 0 6px rgba(255,255,255,.7), 0 0 16px rgba(255,255,255,.3);
+}
+.sr-price {
+  margin: 12px 0 0; font-size: clamp(17px, 4.4vw, 20px); font-weight: 500; letter-spacing: .01em;
+  color: rgba(255,255,255,.86); text-shadow: 0 0 1px rgba(255,255,255,.3), 0 0 10px rgba(255,255,255,.22);
+}
 /* the arrows beside the gallery: top is set to the front card's height */
 .sr-arrows {
   position: absolute; z-index: 3; inset-inline: 10px; top: 45%; transform: translateY(-50%);
@@ -172,6 +185,7 @@ html:has(.sr) { overflow: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
+  .sr-cap-in { animation: sr-fade 200ms ease both; }
   .sr[data-state="ready"] .sr-hover { animation: none; }
   .sr[data-state="ready"] .sr-sign-img { animation: sr-fade 300ms ease both; }
   .sr-canvas { transition: none; }

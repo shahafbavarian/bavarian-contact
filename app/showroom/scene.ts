@@ -336,11 +336,18 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
   signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
+  // the stone right behind the letters a shade darker, fading out past their
+  // ends, so the lit sign stands out without darkening the whole facade
+  const signShade = new THREE.Mesh(new THREE.PlaneGeometry(signW * 1.6, 1.7), new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color('#000000') }, uOpacity: { value: 0.34 } },
+    vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false,
+  }))
+  signShade.position.set(0, SIGN_Y, SIGN_Z + 0.003); scene.add(signShade)
   // its light on the stone comes up with the letters (the page brings them
   // on 200 ms after the view is ready, over a second: the same beat)
   const signLight = (k: number) => {
-    for (const l of signLamps) l.intensity = 0.4 * k
-    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.1 * k
+    for (const l of signLamps) l.intensity = 0.2 * k
+    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.04 * k
   }
   signLight(0)
   // the street side is lit already when the page opens: only the hall's lights run
