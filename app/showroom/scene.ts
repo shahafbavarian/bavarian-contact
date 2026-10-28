@@ -38,6 +38,10 @@ type Opts = {
   onOpen: (i: number) => void
   /** where the sign on the building lands on screen (css px: centre, width) */
   onSign?: (x: number, y: number, w: number, visible: boolean) => void
+  /** screen height (css px) of the front card's centre, for the arrows beside it */
+  onGallery?: (y: number) => void
+  /** the sign's lamps came on (end of the opening light-up) */
+  onLit?: () => void
   /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
   manual?: boolean
   dpr?: number
@@ -170,6 +174,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     wall: new THREE.MeshStandardMaterial({ map: wallTex(6), roughness: 0.85, envMapIntensity: 0.08 }),
   }
 
+  const flat = new THREE.Scene(); flat.background = new THREE.Color(1, 1, 1)
+  mats.wall.envMap = pmrem.fromScene(flat).texture   // walls: one even fill from every side, no tone jump at the corners
   const add = <T extends THREE.Object3D>(o: T) => { scene.add(o); return o }
   const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
     const b = add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); b.position.set(x, y, z); return b
@@ -179,13 +185,21 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // amplified the dither into coloured speckles on the floor.)
   const radialVert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }'
   const radialFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ float r = length(vUv - .5) * 2.; float a = 1. - smoothstep(0., 1., r); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
+  // ─── Power: the page opens on a dark hall; then its lights come on in a
+  //     quick run from the doors to the back, and the sign last ───
+  const powered: { d: number; set: (k: number) => void }[] = []
+  const power = (d: number, set: (k: number) => void) => { powered.push({ d, set }); set(0) }
+  const P0 = 0.6                                                   // once the canvas has faded in
+  const depthDelay = (z: number) => P0 + Math.min(1, Math.max(0, -z / D)) * 0.5
   const glow = (kind: 'light' | 'shadow', w: number, d: number, x: number, z: number, y: number, opacity: number, color = '#ffd6aa') => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(kind === 'light' ? color : '#000000') }, uOpacity: { value: opacity } },
       vertexShader: radialVert, fragmentShader: radialFrag, transparent: true, depthWrite: false,
       blending: kind === 'light' ? THREE.AdditiveBlending : THREE.NormalBlending,
     }))
-    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m)
+    if (kind === 'light') power(depthDelay(z), k => { (m.material as THREE.ShaderMaterial).uniforms.uOpacity.value = opacity * k })
+    return m
   }
 
   // ─── Floor: a real mirror under a semi-opaque polished tile ───
@@ -244,6 +258,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     for (let r = 0; r <= rows; r++) c.fillRect(0, r * ph - 2, 1024, 4)
     for (let k = 0; k <= cols; k++) c.fillRect(k * pw - 2, 0, 4, 1024)
   }, [(W + 16) / 4.8, 34 / 3.6])
+  // rows of 0.9 m set so that one row runs centred through the sign
+  stoneTex.offset.y = 0.125
   const stone = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, 34), new THREE.MeshStandardMaterial({
     map: stoneTex, normalMap: scanned('/showroom/stone_nor.jpg', (W + 16) / 2.4, 34 / 2.4), normalScale: new THREE.Vector2(0.7, 0.7),
     roughness: 0.85, emissiveMap: stoneTex, emissive: new THREE.Color('#5a4c3c'), emissiveIntensity: 0.55,
@@ -294,13 +310,27 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     on the building and moves with it ───
   const loader = new THREE.TextureLoader()
   const signW = 4.4
-  const SIGN_Y = H + 1.55, SIGN_Z = FRONT + CANOPY
+  const SIGN_Y = H + 1.8, SIGN_Z = FRONT + CANOPY   // the middle of a stone row
+  // its light on the stone: a lamp just in front of the letters washes the
+  // wall around them (out of reach of the soffit and the street below)
+  const signLamp = new THREE.PointLight('#fff1e2', 3.2, 5, 2); signLamp.position.set(0, SIGN_Y, SIGN_Z + 0.9); scene.add(signLamp)
+  const signWash = new THREE.Mesh(new THREE.PlaneGeometry(signW * 1.9, 3.2), new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.28 } },
+    vertexShader: radialVert, fragmentShader: radialFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }))
+  signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
+  let signOn = false
+  power(P0 + 0.75, k => {
+    signLamp.intensity = 3.2 * k; (signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.28 * k
+    if (k > 0 && !signOn) { signOn = true; opts.onLit?.() }
+  })
   const signL = new THREE.Vector3(), signR = new THREE.Vector3()
   const reportSign = () => {
     if (!opts.onSign) return
     signL.set(-signW / 2, SIGN_Y, SIGN_Z).project(camera); signR.set(signW / 2, SIGN_Y, SIGN_Z).project(camera)
     const cw = canvas.clientWidth, ch = canvas.clientHeight
     opts.onSign(((signL.x + signR.x) / 4 + 0.5) * cw, (0.5 - (signL.y + signR.y) / 4) * ch, (signR.x - signL.x) / 2 * cw, signL.z < 1 && signR.z < 1)
+    if (opts.onGallery) { signL.set(0, ring.position.y, STAND.z + R).project(camera); opts.onGallery((0.5 - signL.y / 2) * ch) }
   }
   // Entrance mat, just inside: a needle-punch carpet. Charcoal pile you can
   // see the fibres of, the logo woven in a lighter yarn (the pile runs through
@@ -354,6 +384,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     glow('light', 3.0, 3.0, x, z, 0.004, 0.16)
   })
   scene.add(spotMesh)
+  const spotC = new THREE.Color()
+  spots.forEach(([, z], i) => power(depthDelay(z), k => {
+    spotMesh.setColorAt(i, spotC.setScalar(0.03 + 0.97 * k)); spotMesh.instanceColor!.needsUpdate = true
+  }))
   // Interior spill onto the street
   glow('light', 22, 9, 0, FRONT + 3.2, 0.01, 0.3, '#ffd2a0')
 
@@ -383,11 +417,15 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   add(new THREE.HemisphereLight('#ffe8d2', '#101318', 0.16))
   for (const [x, z] of [[-5, -4], [5, -4], [-5, -13], [5, -13], [0, -20]]) {
     const l = new THREE.PointLight('#ffcf98', 5, 11, 1.8); l.position.set(x, H - 0.4, z); scene.add(l)
+    power(depthDelay(z), k => { l.intensity = 5 * k })
   }
   // night sky light from straight in front: it lights the facade evenly and
   // falls on neither inner wall more than the other
   // light bouncing up off the floor onto the ceiling (only faces looking down catch it)
   const bounce = new THREE.DirectionalLight('#ffe2c6', 0.9); bounce.position.set(0, -10, -12); bounce.target.position.set(0, 0, -12); scene.add(bounce, bounce.target)
+  power(P0 + 0.25, k => { bounce.intensity = 0.9 * k })
+  power(P0 + 0.25, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k })
+  power(P0, k => { scene.environmentIntensity = 0.14 + 0.21 * k; mats.wall.envMapIntensity = 0.1 + 0.18 * k })
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at
@@ -395,7 +433,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const STAND = new THREE.Vector3(0, 0, -12.5)
   const N = opts.cards.length
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
-  const CW = mobile ? 2.4 : 1.9, CH = CW * (832 / 1024)
+  const CW = mobile ? 3.0 : 2.3, CH = CW * (832 / 1024)
   // The ring grows with the number of cars: every card gets a clear gap of
   // 35% of its width on each side, so no two cars ever touch
   const R = Math.max(3.0, (N * CW * 1.35) / (Math.PI * 2))
@@ -403,6 +441,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), mats.gloss)
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
   const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.95, 1.6), toneMapped: false })
+  power(depthDelay(STAND.z), k => { ringMat.color.setRGB(2.2 * k, 1.95 * k, 1.6 * k) })
   const lightRing = new THREE.Mesh(new THREE.TorusGeometry(PR + 0.03, 0.014, 8, 256), ringMat)
   lightRing.rotation.x = Math.PI / 2; lightRing.position.set(STAND.x, 0.082, STAND.z); scene.add(lightRing)
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
@@ -547,9 +586,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     renderer.toneMappingExposure = 0.9 + 0.12 * fit(p, 0.3, 0.6)
     bloom.strength = 0.6 - 0.25 * fit(p, 0.4, 0.7)
 
-    // Gallery: rises out of the stand card by card, then floats
+    // Gallery: always there in the stand, seen from the street through the
+    // glass too; it answers to the hand only once you are inside
     const target = drag
-    angle += (target - angle) * (dragging ? 1 : 1 - Math.exp(-dt * 9))
+    angle += (target - angle) * (1 - Math.exp(-dt * 9))
     ring.rotation.y = angle
     ring.position.y = 1.72 + Math.sin(time * 0.9) * 0.035
     cardMeshes.forEach((m, i) => {
@@ -557,9 +597,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (th > Math.PI) th -= Math.PI * 2
       if (th < -Math.PI) th += Math.PI * 2
       const u = m.material.uniforms
-      const rise = smooth(fit(p, 0.72 + (Math.abs(th) / Math.PI) * 0.06, 0.84 + (Math.abs(th) / Math.PI) * 0.06))
-      u.uAlpha.value = rise
-      m.position.y = (1 - rise) * -0.9
+      u.uAlpha.value = 1
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
     })
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
@@ -584,36 +622,30 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   setSize()
 
-  // ─── Touch / mouse: drag the ring sideways (vertical stays page scroll),
-  //     release projects the velocity and settles on the nearest card; a tap
-  //     on the front card opens it, on another card brings it to the front ───
+  // ─── Touch / mouse: every sideways swipe turns the ring by exactly one
+  //     card, in the finger's direction; a tap on the front card opens it,
+  //     on another card brings it to the front ───
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2()
-  let downX = 0, downY = 0, lastX = 0, lastT = 0, vel = 0, moved = false
+  let downX = 0, downY = 0, moved = false
   const settle = () => {
     drag = Math.round(drag / STEP) * STEP
   }
   const onDown = (e: PointerEvent) => {
     if (progress < WALK - 0.04) return
-    dragging = true; moved = false; downX = lastX = e.clientX; downY = e.clientY; lastT = performance.now(); vel = 0
+    dragging = true; moved = false; downX = e.clientX; downY = e.clientY
   }
   const onMove = (e: PointerEvent) => {
-    if (!dragging) return
-    const dx = e.clientX - lastX, now = performance.now()
-    if (!moved) {
-      const ax = Math.abs(e.clientX - downX), ay = Math.abs(e.clientY - downY)
-      if (ay > ax && ay > 6) { dragging = false; return }   // a vertical gesture: not ours
-      if (ax < 8) return
-      moved = true
-    }
-    const k = STEP / Math.max(160, canvas.clientWidth * 0.32)   // one card per ~third of the screen
-    drag += dx * k                                              // the ring follows the finger: swipe right, cards go right
-    vel = (dx * k) / Math.max(1, now - lastT) * 1000
-    lastX = e.clientX; lastT = now; dirty = true
+    if (!dragging || moved) return
+    const dx = e.clientX - downX, ax = Math.abs(dx), ay = Math.abs(e.clientY - downY)
+    if (ay > ax && ay > 6) { dragging = false; return }   // a vertical gesture: not ours
+    if (ax < 28) return
+    moved = true                                         // one card per swipe
+    settle(); drag += Math.sign(dx) * STEP; dirty = true // swipe right, cards go right
   }
   const onUp = (e: PointerEvent) => {
     if (!dragging) return
     dragging = false
-    if (moved) { drag += vel * 0.18; settle(); dirty = true; return }   // momentum projection
+    if (moved) return
     if (Math.abs(e.clientY - downY) > 6) return
     const r = canvas.getBoundingClientRect()
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
@@ -633,15 +665,18 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
   const frames: number[] = []
-  let last = performance.now(), raf = 0, running = true
+  let last = performance.now(), raf = 0, running = true, powerT0 = -1
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
-    if (progress > 0.45) loadCards()
+    loadCards()
+    if (powerT0 < 0) powerT0 = now
+    const pt = (now - powerT0) / 1000, powering = pt < P0 + 1.3
+    if (powering) for (const q of powered) q.set(smooth(fit(pt, q.d, q.d + 0.18)))
     const floating = progress > 0.7
-    const moving = floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
+    const moving = powering || floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return
     dirty = false
     place(progress, dt); shown = progress
@@ -651,7 +686,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   if (!opts.manual) raf = requestAnimationFrame(tick)
 
   return {
-    renderFrame(p) { progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
+    renderFrame(p) { for (const q of powered) q.set(1); progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
     step(dir) { settle(); drag += dir * STEP; dirty = true },

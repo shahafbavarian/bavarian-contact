@@ -18,7 +18,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const cap = useRef<HTMLDivElement>(null)
   const bar = useRef<HTMLDivElement>(null)
   const hint = useRef<HTMLParagraphElement>(null)
-  const logo = useRef<HTMLAnchorElement>(null)
+  const nav = useRef<HTMLElement>(null)
+  const arrows = useRef<HTMLDivElement>(null)
   const sign = useRef<HTMLImageElement>(null)
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
@@ -34,7 +35,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // 1 (inside). A gesture the other way turns it around at any moment.
     let from = 0, to = 0, t0 = 0, dur = 0
     const DUR = mobile ? 3200 : 3600
-    const easeInOut = (x: number) => 0.5 - Math.cos(Math.PI * x) / 2
+    // moves at once and slows into the arrival (the spring below softens the start)
+    const ease = (x: number) => 1 - (1 - x) ** 3
     const go = (dest: 0 | 1) => {
       if (dur ? to === dest : target === dest) return
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
@@ -45,12 +47,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now
       if (dur) {
         const k = Math.min(1, (now - t0) / dur)
-        target = from + (to - from) * easeInOut(k)
+        target = from + (to - from) * ease(k)
         if (k >= 1) { target = to; dur = 0 }
       }
       // the camera follows the target on a critically damped spring, so a
       // turn back eases through instead of snapping
-      const w = 2 / 0.22, x = w * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+      const w = 2 / 0.12, x = w * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
       const off = current - target, tmp = (vel + w * off) * dt
       vel = (vel - w * tmp) * e
       current = Math.min(1, Math.max(0, target + (off + tmp) * e))
@@ -61,10 +63,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         const s = fit(current, 0.86, 0.93)
         c.style.opacity = String(s); c.style.visibility = s > 0.01 ? 'visible' : 'hidden'
         c.style.transform = `translateY(${(1 - s) * 14}px)`
+        const a = arrows.current
+        if (a) { a.style.opacity = String(s); a.style.visibility = s > 0.01 ? 'visible' : 'hidden' }
       }
-      // The sign lives on the building (in the scene); the compact logo joins
-      // the bar only once you are inside
-      if (logo.current) { const l = fit(current, 0.4, 0.5); logo.current.style.opacity = String(l); logo.current.style.visibility = l > 0.01 ? 'visible' : 'hidden' }
+      // The sign lives on the building; the site's bar slides in as you walk through the doors
+      if (nav.current) {
+        const l = fit(current, 0.42, 0.6)
+        nav.current.style.opacity = String(l); nav.current.style.visibility = l > 0.01 ? 'visible' : 'hidden'
+        nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
+      }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       if (hint.current) hint.current.style.opacity = String(1 - fit(current, 0.02, 0.08))
     }
@@ -74,8 +81,18 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // Resize at once (a delayed resize showed a stretched frame while turning
     // the phone), and again once Safari has settled its bars after a rotation
     const onResize = () => { handle.current?.resize(); clearTimeout(rTimer); rTimer = window.setTimeout(() => handle.current?.resize(), 350) }
-    // gestures: wheel, a vertical swipe, keys
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) go(e.deltaY > 0 ? 1 : 0) }
+    // gestures: wheel, a vertical swipe, keys. Inside, a sideways scroll turns
+    // the gallery by one card per gesture (a trackpad's long tail counts once)
+    let wheelLock = false, wheelTimer = 0
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        clearTimeout(wheelTimer); wheelTimer = window.setTimeout(() => { wheelLock = false }, 180)
+        if (current > 0.95 && !wheelLock && Math.abs(e.deltaX) > 6) { wheelLock = true; handle.current?.step(e.deltaX > 0 ? -1 : 1) }
+        return
+      }
+      if (Math.abs(e.deltaY) > 4) go(e.deltaY > 0 ? 1 : 0)
+    }
     let ty = 0, tx = 0
     const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
     const onTouchMove = (e: TouchEvent) => { e.preventDefault() }
@@ -101,6 +118,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
           },
           font: getComputedStyle(root.current!).fontFamily,
+          onGallery: y => { if (arrows.current) arrows.current.style.top = `${y}px` },
+          onLit: () => { if (sign.current) sign.current.dataset.lit = 'true' },
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
@@ -140,33 +159,38 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img ref={sign} className="sr-sign" src="/brand/logo-wide-light.png" alt="" width={1000} height={181} />
 
-          <header className="sr-top">
-            <Link ref={logo} href="/cars" className="sr-logo" aria-label="בוואריאן מוטורס">
+          {/* The site's bar, in the hall's dark: menu at the start, the long logo at the end */}
+          <header ref={nav} className="sr-top">
+            <nav className="sr-nav" aria-label="ניווט ראשי">
+              <Link href="/cars">הרכבים</Link>
+              <Link href="/team">הצוות</Link>
+            </nav>
+            <Link href="/" className="sr-logo" aria-label="בוואריאן מוטורס">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/logo-full-light-sm.png" alt="" width={420} height={195} />
+              <img src="/brand/logo-wide-light.png" alt="" width={1283} height={232} />
             </Link>
           </header>
 
           <p ref={hint} className="sr-hint">גללו כדי להיכנס</p>
 
+          {/* the arrows stand beside the turning gallery, at the height of its front card */}
+          <div ref={arrows} className="sr-arrows">
+            <button type="button" className="sr-arrow" aria-label="הקודם" onClick={() => handle.current?.step(-1)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <button type="button" className="sr-arrow" aria-label="הבא" onClick={() => handle.current?.step(1)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+
+          {/* the front card's name over the floor; tapping the card (or the name) opens it */}
           {card && (
             <div ref={cap} className="sr-cap" aria-live="polite">
-              <div className="sr-cap-text">
-                <p className="sr-count"><bdi>{front + 1} / {cards.length}</bdi></p>
-                <p className="sr-name">{card.title}</p>
-                <p className="sr-price"><bdi>{card.sub}</bdi></p>
-              </div>
-              <div className="sr-actions">
-                <button type="button" className="sr-arrow" aria-label="הקודם" onClick={() => handle.current?.step(-1)}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </button>
-                {card.external
-                  ? <a href={card.href} className="sr-cta" target="_blank" rel="noopener noreferrer">פתיחה</a>
-                  : <Link href={card.href} className="sr-cta">כניסה</Link>}
-                <button type="button" className="sr-arrow" aria-label="הבא" onClick={() => handle.current?.step(1)}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </button>
-              </div>
+              <p className="sr-count"><bdi>{front + 1} / {cards.length}</bdi></p>
+              {card.external
+                ? <a href={card.href} className="sr-name" target="_blank" rel="noopener noreferrer">{card.title}</a>
+                : <Link href={card.href} className="sr-name">{card.title}</Link>}
+              <p className="sr-price"><bdi>{card.sub}</bdi></p>
             </div>
           )}
 
