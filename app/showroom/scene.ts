@@ -49,7 +49,7 @@ function canvasTex(w: number, h: number, draw: (c: CanvasRenderingContext2D) => 
   draw(cv.getContext('2d')!)
   const t = new THREE.CanvasTexture(cv)
   t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 8
+  t.anisotropy = 16   // clamped by the GPU's maximum; keeps the floor sharp at grazing angles
   if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat) }
   return t
 }
@@ -78,17 +78,17 @@ const floorTex = (rx: number, ry: number) => canvasTex(512, 512, c => {
 
 // The showroom's grooved wall: groups of three dark lines.
 const wallTex = (rx: number) => canvasTex(256, 512, c => {
-  c.fillStyle = '#b8b5af'; c.fillRect(0, 0, 256, 512)
+  c.fillStyle = '#d2d0cb'; c.fillRect(0, 0, 256, 512)
   noise(c, 256, 512, 5)
   c.fillStyle = 'rgba(40,38,36,.55)'
   for (const g of [120, 300]) for (let k = 0; k < 3; k++) c.fillRect(0, g + k * 14, 256, 2)
 }, [rx, 1])
 
-const paverTex = (rx: number, ry: number) => canvasTex(512, 512, c => {
-  c.fillStyle = '#26241f'; c.fillRect(0, 0, 512, 512)
-  for (let y = 0; y < 512; y += 32) for (let x = 0; x < 512; x += 64) {
-    const off = (y / 32) % 2 ? 32 : 0, s = 44 + Math.random() * 14
-    c.fillStyle = `rgb(${s},${s - 4},${s - 9})`
+const paverTex = (rx: number, ry: number) => canvasTex(1024, 1024, c => {
+  c.fillStyle = '#3c3d3d'; c.fillRect(0, 0, 1024, 1024)
+  for (let y = 0; y < 1024; y += 32) for (let x = 0; x < 1024; x += 64) {
+    const off = (y / 32) % 2 ? 32 : 0, s = 92 + Math.random() * 26
+    c.fillStyle = `rgb(${s},${s},${s - 3})`
     c.fillRect(x + off + 2, y + 2, 60, 28)
   }
   noise(c, 512, 512, 14)
@@ -130,9 +130,9 @@ const TiltShift = {
 
 export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHandle {
   const { mobile } = opts
-  const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2)
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', precision: 'highp' })
   renderer.setPixelRatio(dpr)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
@@ -160,11 +160,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
   const mats = {
     metal: new THREE.MeshStandardMaterial({ color: '#15171a', roughness: 0.35, metalness: 0.8 }),
-    gloss: new THREE.MeshStandardMaterial({ color: '#060708', roughness: 0.08, metalness: 0.3, envMapIntensity: 1.4 }),
+    gloss: new THREE.MeshStandardMaterial({ color: '#060708', roughness: 0.14, metalness: 0.3, envMapIntensity: 1.4 }),
     glass: new THREE.MeshStandardMaterial({ color: '#6f8496', roughness: 0.04, metalness: 1, transparent: true, opacity: 0.12, envMapIntensity: 3, depthWrite: false }),
-    ceiling: new THREE.MeshStandardMaterial({ color: '#8f8b85', roughness: 0.95 }),
+    ceiling: new THREE.MeshStandardMaterial({ color: '#c9c6c0', roughness: 0.95 }),
     wall: new THREE.MeshStandardMaterial({ map: wallTex(6), roughness: 0.85 }),
-    cognac: new THREE.MeshStandardMaterial({ color: '#8f4f24', roughness: 0.45 }),
   }
 
   const add = <T extends THREE.Object3D>(o: T) => { scene.add(o); return o }
@@ -194,7 +193,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   scene.add(tile)
 
   // Street paving outside
-  const pave = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({ map: paverTex(18, 9), roughness: 0.55, envMapIntensity: 0.15 }))
+  const pave = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({ map: paverTex(9, 4.5), roughness: 0.55, envMapIntensity: 0.15 }))
   pave.rotation.x = -Math.PI / 2; pave.position.set(0, 0, FRONT + 15)
   scene.add(pave)
 
@@ -208,14 +207,44 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mats.wall)
   back.position.set(0, H / 2, FRONT - D); scene.add(back)
 
-  // Building mass around the front (dark cladding) so the street view reads as architecture
-  box(W + 8, 7, 0.6, mats.metal, 0, H + 3.5, FRONT - 0.3)
+  // ─── The building around the showroom, as it really is: the glass front
+  //     sits back under a deep canopy; above it, warm sand-coloured stone in
+  //     large panels runs up the full height; (no outside columns:
+  //     only the black ones inside) ───
+  const CANOPY = 2.4, TOP = H + 0.7
+  const stoneTex = canvasTex(1024, 1024, c => {
+    const cols = 4, rows = 4, pw = 1024 / cols, ph = 1024 / rows
+    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+      const v = Math.random() * 18 - 9
+      c.fillStyle = `rgb(${190 + v},${170 + v},${146 + v})`
+      c.fillRect(k * pw, r * ph, pw, ph)
+    }
+    noise(c, 1024, 1024, 16)
+    c.fillStyle = 'rgba(70,58,46,.55)'
+    for (let r = 0; r <= rows; r++) c.fillRect(0, r * ph - 2, 1024, 4)
+    for (let k = 0; k <= cols; k++) c.fillRect(k * pw - 2, 0, 4, 1024)
+  }, [(W + 16) / 4.8, 34 / 3.6])
+  const stone = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, 34), new THREE.MeshStandardMaterial({
+    map: stoneTex, roughness: 0.85, emissiveMap: stoneTex, emissive: new THREE.Color('#5a4c3c'), emissiveIntensity: 0.55,
+  }))
+  stone.position.set(0, TOP + 17, FRONT + CANOPY); scene.add(stone)
+  // canopy soffit: dark grey panels over the pavement, catching the shop light
+  const soffitTex = canvasTex(512, 256, c => {
+    c.fillStyle = '#2b2e31'; c.fillRect(0, 0, 512, 256); noise(c, 512, 256, 8)
+    c.fillStyle = 'rgba(0,0,0,.6)'; for (let x = 0; x <= 512; x += 128) c.fillRect(x - 2, 0, 3, 256)
+  }, [(W + 16) / 3, 1])
+  const soffit = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, CANOPY), new THREE.MeshStandardMaterial({ map: soffitTex, roughness: 0.7 }))
+  soffit.rotation.x = Math.PI / 2 - 0.06; soffit.position.set(0, TOP - 0.05, FRONT + CANOPY / 2); scene.add(soffit)
+  box(W + 16, 0.7, 0.3, mats.metal, 0, H + 0.35, FRONT - 0.1)     // head band above the glass
   box(4, H, 0.6, mats.metal, -half - 2, H / 2, FRONT - 0.3)
   box(4, H, 0.6, mats.metal, half + 2, H / 2, FRONT - 0.3)
 
   // ─── Glass street front: mullions every 2.5 m, sliding doors in the middle ───
   const glassH = H
-  for (let x = -half; x <= half + 0.01; x += 2.5) box(0.09, glassH, 0.14, mats.metal, x, glassH / 2, FRONT)
+  for (let x = -half; x <= half + 0.01; x += 2.5) {
+    if (Math.abs(x) < 0.01) continue   // the doors open here: nothing to walk through
+    box(0.09, glassH, 0.14, mats.metal, x, glassH / 2, FRONT)
+  }
   box(W, 0.12, 0.16, mats.metal, 0, glassH - 0.06, FRONT)
   box(W, 0.06, 0.16, mats.metal, 0, 0.03, FRONT)
   for (let x = -half + 1.25; x < half; x += 2.5) {
@@ -223,6 +252,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const g = new THREE.Mesh(new THREE.PlaneGeometry(2.4, glassH), mats.glass)
     g.position.set(x, glassH / 2, FRONT); scene.add(g)
   }
+  // fixed panes beside the sliding leaves (the leaves park over them)
+  for (const sx of [-1, 1]) {
+    const fp = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 2.7), mats.glass)
+    fp.position.set(sx * 1.85, 1.35, FRONT); scene.add(fp)
+  }
+  box(5, glassH - 2.75, 0.02, mats.glass, 0, 2.75 + (glassH - 2.75) / 2, FRONT)   // transom glass over the doors
   const doors: THREE.Mesh[] = []
   for (const s of [-1, 1]) {
     const d = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.7), mats.glass)
@@ -236,12 +271,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     so the black adds nothing and only the letters light up and bloom. ───
   const loader = new THREE.TextureLoader()
   const signTex = loader.load(opts.signUrl)
-  signTex.colorSpace = THREE.SRGBColorSpace; signTex.anisotropy = 8
+  signTex.colorSpace = THREE.SRGBColorSpace; signTex.anisotropy = 16
   const signW = 7.2, signH = signW * (232 / 1283)
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), new THREE.MeshBasicMaterial({
-    map: signTex, color: new THREE.Color(2.4, 2.4, 2.4), blending: THREE.AdditiveBlending, transparent: true, toneMapped: false, depthWrite: false,
+    map: signTex, color: new THREE.Color(1.5, 1.5, 1.5), blending: THREE.AdditiveBlending, transparent: true, toneMapped: false, depthWrite: false,
   }))
-  sign.position.set(0, H + 0.9, FRONT + 0.32); scene.add(sign)   // centred over the doors
+  // The wide logo is the page's header (DOM) above the building, so the
+  // facade itself carries no sign
+  sign.visible = false
   const logoTex = loader.load(opts.logoUrl)
   logoTex.colorSpace = THREE.SRGBColorSpace; logoTex.anisotropy = 8
 
@@ -263,7 +300,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const pool = radialTex('rgba(255,214,170,1)', 'rgba(255,214,170,0)')
   const shadow = radialTex('rgba(0,0,0,.7)', 'rgba(0,0,0,0)')
   const spotGeo = new THREE.CircleGeometry(0.09, 24)
-  const spotMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3.4, 2.6), toneMapped: false })
+  const spotMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.1, 1.7), toneMapped: false })
   const spots: [number, number][] = []
   for (let z = -2; z > -D + 1; z -= 3) for (let x = -7.5; x <= 7.5; x += 3.75) spots.push([x + ((z / 3) % 2 ? 0.9 : 0), z])
   const spotMesh = new THREE.InstancedMesh(spotGeo, spotMat, spots.length)
@@ -287,28 +324,44 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     its edge, and the gallery hovering above it ───
   const STAND = new THREE.Vector3(0, 0, -12.5)
   const N = opts.cards.length
-  const CW = 1.34, CH = CW * (832 / 1024)          // card size (m), canvas 1024×832
+  // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
+  const CW = mobile ? 1.7 : 1.9, CH = CW * (832 / 1024)
   // The ring grows with the number of cars: every card gets a clear gap of
   // 35% of its width on each side, so no two cars ever touch
-  const R = Math.max(2.4, (N * CW * 1.35) / (Math.PI * 2))
+  const R = Math.max(3.0, (N * CW * 1.35) / (Math.PI * 2))
   const PR = R + 0.7                              // plinth radius
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), mats.gloss)
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
-  const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.8, 2.3), toneMapped: false })
+  const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.95, 1.6), toneMapped: false })
   const lightRing = new THREE.Mesh(new THREE.TorusGeometry(PR + 0.03, 0.014, 8, 256), ringMat)
   lightRing.rotation.x = Math.PI / 2; lightRing.position.set(STAND.x, 0.082, STAND.z); scene.add(lightRing)
   decal(shadow, PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, THREE.NormalBlending, 0.65)
   decal(pool, PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, THREE.AdditiveBlending, 0.42)
 
-  // ─── Back: glass offices with frosted bands, two cognac lounge chairs ───
+  // ─── Back: glass offices with frosted bands ───
   const officeZ = FRONT - D + 4
   for (let x = -half + 2; x <= half - 2 + 0.01; x += 3) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
   const frosted = new THREE.MeshBasicMaterial({ map: stripeTex(), transparent: true, opacity: 0.55, depthWrite: false })
   const og = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), frosted); og.position.set(0, H / 2, officeZ); scene.add(og)
   const og2 = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), mats.glass); og2.position.set(0, H / 2, officeZ + 0.01); scene.add(og2)
-  for (const x of [-1.1, 0.4]) {
-    box(0.85, 0.42, 0.85, mats.cognac, x, 0.36, officeZ - 1.6)
-    box(0.85, 0.5, 0.18, mats.cognac, x, 0.75, officeZ - 2.0)
+  // lowered ceiling band over the offices (the real hall's bulkhead)
+  box(W, 0.5, 6, mats.ceiling, 0, H - 0.25, officeZ + 1)
+
+  // ─── Furniture from the real hall: the black accessories vitrine with its
+  //     screen on the right wall, black sales desks along the left ───
+  const black = new THREE.MeshStandardMaterial({ color: '#0d0e10', roughness: 0.35, metalness: 0.3 })
+  const shelfGlass = new THREE.MeshStandardMaterial({ color: '#9fb0bf', roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.25 })
+  const vx = half - 0.35, vz = -9.5
+  box(0.5, 2.6, 0.06, black, vx, 1.3, vz - 1.2); box(0.5, 2.6, 0.06, black, vx, 1.3, vz + 1.2)
+  box(0.5, 0.08, 2.46, black, vx, 2.6, vz); box(0.5, 0.3, 2.46, black, vx, 0.15, vz)
+  for (const y of [0.85, 1.45, 2.05]) box(0.46, 0.02, 2.34, shelfGlass, vx, y, vz)
+  const screenMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 0.5, 0.75) })
+  box(0.06, 0.7, 1.2, black, half - 0.05, 3.3, vz)
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.12, 0.62), screenMat); scr.rotation.y = -Math.PI / 2; scr.position.set(half - 0.09, 3.3, vz); scene.add(scr)
+  for (const z of [-5.5, -9]) {
+    box(1.6, 0.04, 0.8, black, -half + 1.6, 0.76, z)
+    box(0.04, 0.74, 0.76, black, -half + 0.84, 0.37, z); box(0.04, 0.74, 0.76, black, -half + 2.36, 0.37, z)
+    box(0.5, 0.3, 0.02, black, -half + 1.6, 1.0, z - 0.3)   // monitor
   }
 
   // ─── The gallery: cards bent along the ring. Each card is designed, not a
@@ -397,7 +450,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
 
   // ─── Post: bloom (only the sign, spots and rings exceed 1), tilt-shift on desktop ───
-  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: dpr < 2 ? 4 : 2 })
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
   const composer = new EffectComposer(renderer, rt)
   composer.addPass(new RenderPass(scene, camera))
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.5, 1.0)
@@ -411,13 +464,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     neighbours still fit. ───
   let path: THREE.CatmullRomCurve3, look: THREE.CatmullRomCurve3
   const buildPath = (aspect: number) => {
-    const endZ = STAND.z + R + (aspect < 1 ? 4.9 : 3.3)
+    // stop where the front card fills ~75% of a phone's width, ~40% of a desktop's
+    const endZ = STAND.z + R + (aspect < 1 ? 3.6 : 3.4)
     path = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 1.6, 16), new THREE.Vector3(0, 1.58, 8), new THREE.Vector3(0, 1.55, 1.6),
+      // portrait starts closer, so the storefront sits right under the logo header
+      new THREE.Vector3(0, 1.6, aspect < 1 ? 12 : 16), new THREE.Vector3(0, 1.58, aspect < 1 ? 6.5 : 8), new THREE.Vector3(0, 1.55, 1.6),
       new THREE.Vector3(0.35, 1.58, (1.6 + endZ) / 2), new THREE.Vector3(0, 1.62, endZ),
     ], false, 'centripetal')
     look = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.8, 2.9, 0), new THREE.Vector3(0, 2.1, -6), new THREE.Vector3(0, 1.75, STAND.z),
+      // the storefront sits mid-frame under the logo header; the stone above fades out
+      new THREE.Vector3(0, aspect < 1 ? 0.6 : 1.9, 0), new THREE.Vector3(0, 2.1, -6), new THREE.Vector3(0, 1.75, STAND.z),
       new THREE.Vector3(0, 1.62, STAND.z), new THREE.Vector3(0, 1.58, STAND.z),
     ], false, 'centripetal')
   }
@@ -480,8 +536,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     tilt.uniforms.uRes.value.set(w, h)
     const aspect = w / h
     camera.aspect = aspect
-    const hfov = aspect < 1 ? 74 : 72
-    camera.fov = THREE.MathUtils.clamp(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(hfov) / 2) / aspect) * 180 / Math.PI, 42, 96)
+    // A normal lens, not a fisheye: the vertical field is capped at 68° on a
+    // portrait phone (a wider one bends the facade and leans the columns)
+    const hfov = 72
+    camera.fov = THREE.MathUtils.clamp(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(hfov) / 2) / aspect) * 180 / Math.PI, 42, 68)
     camera.updateProjectionMatrix()
     buildPath(aspect)
     dirty = true

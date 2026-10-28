@@ -23,6 +23,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const bar = useRef<HTMLDivElement>(null)
   const hint = useRef<HTMLParagraphElement>(null)
   const logo = useRef<HTMLAnchorElement>(null)
+  const head = useRef<HTMLDivElement>(null)
+  const top = useRef<HTMLElement>(null)
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [front, setFront] = useState(0)
@@ -42,7 +44,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (!alive) return
       raf = requestAnimationFrame(frame)
       const dt = Math.min(0.05, (now - last) / 1000); last = now
-      current = mobile ? target : current + (target - current) * (1 - Math.exp(-dt * 7))
+      // A light ease on the phone too (iOS delivers scroll in uneven steps), firmer than desktop
+      current += (target - current) * (1 - Math.exp(-dt * (mobile ? 14 : 7)))
       if (Math.abs(target - current) < 1e-4) current = target
       handle.current?.setProgress(current)
       const c = cap.current
@@ -51,7 +54,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         c.style.opacity = String(s); c.style.visibility = s > 0.01 ? 'visible' : 'hidden'
         c.style.transform = `translateY(${(1 - s) * 14}px)`
       }
-      if (logo.current) { const l = fit(current, 0.3, 0.4); logo.current.style.opacity = String(l); logo.current.style.visibility = l > 0.01 ? 'visible' : 'hidden' }
+      // Outside, the wide logo is the page's header; it lifts away as the doors
+      // open, and the compact logo takes its place in the bar once inside
+      if (head.current) { const h = fit(current, 0.1, 0.24); head.current.style.opacity = String(1 - h); head.current.style.transform = `translateY(${-h * 40}px)`; head.current.style.visibility = h < 0.99 ? 'visible' : 'hidden'
+        // the bar sits under the header outside and rises to the top once inside
+        if (top.current) top.current.style.transform = `translateY(${(1 - h) * head.current.offsetHeight}px)` }
+      if (logo.current) { const l = fit(current, 0.26, 0.34); logo.current.style.opacity = String(l); logo.current.style.visibility = l > 0.01 ? 'visible' : 'hidden' }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       if (hint.current) hint.current.style.opacity = String(1 - fit(current, 0.02, 0.08))
     }
@@ -95,13 +103,18 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />
 
-          <header className="sr-top">
+          <header ref={top} className="sr-top">
             <Link ref={logo} href="/cars" className="sr-logo" aria-label="בוואריאן מוטורס">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/logo-full-light-sm.png" alt="" width={420} height={195} />
             </Link>
             <Link href="/cars" className="sr-exit">כל הרכבים</Link>
           </header>
+
+          <div ref={head} className="sr-head">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo-wide-light.jpg" alt="Bavarian Motors Club" width={1283} height={232} />
+          </div>
 
           <p ref={hint} className="sr-hint">גללו כדי להיכנס</p>
 
