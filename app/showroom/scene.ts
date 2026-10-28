@@ -39,7 +39,7 @@ type Opts = {
   /** where the sign on the building lands on screen (css px: centre, width) */
   onSign?: (x: number, y: number, w: number, visible: boolean) => void
   /** screen height (css px) of the front card's centre, for the arrows beside it */
-  onGallery?: (y: number) => void
+  onGallery?: (y: number, x: number) => void
   /** every texture of the opening view has loaded: show the canvas */
   onReady?: () => void
   /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
@@ -348,7 +348,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     signL.set(-signW / 2, SIGN_Y, SIGN_Z).project(camera); signR.set(signW / 2, SIGN_Y, SIGN_Z).project(camera)
     const cw = canvas.clientWidth, ch = canvas.clientHeight
     opts.onSign(((signL.x + signR.x) / 4 + 0.5) * cw, (0.5 - (signL.y + signR.y) / 4) * ch, (signR.x - signL.x) / 2 * cw, signL.z < 1 && signR.z < 1)
-    if (opts.onGallery) { signL.set(0, ring.position.y, STAND.z + R).project(camera); opts.onGallery((0.5 - signL.y / 2) * ch) }
+    if (opts.onGallery) { signL.set(0, ring.position.y, STAND.z + R).project(camera); opts.onGallery((0.5 - signL.y / 2) * ch, (signL.x / 2 + 0.5) * cw) }
   }
   // Entrance mat, just inside: a needle-punch carpet. Charcoal pile you can
   // see the fibres of, the logo woven in a lighter yarn (the pile runs through
