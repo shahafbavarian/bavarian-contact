@@ -35,13 +35,18 @@ html:has(.sr) { overflow: auto; }
    the scene onto its spot of the stone (scaled from a 1000px base, so it stays
    sharp as it grows) */
 .sr-sign {
-  position: absolute; z-index: 2; left: 0; top: 0; width: 1000px; max-width: none; height: auto; display: block;
+  position: absolute; z-index: 2; left: 0; top: 0; width: 1000px;
   transform-origin: 50% 50%; will-change: transform; pointer-events: none; visibility: hidden;
-  opacity: 0; transition: opacity 400ms cubic-bezier(.22,1,.36,1);
+}
+.sr-sign-img {
+  display: block; width: 100%; max-width: none; height: auto; opacity: 0;
   /* lit letters with clean edges: only a hairline of glow at the edge and a faint wide halo */
   filter: drop-shadow(0 0 1px rgba(255,255,255,.35)) drop-shadow(0 0 22px rgba(255,255,255,.12));
 }
-.sr[data-state="ready"] .sr-sign { opacity: 1; }
+/* coming on: smaller and dim, then grown to full size and full light, on the
+   buttons' beat (opacity and scale only: cheap on any phone) */
+.sr[data-state="ready"] .sr-sign-img { animation: sr-sign-on 1000ms cubic-bezier(.23,1,.32,1) 200ms both; }
+@keyframes sr-sign-on { from { opacity: .28; transform: scale(.9); } to { opacity: 1; transform: none; } }
 
 .sr-top {
   position: absolute; inset: 0 0 auto 0; z-index: 5;
@@ -116,6 +121,11 @@ html:has(.sr) { overflow: auto; }
 .sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 360ms; }
 .sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 420ms; }
 @keyframes sr-on { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* then they hover, gently: a few pixels up and down, the words a beat behind */
+.sr[data-state="ready"] .sr-floor { animation: sr-float 5.2s ease-in-out 1s infinite; }
+.sr[data-state="ready"] .sr-doors { animation: sr-float-sm 5.2s ease-in-out 1.7s infinite; }
+@keyframes sr-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes sr-float-sm { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 
 /* The front card's name, large and centred over the floor */
 .sr-cap {
@@ -162,6 +172,8 @@ html:has(.sr) { overflow: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
+  .sr[data-state="ready"] .sr-floor, .sr[data-state="ready"] .sr-doors { animation: none; }
+  .sr[data-state="ready"] .sr-sign-img { animation: sr-fade 300ms ease both; }
   .sr-canvas { transition: none; }
   .sr-cta:active, .sr-arrow:active, .sr-enter:active, .sr-doors a:active { transform: none; }
   .sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a { animation: sr-fade 300ms ease both; }

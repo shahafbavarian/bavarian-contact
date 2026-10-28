@@ -21,7 +21,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const goRef = useRef<(dest: 0 | 1) => void>(() => {})
   const nav = useRef<HTMLElement>(null)
   const arrows = useRef<HTMLDivElement>(null)
-  const sign = useRef<HTMLImageElement>(null)
+  const sign = useRef<HTMLDivElement>(null)
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [front, setFront] = useState(0)
@@ -165,8 +165,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={sign} className="sr-sign" src="/brand/logo-wide-light.png" alt="" width={1000} height={181} />
+          {/* the frame rides on the stone; the letters inside come on: a little
+              small and dim first, then grown to full size and full light */}
+          <div ref={sign} className="sr-sign" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="sr-sign-img" src="/brand/logo-wide-light.png" alt="" width={1000} height={181} />
+          </div>
 
           {/* The site's bar, in the hall's dark: menu at the start, the long logo at the end */}
           <header ref={nav} className="sr-top">

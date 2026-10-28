@@ -141,7 +141,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // Scanned materials (Poly Haven, CC0)
   // the opening view waits for its textures, so nothing pops in under the lights
   let assetsReady = false
-  const ready = () => { if (assetsReady) return; assetsReady = true; dirty = true; opts.onReady?.() }
+  let readyAt = -1
+  const ready = () => { if (assetsReady) return; assetsReady = true; readyAt = performance.now(); dirty = true; opts.onReady?.() }
   const manager = new THREE.LoadingManager(ready, undefined, ready)
   setTimeout(ready, 4000)                                         // never hold the page back for long
   const texLoader = new THREE.TextureLoader(manager)
@@ -333,6 +334,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
   signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
+  // its light on the stone comes up with the letters (the page brings them
+  // on 200 ms after the view is ready, over a second: the same beat)
+  const signLight = (k: number) => {
+    for (const l of signLamps) l.intensity = 0.4 * k
+    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.1 * k
+  }
+  signLight(0)
   // the street side is lit already when the page opens: only the hall's lights run
   const signL = new THREE.Vector3(), signR = new THREE.Vector3()
   const reportSign = () => {
@@ -458,20 +466,23 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // 35% of its width on each side, so no two cars ever touch
   const R = Math.max(3.0, (N * CW * 1.35) / (Math.PI * 2))
   const PR = R + 0.7                              // plinth radius
-  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), mats.gloss)
+  // satin, not piano gloss: a mirror-bright edge caught the lamps as a stray streak by the ring
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), new THREE.MeshStandardMaterial({ color: '#070708', roughness: 0.45, metalness: 0 }))
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
   // The light ring at the plinth's edge, drawn as a line of light in the
   // shader, not a 1.4 cm tube: from the street a tube is thinner than a pixel
   // and breaks into dashes. The line never gets thinner than about a pixel
   // and a half (fwidth), and dims a little as it widens. No glow around it.
   const ringMat = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color(2.2, 1.95, 1.6) }, uR: { value: PR + 0.03 }, uW: { value: 0.018 } },
+    uniforms: { uColor: { value: new THREE.Color(2.2, 1.95, 1.6) }, uR: { value: PR + 0.03 }, uW: { value: 0.012 } },
     vertexShader: 'varying vec2 vPos; void main(){ vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
     fragmentShader: `uniform vec3 uColor; uniform float uR; uniform float uW; varying vec2 vPos;
       void main(){
-        float r = length(vPos), d = abs(r - uR), aa = fwidth(r);
-        float w = max(uW, aa * 1.4);
-        float core = (1. - smoothstep(w, w + aa * 1.5, d)) * (uW / w * .5 + .5);
+        // measured in screen pixels, so the line is equally thin all round the
+        // ellipse (at its ends, seen edge-on, it used to swell into a blob)
+        float r = length(vPos), aa = max(fwidth(r), 1e-6), px = abs(r - uR) / aa;
+        float hw = max(uW / aa, .75);                     // half-width in pixels, never under ~1.5 px
+        float core = clamp(hw + .5 - px, 0., 1.) * mix(.6, 1., min(1., uW / aa / .75));
         gl_FragColor = vec4(uColor * core, 1.);
       }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
@@ -713,15 +724,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
   const frames: number[] = []
-  let last = performance.now(), raf = 0, running = true, sinceCheck = 0, curDpr = dpr
+  let last = performance.now(), raf = 0, running = true, sinceCheck = 0, curDpr = dpr, signDone = false
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
+    let signRising = false
+    if (readyAt >= 0 && !signDone) { const k = smooth(fit(now - readyAt, 200, 1200)); signLight(0.28 + 0.72 * k); signDone = k >= 1; signRising = !signDone }
     const floating = progress > 0.7
-    const moving = floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
+    const moving = signRising || floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return
     dirty = false
     place(progress, dt); shown = progress
