@@ -425,7 +425,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const beamMat = new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color('#ffd9b0') } },
     vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float edge = pow(abs(dot(vN, vV)), 1.6); float a = pow(clamp(vUv.y, 0., 1.), 3.) * edge * .05; gl_FragColor = vec4(uColor, a); }',
+    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float edge = pow(abs(dot(vN, vV)), 1.6); float y = clamp(vUv.y, 0., 1.); float a = pow(y, 3.) * (1. - smoothstep(.8, 1., y)) * edge * .06; gl_FragColor = vec4(uColor, a); }',
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   })
   for (const x of [-3.75, 3.75]) {
@@ -433,7 +433,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // the light falling from it: a faint cone that fades out well before the
     // ground and at its edges (no real light here: its cone drew a hard,
     // broken edge on the pavement; the street's soft pool below carries it)
-    const beam = new THREE.Mesh(new THREE.ConeGeometry(1.7, H - 0.06, 48, 1, true), beamMat)
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 1.7, H - 0.06, 48, 1, true), beamMat)   // open at the top: as wide as the lamp, no point
     beam.position.set(x, (H - 0.06) / 2, FRONT + 1.2); scene.add(beam)
   }
   // the light on the street, as before: one soft pool in front of the window
