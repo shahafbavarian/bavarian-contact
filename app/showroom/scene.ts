@@ -193,12 +193,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Power: the page opens on a dark hall; then its lights come on in a
   //     quick run from the doors to the back, and the sign last ───
   // One clock, run by walking in (see place): each
-  // light ramps over half a second, the starts spread from the doors to the
-  // back over 0.45 s, so the whole run is one smooth wave of about 1.2 s.
+  // light ramps over a quarter second, the starts spread from the doors to
+  // the back over 0.3 s: one quick wave of about 0.6 s.
   const powered: { d: number; len: number; set: (k: number) => void }[] = []
-  const power = (d: number, set: (k: number) => void, len = 0.5) => { powered.push({ d, len, set }); set(0) }
-  const depthDelay = (z: number) => Math.min(1, Math.max(0, -z / D)) * 0.45
-  const POWER_END = 1.25
+  const power = (d: number, set: (k: number) => void, len = 0.25) => { powered.push({ d, len, set }); set(0) }
+  const depthDelay = (z: number) => Math.min(1, Math.max(0, -z / D)) * 0.3
+  const POWER_END = 0.6
+  const LIT = 0.1          // the walk's first step: the hall lights up while you still see it from the street
   const glow = (kind: 'light' | 'shadow', w: number, d: number, x: number, z: number, y: number, opacity: number, color = '#ffd6aa') => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(kind === 'light' ? color : '#000000') }, uOpacity: { value: opacity } },
@@ -436,8 +437,15 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // falls on neither inner wall more than the other
   // light bouncing up off the floor onto the ceiling (only faces looking down catch it)
   const bounce = new THREE.DirectionalLight('#ffe2c6', 0.9); bounce.position.set(0, -10, -12); bounce.target.position.set(0, 0, -12); scene.add(bounce, bounce.target)
-  power(0.1, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k }, 0.7)
-  power(0, k => { mats.wall.envMapIntensity = 0.1 + 0.18 * k }, 0.8)
+  power(0.05, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k }, 0.35)
+  // the hall's own surfaces take the soft fill from their own copy of the
+  // environment, so it can go dark with the lights while the street keeps its own
+  const tileMat = tile.material as THREE.MeshStandardMaterial
+  mats.ceiling.envMap = env; tileMat.envMap = env
+  power(0, k => {
+    mats.wall.envMapIntensity = 0.05 + 0.23 * k
+    mats.ceiling.envMapIntensity = tileMat.envMapIntensity = 0.06 + 0.29 * k
+  }, 0.4)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at
@@ -604,10 +612,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     renderer.toneMappingExposure = 0.9 + 0.12 * fit(p, 0.3, 0.6)
     bloom.strength = 0.6 - 0.25 * fit(p, 0.4, 0.7)
 
-    tvClock = p > 0.5 ? tvClock + dt : 0
+    tvClock = p > LIT ? tvClock + dt : 0
     // the hall is dark from the street; its lights come on with the screens as
     // you walk in (the same run, doors to back) and go out as you walk away
-    hallClock = Math.min(POWER_END, Math.max(0, hallClock + (p > 0.5 ? dt : -dt * 1.6)))
+    hallClock = Math.min(POWER_END, Math.max(0, hallClock + (p > LIT ? dt : -dt * 1.6)))
     for (const q of powered) q.set(smooth(fit(hallClock, q.d, q.d + q.len)))
     // Gallery: always there in the stand, seen from the street through the
     // glass too; it answers to the hand only once you are inside
@@ -623,7 +631,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       u.uAlpha.value = 1
       // the screens are dark from the street and switch on as you walk in
       // (one after another), off again as you walk out
-      if (p <= 0.5 || tvClock > i * 0.08) u.uPower.value = Math.min(1, Math.max(0, u.uPower.value + (p > 0.5 ? dt / 0.5 : -dt / 0.3)))
+      if (p <= LIT || tvClock > 0.15 + i * 0.05) u.uPower.value = Math.min(1, Math.max(0, u.uPower.value + (p > LIT ? dt / 0.35 : -dt / 0.25)))
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
     })
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
@@ -709,7 +717,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   if (!opts.manual) raf = requestAnimationFrame(tick)
 
   return {
-    renderFrame(p) { hallClock = p > 0.5 ? POWER_END : 0; progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
+    renderFrame(p) { hallClock = p > LIT ? POWER_END : 0; progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
     step(dir) { settle(); drag += dir * STEP; dirty = true },
