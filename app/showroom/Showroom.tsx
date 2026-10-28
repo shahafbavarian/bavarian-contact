@@ -51,14 +51,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
     }
     goRef.current = go
-    // Safari 26 fills the strip behind the clock with the page's own background
-    // colour (it cannot see into the canvas): from the street that colour is the
-    // stone's, so the wall carries on up behind the clock; inside, the hall's dark
-    let shown = false, rootBg = ''
-    const setRootBg = (c: string) => {
-      if (c === rootBg) return
-      rootBg = c; document.documentElement.style.backgroundColor = c; document.body.style.backgroundColor = c
-    }
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -76,7 +68,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       current = Math.min(1, Math.max(0, target + (off + tmp) * e))
       if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
-      if (shown) setRootBg(current < 0.3 ? '#a89a89' : '#06080c')
       const c = cap.current
       if (c) {
         const s = fit(current, 0.86, 0.93)
@@ -138,15 +129,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {
             const el = sign.current; if (!el) return
-            el.style.visibility = fade > 0.01 ? 'visible' : 'hidden'
-            el.style.opacity = String(fade)
+            el.style.visibility = fade > 0.01 && current < 0.16 ? 'visible' : 'hidden'
+            el.style.opacity = String(fade * (1 - fit(current, 0.03, 0.16)))   // gone in the first steps in: its glow never reaches the canopy
             el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
           },
           font: getComputedStyle(root.current!).fontFamily,
           onGallery: y => {
             if (arrows.current) arrows.current.style.top = `${y}px`
           },
-          onReady: () => { shown = true; setState('ready') },
+          onReady: () => setState('ready'),
           onEnter: () => goRef.current(1),
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
@@ -172,7 +163,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer)
       handle.current?.dispose(); handle.current = null
-      document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
     }
   }, [cards, router])
 

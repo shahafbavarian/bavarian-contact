@@ -783,7 +783,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
   const frames: number[] = []
-  let last = performance.now(), raf = 0, running = true, sinceCheck = 0, curDpr = dpr, signDone = false
+  let last = performance.now(), raf = 0, running = true, signDone = false
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
@@ -799,13 +799,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     place(progress, dt); shown = progress
     composer.render(); reportSign()
     frames.push(dt * 1000); if (frames.length > 600) frames.shift()
-    // a weak device: when 30 drawn frames average under ~38 fps, draw fewer
-    // pixels (down to 1x); the motion stays smooth instead of the detail
-    if (progress > 0.05 && ++sinceCheck >= 30) {   // judged on the walk and the gallery, not on load-time hitches
-      const avg = frames.slice(-30).reduce((a, b) => a + b, 0) / 30
-      sinceCheck = 0
-      if (avg > 26 && curDpr > 1) { curDpr = Math.max(1, curDpr * 0.8); renderer.setPixelRatio(curDpr); composer.setPixelRatio(curDpr); setSize() }
-    }
   }
   if (!opts.manual) raf = requestAnimationFrame(tick)
 
