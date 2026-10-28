@@ -385,7 +385,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const spotGeo = new THREE.CircleGeometry(0.09, 24)
   const spotMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.1, 1.7), toneMapped: false })
   const spots: [number, number][] = []
-  for (let z = -2; z > -D + 1; z -= 3) for (let x = -7.5; x <= 7.5; x += 3.75) spots.push([x + ((z / 3) % 2 ? 0.9 : 0), z])
+  // staggered rows, each symmetric about the centre line (the old offset
+  // pushed every row 0.9 m to one side)
+  for (let r = 0, z = -2; z > -D + 1; r++, z -= 3) {
+    for (const x of r % 2 ? [-5.625, -1.875, 1.875, 5.625] : [-7.5, -3.75, 0, 3.75, 7.5]) spots.push([x, z])
+  }
   const spotMesh = new THREE.InstancedMesh(spotGeo, spotMat, spots.length)
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0))
   spots.forEach(([x, z], i) => {
