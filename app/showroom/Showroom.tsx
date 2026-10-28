@@ -7,6 +7,8 @@ import type { Card, SceneHandle } from './scene'
 import { INSTAGRAM_URL } from '@/lib/agent-format'
 
 const WHATSAPP = 'https://wa.me/97299561906'
+// the hall's Facebook page, as linked from the main site
+const FACEBOOK = 'https://www.facebook.com/bavarianmotorsclub'
 
 const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)))
 
@@ -49,6 +51,14 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
     }
     goRef.current = go
+    // Safari 26 fills the strip behind the clock with the page's own background
+    // colour (it cannot see into the canvas): from the street that colour is the
+    // stone's, so the wall carries on up behind the clock; inside, the hall's dark
+    let shown = false, rootBg = ''
+    const setRootBg = (c: string) => {
+      if (c === rootBg) return
+      rootBg = c; document.documentElement.style.backgroundColor = c; document.body.style.backgroundColor = c
+    }
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -66,6 +76,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       current = Math.min(1, Math.max(0, target + (off + tmp) * e))
       if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
+      if (shown) setRootBg(current < 0.3 ? '#a89a89' : '#06080c')
       const c = cap.current
       if (c) {
         const s = fit(current, 0.86, 0.93)
@@ -135,7 +146,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           onGallery: y => {
             if (arrows.current) arrows.current.style.top = `${y}px`
           },
-          onReady: () => setState('ready'),
+          onReady: () => { shown = true; setState('ready') },
           onEnter: () => goRef.current(1),
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
@@ -161,6 +172,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer)
       handle.current?.dispose(); handle.current = null
+      document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
     }
   }, [cards, router])
 
@@ -236,6 +248,11 @@ export default function Showroom({ cards }: { cards: Card[] }) {
                   <rect x="4" y="4" width="16" height="16" rx="4" />
                   <circle cx="12" cy="12" r="3" />
                   <path d="M16.5 7.5v.01" />
+                </svg>
+              </a>
+              <a href={FACEBOOK} target="_blank" rel="noopener noreferrer" aria-label="פייסבוק">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M7 10v4h3v7h4v-7h3l1 -4h-4v-2a1 1 0 0 1 1 -1h3v-4h-3a5 5 0 0 0 -5 5v2h-3" />
                 </svg>
               </a>
             </div>

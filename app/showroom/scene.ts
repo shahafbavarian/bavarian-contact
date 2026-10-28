@@ -534,6 +534,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const officeZ = FRONT - D + 4
   // frames set symmetric about the hall's centre line, the stand's axis
   for (const x of [-8, -4.8, -1.6, 1.6, 4.8, 8]) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
+  // the glass wall's head channel along the ceiling: the frames end in it (seen from below,
+  // without it they ran on past the ceiling line through the glass)
+  box(W - 4 + 0.12, 0.1, 0.1, mats.metal, 0, H - 0.05, officeZ)
   const frosted = new THREE.MeshBasicMaterial({ map: stripeTex(), transparent: true, opacity: 0.55, depthWrite: false })
   const og = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), frosted); og.position.set(0, H / 2, officeZ); scene.add(og)
   const og2 = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), mats.glass); og2.position.set(0, H / 2, officeZ + 0.01); scene.add(og2)

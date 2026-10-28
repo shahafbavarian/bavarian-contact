@@ -33,10 +33,10 @@ html:has(.sr) { overflow: auto; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
    which also keeps the eye off the unimportant background at the margins */
 .sr-canvas {
-  /* the top fades, but only part way: the stone still shows, dimmed, up behind
-     the phone's clock (the page draws under the status bar: viewport-fit cover) */
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.5) 0, #000 9%, #000 86%, transparent 100%);
-          mask-image: linear-gradient(to bottom, rgba(0,0,0,.5) 0, #000 9%, #000 86%, transparent 100%);
+  /* no fade at the top: the stone meets the strip behind the clock, which Safari
+     fills with the page's colour, set to the stone's while you are outside */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 86%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0, #000 86%, transparent 100%);
 }
 
 /* The sign on the building: the live header's lit look, moved every frame by
@@ -113,7 +113,7 @@ html:has(.sr) { overflow: auto; }
 .sr-enter:active { transform: scale(.97); background: rgba(255,255,255,.14); }
 .sr-doors { display: flex; align-items: center; justify-content: center; }
 .sr-doors a {
-  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding-inline: 12px;
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding-inline: 11px;
   font-size: 15px; font-weight: 500; color: rgba(255,255,255,.84); text-shadow: 0 0 8px rgba(255,255,255,.35);
   -webkit-tap-highlight-color: transparent; transition: color 160ms ease;
 }
@@ -129,10 +129,18 @@ html:has(.sr) { overflow: auto; }
 .sr-social { position: relative; display: flex; padding-inline-start: 4px; }
 .sr-social::before {
   content: ''; position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 14px; margin-top: -7px;
-  background: rgba(255,255,255,.3);
+  background: rgba(255,255,255,.3); opacity: 0;
 }
+/* a phone too narrow for one line: the icons get their own row, close under the words */
+@media (max-width: 419.98px) {
+  .sr-social { flex-basis: 100%; justify-content: center; padding-inline-start: 0; margin-top: -8px; }
+  .sr-social::before { display: none; }
+}
+/* the hairline comes on with the icons, not before them */
+.sr[data-state="ready"] .sr-social::before { animation: sr-sep 520ms cubic-bezier(.23,1,.32,1) 460ms both; }
+@keyframes sr-sep { from { opacity: 0; } to { opacity: 1; } }
 .sr-social a {
-  display: grid; place-items: center; width: 42px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
+  display: grid; place-items: center; width: 40px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
   transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
 }
 .sr-social a { color: rgba(255,255,255,.84); filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
@@ -142,6 +150,7 @@ html:has(.sr) { overflow: auto; }
 .sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-on 520ms cubic-bezier(.23,1,.32,1) backwards; }
 .sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 480ms; }
 .sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 540ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(3) { animation-delay: 600ms; }
 @media (hover: hover) and (pointer: fine) {
   .sr-enter:hover { background: rgba(255,255,255,.12); }
   .sr-doors a:hover { color: #fff; }
@@ -217,6 +226,7 @@ html:has(.sr) { overflow: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
+  .sr[data-state="ready"] .sr-social::before { animation: sr-fade 300ms ease both; }
   .sr-cap-in { animation: sr-fade 200ms ease both; }
   .sr[data-state="ready"] .sr-hover { animation: none; }
   .sr[data-state="ready"] .sr-sign-img { animation: sr-fade 300ms ease both; }
