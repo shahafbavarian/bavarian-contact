@@ -206,7 +206,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       blending: kind === 'light' ? THREE.AdditiveBlending : THREE.NormalBlending,
     }))
     m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m)
-    if (kind === 'light') power(depthDelay(z), k => { (m.material as THREE.ShaderMaterial).uniforms.uOpacity.value = opacity * k })
+    if (kind === 'light' && z < FRONT) power(depthDelay(z), k => {   // light on the street is on from the start
+      (m.material as THREE.ShaderMaterial).uniforms.uOpacity.value = opacity * k })
     return m
   }
 
@@ -431,7 +432,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // falls on neither inner wall more than the other
   // light bouncing up off the floor onto the ceiling (only faces looking down catch it)
   const bounce = new THREE.DirectionalLight('#ffe2c6', 0.9); bounce.position.set(0, -10, -12); bounce.target.position.set(0, 0, -12); scene.add(bounce, bounce.target)
-  power(0.1, k => { bounce.intensity = 0.9 * k }, 0.7)
   power(0.1, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k }, 0.7)
   power(0, k => { mats.wall.envMapIntensity = 0.1 + 0.18 * k }, 0.8)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
@@ -501,7 +501,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     m.rotation.y = -i * STEP
     m.userData.index = i
     ring.add(m); cardMeshes.push(m)
-    power(depthDelay(STAND.z) + 0.05 + i * 0.06, k => { m.material.uniforms.uPower.value = k }, 0.5)
   })
 
   // Card faces are composed on a canvas once the font and photo are in
@@ -578,7 +577,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // stand. That is where the page scroll ends: the gallery itself only turns
   // sideways — finger, mouse or arrows — and always rests on a card.
   const WALK = 0.82
-  let progress = 0, shown = -1, dirty = true, time = 0
+  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
   const tmpP = new THREE.Vector3(), tmpL = new THREE.Vector3()
@@ -600,6 +599,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     renderer.toneMappingExposure = 0.9 + 0.12 * fit(p, 0.3, 0.6)
     bloom.strength = 0.6 - 0.25 * fit(p, 0.4, 0.7)
 
+    tvClock = p > 0.5 ? tvClock + dt : 0
     // Gallery: always there in the stand, seen from the street through the
     // glass too; it answers to the hand only once you are inside
     const target = drag
@@ -612,6 +612,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (th < -Math.PI) th += Math.PI * 2
       const u = m.material.uniforms
       u.uAlpha.value = 1
+      // the screens are dark from the street and switch on as you walk in
+      // (one after another), off again as you walk out
+      if (p <= 0.5 || tvClock > i * 0.08) u.uPower.value = Math.min(1, Math.max(0, u.uPower.value + (p > 0.5 ? dt / 0.5 : -dt / 0.3)))
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
     })
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
