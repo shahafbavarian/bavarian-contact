@@ -164,3 +164,118 @@ html:has(.bm) body { overflow: visible; }
   .bm-word > span { animation: none; }
   .bm-card:active, .bm-btn:active { transform: none; }
 }
+
+/* ═══ Cars (/cars) — the collection ═══ */
+.bm-cars .bm-lede { max-width: none; }
+.bm-count, .bm-car-meta, .bm-car-price { font-variant-numeric: tabular-nums; }
+
+/* Toolbar: search + availability segmented control */
+.bm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.bm-search {
+  position: relative; flex: 1 1 220px; display: flex; align-items: center;
+  background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); color: var(--muted);
+}
+.bm-search svg { position: absolute; inset-inline-start: 14px; pointer-events: none; }
+.bm-search input {
+  width: 100%; height: 48px; border: 0; background: none; border-radius: 14px;
+  padding-block: 0; padding-inline: 42px 14px;
+  font: 400 16px var(--font-plex), system-ui, sans-serif; color: var(--ink); outline: none;
+}
+.bm-search input::placeholder { color: var(--muted); }
+.bm-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.bm-search:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.bm-seg { display: flex; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 4px; gap: 2px; }
+.bm-seg button {
+  border: 0; background: none; cursor: pointer; border-radius: 10px; min-height: 40px; padding-inline: 14px;
+  font: 500 14px var(--font-plex), system-ui, sans-serif; color: var(--muted);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  transition: background-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.bm-seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* Make chips — one scrolling row, never wrapping the page wider */
+.bm-chips {
+  display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; scrollbar-width: none;
+  padding-block: 2px 8px; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
+}
+.bm-chips::-webkit-scrollbar { display: none; }
+.bm-chips button {
+  flex-shrink: 0; border: 0; cursor: pointer; min-height: 40px; padding-inline: 16px; border-radius: 999px;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  font: 500 14px var(--font-plex), system-ui, sans-serif;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  transition: background-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.bm-chips button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* The rail: the freshest stock, swiped like a lookbook */
+.bm-rail-sec { margin-top: 28px; }
+.bm-rail {
+  list-style: none; margin: 0; padding: 4px 0 16px;
+  display: flex; gap: 14px; overflow-x: auto;
+  scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
+}
+.bm-rail::-webkit-scrollbar { display: none; }
+.bm-rail > li { flex: 0 0 min(82vw, 560px); scroll-snap-align: center; }
+@media (min-width: 900px) { .bm-rail > li { scroll-snap-align: start; } }
+.bm-rail-card {
+  display: block; border-radius: 20px; overflow: hidden; background: var(--surface);
+  box-shadow: var(--shadow); transition: transform 120ms var(--ease-out);
+}
+.bm-rail-card:active { transform: scale(.98); }
+.bm-rail-photo { position: relative; aspect-ratio: 16 / 10; background: var(--soft); }
+.bm-rail-photo img { object-fit: cover; }
+.bm-rail-info { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 14px 16px 16px; }
+.bm-rail-side { text-align: end; flex-shrink: 0; }
+.bm-rail-hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
+@media (hover: hover) and (pointer: fine) {
+  .bm-rail-photo img { transition: transform 700ms var(--ease-out); }
+  .bm-rail-card:hover .bm-rail-photo img { transform: scale(1.03); }
+  .bm-rail-hint { display: none; }
+}
+
+/* Grid cards */
+.bm-cars-grid { margin-top: 28px; }
+@media (min-width: 640px) { .bm-cars-grid { gap: 40px 24px; margin-top: 40px; } }
+.bm-car-photo { aspect-ratio: 3 / 2; }
+.bm-car-photo img { object-position: 50% 50%; }
+.bm-car-make { margin: 12px 0 0; font-size: clamp(16px, 2vw, 20px); font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
+.bm-car-model { margin: 1px 0 0; font-size: clamp(13px, 1.6vw, 15px); color: var(--muted); line-height: 1.35; }
+.bm-rail-info .bm-car-make { margin-top: 0; }
+.bm-car-price { margin: 8px 0 0; font-size: clamp(16px, 2vw, 19px); font-weight: 600; }
+.bm-rail-side .bm-car-price { margin-top: 0; }
+.bm-car-meta { margin: 3px 0 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+.bm-rail-side .bm-car-meta { justify-content: flex-end; }
+
+/* Availability — the racing green lives here */
+.bm-status {
+  position: absolute; z-index: 1; top: 10px; inset-inline-start: 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  color: var(--ink);
+}
+.bm-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.bm-status.is-stock { color: var(--green); }
+.bm-status.is-transit { color: #6B5520; }
+.bm-status.is-transit i { background: #A8862F; }
+
+/* Momentum lean wrapper */
+.bm-lean { will-change: transform; }
+
+/* Loading + empty */
+.bm-loading { display: flex; gap: 6px; justify-content: center; padding: 72px 0; }
+.bm-loading span { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); animation: bm-pulse 900ms ease-in-out infinite; }
+.bm-loading span:nth-child(2) { animation-delay: 150ms; }
+.bm-loading span:nth-child(3) { animation-delay: 300ms; }
+@keyframes bm-pulse { 50% { opacity: .25; transform: translateY(-4px); } }
+.bm-empty-cars { padding: 56px 0; display: grid; justify-items: start; gap: 16px; }
+.bm-empty-cars p { margin: 0; font-size: 17px; color: var(--muted); }
+.bm-empty-cars .bm-btn { padding-inline: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bm-loading span { animation: none; }
+  .bm-rail-card:active { transform: none; }
+}
