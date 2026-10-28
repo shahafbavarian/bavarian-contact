@@ -38,7 +38,8 @@ html:has(.sr) { overflow: auto; }
   position: absolute; z-index: 2; left: 0; top: 0; width: 1000px; max-width: none; height: auto; display: block;
   transform-origin: 50% 50%; will-change: transform; pointer-events: none; visibility: hidden;
   opacity: 0; transition: opacity 400ms cubic-bezier(.22,1,.36,1);
-  filter: brightness(1.15) drop-shadow(0 0 6.5px rgba(255,255,255,.65)) drop-shadow(0 0 35px rgba(255,255,255,.4));
+  /* lit letters that still read: a tight glow, a faint wide one, the stone around them kept darker */
+  filter: drop-shadow(0 0 5px rgba(255,255,255,.4)) drop-shadow(0 0 30px rgba(255,255,255,.16));
 }
 .sr[data-state="ready"] .sr-sign { opacity: 1; }
 

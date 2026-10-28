@@ -323,11 +323,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // close to the wall, and a soft band flat across the letters that fades
   // only past their ends (out of reach of the soffit and the street)
   const signLamps = [-1.8, -0.6, 0.6, 1.8].map(x => {
-    const l = new THREE.PointLight('#fff1e2', 0.9, 3.5, 2); l.position.set(x, SIGN_Y, SIGN_Z + 0.7); scene.add(l); return l
+    const l = new THREE.PointLight('#fff1e2', 0.4, 3.5, 2); l.position.set(x, SIGN_Y, SIGN_Z + 0.7); scene.add(l); return l
   })
   const washFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ vec2 p = abs(vUv - .5) * 2.; float a = (1. - smoothstep(.62, 1., p.x)) * (1. - smoothstep(.1, 1., p.y)); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
   const signWash = new THREE.Mesh(new THREE.PlaneGeometry(signW * 1.45, 2.2), new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.24 } },
+    uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.1 } },
     vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
   signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
