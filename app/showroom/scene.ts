@@ -463,21 +463,20 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // The light ring at the plinth's edge, drawn as a line of light in the
   // shader, not a 1.4 cm tube: from the street a tube is thinner than a pixel
   // and breaks into dashes. The line never gets thinner than about a pixel
-  // (fwidth) and dims as it widens, with a soft glow around it.
+  // and a half (fwidth), and dims a little as it widens. No glow around it.
   const ringMat = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color(2.2, 1.95, 1.6) }, uR: { value: PR + 0.03 }, uW: { value: 0.012 } },
+    uniforms: { uColor: { value: new THREE.Color(2.2, 1.95, 1.6) }, uR: { value: PR + 0.03 }, uW: { value: 0.018 } },
     vertexShader: 'varying vec2 vPos; void main(){ vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
     fragmentShader: `uniform vec3 uColor; uniform float uR; uniform float uW; varying vec2 vPos;
       void main(){
         float r = length(vPos), d = abs(r - uR), aa = fwidth(r);
-        float w = max(uW, aa * .9);
-        float core = (1. - smoothstep(w, w + aa * 1.5, d)) * (uW / w * .6 + .4);
-        float halo = exp(-d * d / .0016) * .22;
-        gl_FragColor = vec4(uColor * (core + halo), 1.);
+        float w = max(uW, aa * 1.4);
+        float core = (1. - smoothstep(w, w + aa * 1.5, d)) * (uW / w * .5 + .5);
+        gl_FragColor = vec4(uColor * core, 1.);
       }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
   })
-  const lightRing = new THREE.Mesh(new THREE.RingGeometry(PR - 0.12, PR + 0.18, 256, 1), ringMat)
+  const lightRing = new THREE.Mesh(new THREE.RingGeometry(PR - 0.1, PR + 0.16, 512, 1), ringMat)
   lightRing.rotation.x = -Math.PI / 2; lightRing.position.set(STAND.x, 0.083, STAND.z); scene.add(lightRing)
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
   glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)   // the light on the plinth goes out with the hall
