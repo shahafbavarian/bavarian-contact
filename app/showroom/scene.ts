@@ -192,7 +192,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const radialFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ float r = length(vUv - .5) * 2.; float a = 1. - smoothstep(0., 1., r); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
   // ─── Power: the page opens on a dark hall; then its lights come on in a
   //     quick run from the doors to the back, and the sign last ───
-  // One clock, started once every texture of the opening view is in: each
+  // One clock, run by walking in (see place): each
   // light ramps over half a second, the starts spread from the doors to the
   // back over 0.45 s, so the whole run is one smooth wave of about 1.2 s.
   const powered: { d: number; len: number; set: (k: number) => void }[] = []
@@ -578,7 +578,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // stand. That is where the page scroll ends: the gallery itself only turns
   // sideways — finger, mouse or arrows — and always rests on a card.
   const WALK = 0.82
-  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0
+  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
   const tmpP = new THREE.Vector3(), tmpL = new THREE.Vector3()
@@ -601,6 +601,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     bloom.strength = 0.6 - 0.25 * fit(p, 0.4, 0.7)
 
     tvClock = p > 0.5 ? tvClock + dt : 0
+    // the hall is dark from the street; its lights come on with the screens as
+    // you walk in (the same run, doors to back) and go out as you walk away
+    hallClock = Math.min(POWER_END, Math.max(0, hallClock + (p > 0.5 ? dt : -dt * 1.6)))
+    for (const q of powered) q.set(smooth(fit(hallClock, q.d, q.d + q.len)))
     // Gallery: always there in the stand, seen from the street through the
     // glass too; it answers to the hand only once you are inside
     const target = drag
@@ -683,19 +687,15 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
   const frames: number[] = []
-  let last = performance.now(), raf = 0, running = true, powerT0 = -1, powerDone = false
+  let last = performance.now(), raf = 0, running = true
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
-    if (powerT0 < 0 && assetsReady) powerT0 = now + 300   // a breath of dark after the fade-in
-    // (the last step always lands on full: a slow device may skip past the end)
-    const pt = powerT0 < 0 ? -1 : (now - powerT0) / 1000, powering = !powerDone
-    if (powering && pt >= 0) { for (const q of powered) q.set(smooth(fit(pt, q.d, q.d + q.len))); powerDone = pt > POWER_END }
     const floating = progress > 0.7
-    const moving = powering || floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
+    const moving = floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return
     dirty = false
     place(progress, dt); shown = progress
@@ -705,7 +705,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   if (!opts.manual) raf = requestAnimationFrame(tick)
 
   return {
-    renderFrame(p) { for (const q of powered) q.set(1); progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
+    renderFrame(p) { hallClock = p > 0.5 ? POWER_END : 0; progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
     step(dir) { settle(); drag += dir * STEP; dirty = true },
