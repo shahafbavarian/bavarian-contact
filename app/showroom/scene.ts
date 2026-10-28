@@ -430,7 +430,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   add(new THREE.HemisphereLight('#ffe8d2', '#101318', 0.16))
   for (const [x, z] of [[-5, -4], [5, -4], [-5, -13], [5, -13], [0, -20]]) {
     const l = new THREE.PointLight('#ffcf98', 5, 11, 1.8); l.position.set(x, H - 0.4, z); scene.add(l)
-    power(depthDelay(z), k => { l.intensity = 5 * k })
+    // the two by the entrance stay on: theirs is the light on the pavement outside
+    if (z !== -4) power(depthDelay(z), k => { l.intensity = 5 * k })
   }
   // night sky light from straight in front: it lights the facade evenly and
   // falls on neither inner wall more than the other
@@ -460,11 +461,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), mats.gloss)
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
   const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.95, 1.6), toneMapped: false })
-  // the stand's ring stays lit when the hall is dark: the one light left on
+  // the stand's ring stays lit when the hall is dark (its glow on the plinth does not)
   const lightRing = new THREE.Mesh(new THREE.TorusGeometry(PR + 0.03, 0.014, 8, 256), ringMat)
   lightRing.rotation.x = Math.PI / 2; lightRing.position.set(STAND.x, 0.082, STAND.z); scene.add(lightRing)
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
-  glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42, undefined, true)
+  glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)   // the light on the plinth goes out with the hall
 
   // ─── Back: glass offices with frosted bands ───
   const officeZ = FRONT - D + 4
