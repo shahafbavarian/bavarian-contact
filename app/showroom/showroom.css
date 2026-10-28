@@ -113,7 +113,7 @@ html:has(.sr) { overflow: auto; }
 .sr-enter:active { transform: scale(.97); background: rgba(255,255,255,.14); }
 .sr-doors { display: flex; align-items: center; justify-content: center; }
 .sr-doors a {
-  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding-inline: 14px;
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding-inline: 12px;
   font-size: 15px; font-weight: 500; color: rgba(255,255,255,.84); text-shadow: 0 0 8px rgba(255,255,255,.35);
   -webkit-tap-highlight-color: transparent; transition: color 160ms ease;
 }
@@ -123,12 +123,16 @@ html:has(.sr) { overflow: auto; }
   background: rgba(255,255,255,.3);
 }
 .sr-doors a:active { color: #fff; }
-/* the hall's channels as lit line icons, under the words */
-/* secondary to the words above: icons at the words' optical size (~1.2x their
-   15px text), the same white and glow, 44px targets with clear space between */
-.sr-social { display: flex; justify-content: center; gap: 18px; margin-top: -8px; }
+/* the words and the hall's channels on one line (it wraps only if a phone is too narrow) */
+.sr-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
+/* the channels: lit line icons at the words' size and weight, after a hairline */
+.sr-social { position: relative; display: flex; padding-inline-start: 4px; }
+.sr-social::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 14px; margin-top: -7px;
+  background: rgba(255,255,255,.3);
+}
 .sr-social a {
-  display: grid; place-items: center; width: 44px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
+  display: grid; place-items: center; width: 42px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
   transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
 }
 .sr-social a { color: rgba(255,255,255,.84); filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
