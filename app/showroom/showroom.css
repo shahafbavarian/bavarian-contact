@@ -27,8 +27,10 @@ html:has(.sr) { overflow: auto; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
    which also keeps the eye off the unimportant background at the margins */
 .sr-canvas {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 86%, transparent 100%);
-          mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 86%, transparent 100%);
+  /* no fade at the top: the stone runs on up under the phone's clock (the
+     page draws under the status bar: viewport-fit cover) */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 86%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0, #000 86%, transparent 100%);
 }
 
 /* The sign on the building: the live header's lit look, moved every frame by
@@ -113,12 +115,13 @@ html:has(.sr) { overflow: auto; }
 /* the hall's channels as lit icons, under the words */
 .sr-social { display: flex; justify-content: center; gap: 4px; margin-top: -6px; }
 .sr-social a {
-  display: grid; place-items: center; width: 44px; height: 44px; -webkit-tap-highlight-color: transparent;
+  display: grid; place-items: center; width: 44px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
   transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
 }
-/* a whisper of their own colours: near-white marks, each with a faint glow of its colour */
-.sr-wa { filter: drop-shadow(0 0 5px rgba(37,211,102,.22)); }
-.sr-ig { filter: drop-shadow(0 0 5px rgba(214,41,118,.2)); }
+/* white marks; their glow alone carries a soft hint of each one's colour */
+.sr-wa { filter: drop-shadow(0 0 5px rgba(255,255,255,.3)) drop-shadow(0 0 9px rgba(37,211,102,.4)); }
+.sr-ig { filter: drop-shadow(0 0 5px rgba(255,255,255,.3)) drop-shadow(0 0 9px rgba(214,41,118,.36)); }
+.sr-social a:active { color: #fff; }
 .sr-social a:active { transform: scale(.94); }
 .sr-social a { opacity: 0; }
 .sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-on 520ms cubic-bezier(.23,1,.32,1) backwards; }
