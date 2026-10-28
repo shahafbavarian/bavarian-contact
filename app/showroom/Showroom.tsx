@@ -168,6 +168,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
   return (
     <div ref={root} className="sr" data-state={state}>
+      {/* Safari 26 looks at what is fixed at the very top edge to decide what to draw
+          behind the clock; a transparent, click-through strip there lets the page show */}
+      <div className="sr-safari-strip" aria-hidden="true" />
       <div className="sr-track">
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />

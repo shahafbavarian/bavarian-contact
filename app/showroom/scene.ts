@@ -425,22 +425,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const beamMat = new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color('#ffd9b0') } },
     vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float edge = pow(abs(dot(vN, vV)), 1.6); float a = pow(vUv.y, 1.8) * edge * .09; gl_FragColor = vec4(uColor, a); }',
+    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float edge = pow(abs(dot(vN, vV)), 1.6); float a = pow(clamp(vUv.y, 0., 1.), 3.) * edge * .05; gl_FragColor = vec4(uColor, a); }',
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   })
   for (const x of [-3.75, 3.75]) {
     const disc = new THREE.Mesh(spotGeo, spotMat); disc.rotation.x = Math.PI / 2; disc.position.set(x, H + 0.035, FRONT + 1.2); scene.add(disc)
-    // a spot aimed straight down, not a bare point: a point light this close to
-    // the window shone in the glass as two stray dots on the hall's ceiling
-    const l = new THREE.SpotLight('#ffcf98', 5, 10, Math.PI / 3, 0.6, 1.8); l.position.set(x, H - 0.1, FRONT + 1.2)
-    l.target.position.set(x, 0, FRONT + 1.2); scene.add(l, l.target)
-    // its pool on the pavement, right under it
-    glow('light', 5.6, 5.6, x, FRONT + 1.4, 0.01, 0.34, '#ffd2a0')
-    // and the light falling from it: a faint cone, strongest at the lamp,
-    // gone by the ground and at its edges
+    // the light falling from it: a faint cone that fades out well before the
+    // ground and at its edges (no real light here: its cone drew a hard,
+    // broken edge on the pavement; the street's soft pool below carries it)
     const beam = new THREE.Mesh(new THREE.ConeGeometry(1.7, H - 0.06, 48, 1, true), beamMat)
     beam.position.set(x, (H - 0.06) / 2, FRONT + 1.2); scene.add(beam)
   }
+  // the light on the street, as before: one soft pool in front of the window
+  glow('light', 22, 9, 0, FRONT + 3.2, 0.01, 0.3, '#ffd2a0')
   const spotC = new THREE.Color()
   spots.forEach(([, z], i) => power(depthDelay(z), k => {
     spotMesh.setColorAt(i, spotC.setScalar(0.03 + 0.97 * k)); spotMesh.instanceColor!.needsUpdate = true
@@ -458,7 +455,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     sc.rotation.y = -sx * Math.PI / 2; sc.position.set(sx * (half - 0.01), H - 1.7, z); scene.add(sc)
   }
   // contact shading where walls meet the floor and the ceiling
-  const edgeFrag = 'uniform float uOpacity; varying vec2 vUv; void main(){ float a = pow(1. - vUv.y, 2.2); gl_FragColor = vec4(0., 0., 0., a * uOpacity); }'
+  const edgeFrag = 'uniform float uOpacity; varying vec2 vUv; void main(){ float a = pow(max(1. - vUv.y, 0.), 2.2);   /* max: a base a hair below 0 at the edge gave NaN, drawn as black dashes */ gl_FragColor = vec4(0., 0., 0., a * uOpacity); }'
   const edgeMat = (o: number) => new THREE.ShaderMaterial({ uniforms: { uOpacity: { value: o } }, vertexShader: radialVert, fragmentShader: edgeFrag, transparent: true, depthWrite: false })
   for (const sx of [-1, 1]) {
     const wb = new THREE.Mesh(new THREE.PlaneGeometry(D, 0.7), edgeMat(0.45))
@@ -771,7 +768,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     let d = (i - front) % N; if (d > N / 2) d -= N; if (d < -N / 2) d += N
     drag += d * STEP; dirty = true
   }
-  canvas.addEventListener('pointerdown', onDown)
+  // listened on the window: the canvas lets touches through (nothing fixed at the
+  // top edge may take them, or Safari paints a strip behind the clock); presses
+  // on the page's own buttons and links are theirs
+  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav')) onDown(e) }
+  addEventListener('pointerdown', onDownAny)
   addEventListener('pointermove', onMove, { passive: true })
   addEventListener('pointerup', onUp)
   addEventListener('pointercancel', () => { if (dragging) { dragging = false; settle() } })
@@ -821,7 +822,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     },
     dispose() {
       running = false; cancelAnimationFrame(raf)
-      canvas.removeEventListener('pointerdown', onDown)
+      removeEventListener('pointerdown', onDownAny)
       removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp)
       scene.traverse(o => {
         const m = o as THREE.Mesh
