@@ -3,15 +3,16 @@ import { getSupabaseAdmin } from './supabase'
 import { AGENT_PHOTO_BUCKET, revalidateAgent } from './agents'
 import type { Agent } from './agent-format'
 
-// Portrait 3:4, EXIF-rotated, cropped toward the most interesting region
-// (usually the face), stored as WebP. Replaces and removes any previous photo.
+// Stored whole — EXIF-rotated, scaled down, WebP — never cropped here. Framing
+// happens on display (object-position), so a photo is never cut around the
+// wrong subject. Replaces and removes any previous photo.
 export async function saveAgentPhoto(
   agent: Pick<Agent, 'id' | 'public_id' | 'photo_path'>,
   input: Buffer,
 ): Promise<Agent> {
   const webp = await sharp(input)
     .rotate()
-    .resize(900, 1200, { fit: 'cover', position: sharp.strategy.attention })
+    .resize(1000, 1300, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 82 })
     .toBuffer()
 

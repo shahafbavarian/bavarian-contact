@@ -19,7 +19,7 @@ const CORRECTIONS: Record<number, { email?: string }> = {
 
 const PHOTO_HOSTS = new Set(['bavarian-motors.co.il', 'www.bavarian-motors.co.il'])
 
-type Person = { recNo: number; name: string; role?: string | null; phone: string; email?: string | null; photo_url?: string | null }
+type Person = { recNo: number; name: string; role?: string | null; phone: string; email?: string | null; photo_url?: string | null; refreshPhoto?: boolean }
 
 async function fetchSourcePhoto(url: string): Promise<Buffer> {
   const u = new URL(url)
@@ -77,9 +77,10 @@ export async function POST(req: Request) {
     revalidateAgent(agent.public_id)
   }
 
-  // Photo: only when the person has none yet, so a manual upload is never overwritten.
+  // Photo: only when the person has none yet, so a manual upload is never
+  // overwritten — unless the admin explicitly asked to refresh from the source.
   let photo: 'imported' | 'kept' | 'none' | 'failed' = agent.photo_url ? 'kept' : 'none'
-  if (!agent.photo_url && p.photo_url) {
+  if (p.photo_url && (!agent.photo_url || p.refreshPhoto === true)) {
     try {
       agent = await saveAgentPhoto(agent, await fetchSourcePhoto(p.photo_url))
       photo = 'imported'

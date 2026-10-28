@@ -113,7 +113,7 @@ type SourcePerson = { order?: number; recNo: number; name: string; role?: string
 
 function describeImport(r: { status: string; photo: string }): string {
   const base = r.status === 'created' ? 'נוסף' : 'כבר קיים'
-  if (r.photo === 'imported') return base + ' · תמונה יובאה'
+  if (r.photo === 'imported') return base + ' · תמונה עודכנה'
   if (r.photo === 'failed') return base + ' · ייבוא התמונה נכשל'
   if (r.photo === 'none') return base + ' · ללא תמונה'
   return base
@@ -130,6 +130,7 @@ export default function AdminTeamPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [busy, setBusy] = useState<string | null>(null) // what is in flight
   const [importLog, setImportLog] = useState<ImportRow[] | null>(null)
+  const [refreshPhotos, setRefreshPhotos] = useState(false)
 
   useEffect(() => {
     api<{ agents: Agent[] }>('/api/admin/agents')
@@ -175,7 +176,8 @@ export default function AdminTeamPage() {
     for (let i = 0; i < people.length; i++) {
       try {
         const r = await api<{ status: string; photo: string }>('/api/admin/agents/import', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(people[i]),
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...people[i], refreshPhoto: refreshPhotos }),
         })
         log[i] = { name: people[i].name, state: r.photo === 'failed' ? 'error' : 'ok', text: describeImport(r) }
       } catch (e) {
@@ -255,6 +257,11 @@ export default function AdminTeamPage() {
       </header>
 
       <div style={{ padding: '20px 16px 60px', maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input type="checkbox" checked={refreshPhotos} onChange={e => setRefreshPhotos(e.target.checked)} disabled={busy === 'import'} />
+          בייבוא: למשוך מחדש את כל התמונות מהאתר הראשי (מחליף תמונות קיימות, כולל תמונות שהועלו ידנית)
+        </label>
+
         {error && (
           <div style={{ border: '1px solid rgba(220,50,50,0.3)', background: 'rgba(220,50,50,0.06)', padding: '12px 16px', borderRadius: 8,
             fontFamily: 'var(--font-heebo)', fontSize: 13, color: '#f87171' }}>

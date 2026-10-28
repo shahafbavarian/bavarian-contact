@@ -1,0 +1,166 @@
+/* Team + person pages — built from DESIGN.md (palette ד׳, Plex Hebrew).
+   Everything is scoped under .bm so nothing leaks into the rest of the site. */
+
+/* The site's global stylesheet locks html/body for the car page's two-screen
+   layout; these pages scroll normally. */
+html:has(.bm), html:has(.bm) body {
+  position: static; height: auto; touch-action: auto; overscroll-behavior: auto;
+  background: #F5F6F7;
+}
+/* Only the root scrolls. If body also had overflow:auto it would become the
+   (non-scrolling) scroll container and break position:sticky. */
+html:has(.bm) { overflow: auto; }
+html:has(.bm) body { overflow: visible; }
+
+.bm {
+  /* colour — DESIGN.md §3 */
+  --canvas: #F5F6F7;
+  --surface: #FFFFFF;
+  --soft: #E9ECEF;
+  --ink: #14171A;
+  --muted: #5A6169;
+  --green: #1F4D3A;
+  --focus: #1A6BCC;
+  --shadow: 0 1px 2px rgba(20,23,26,.06), 0 12px 32px -12px rgba(20,23,26,.18);
+  /* motion — DESIGN.md §6 */
+  --t-fast: 140ms;
+  --t-ui: 220ms;
+  --t-reveal: 600ms;
+  --ease-out: cubic-bezier(.22,1,.36,1);
+  --ease-io: cubic-bezier(.77,0,.175,1);
+  /* layout — DESIGN.md §5 */
+  --gutter: 16px;
+
+  min-height: 100dvh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-plex), system-ui, sans-serif;
+  direction: rtl;
+  -webkit-text-size-adjust: 100%;
+}
+.bm a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.bm ::selection { background: var(--green); color: #fff; }
+.bm :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+@media (min-width: 640px) { .bm { --gutter: 32px; } }
+@media (min-width: 1024px) { .bm { --gutter: 56px; } }
+
+/* ─── Header: logo; the page title joins it once the large title scrolls away ─── */
+.bm-bar {
+  position: sticky; top: 0; z-index: 20;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) var(--gutter) 0;
+  transition: background-color var(--t-ui) var(--ease-out), box-shadow var(--t-ui) var(--ease-out);
+}
+.bm-bar[data-scrolled="true"] {
+  background: rgba(245,246,247,.8);
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 1px 0 rgba(20,23,26,.06);
+}
+.bm-bar-title {
+  justify-self: center; font-size: 17px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap;
+  opacity: 0; transform: translateY(4px);
+  transition: opacity var(--t-ui) var(--ease-out), transform var(--t-ui) var(--ease-out);
+}
+.bm-bar[data-scrolled="true"] .bm-bar-title { opacity: 1; transform: none; }
+.bm-logo { justify-self: start; display: block; height: 34px; width: auto; }
+.bm-back {
+  justify-self: start; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 4px;
+  font-size: 16px; font-weight: 500; color: var(--ink);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .bm-bar[data-scrolled="true"] { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* ─── Team page ─── */
+.bm-main { max-width: 1440px; margin: 0 auto; padding: 16px var(--gutter) calc(72px + env(safe-area-inset-bottom)); }
+.bm-display {
+  margin: 8px 0 0; font-weight: 600; letter-spacing: -.03em; line-height: 1;
+  font-size: clamp(42px, 11vw, 100px);
+}
+.bm-lede { margin: 16px 0 0; max-width: 34ch; font-size: 17px; line-height: 1.55; color: var(--muted); }
+@media (min-width: 1024px) { .bm-lede { font-size: 18px; } }
+
+.bm-grid {
+  list-style: none; margin: 40px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 12px;
+}
+@media (min-width: 640px) { .bm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 56px 24px; margin-top: 64px; } }
+
+.bm-card { display: block; -webkit-touch-callout: none; transition: transform 120ms var(--ease-out); }
+.bm-card:active { transform: scale(.97); }
+.bm-photo {
+  position: relative; aspect-ratio: 4 / 5; border-radius: 18px; overflow: hidden;
+  background: var(--soft); box-shadow: var(--shadow);
+}
+.bm-photo img, .bm-hero img, .bm-mono {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 22%; -webkit-user-drag: none;
+}
+.bm-mono {
+  display: grid; place-items: center; color: var(--muted);
+  font-size: clamp(32px, 9vw, 64px); font-weight: 600; letter-spacing: -.02em;
+}
+.bm-name { margin: 14px 0 0; font-size: clamp(17px, 2.2vw, 24px); line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
+.bm-role { margin: 2px 0 0; font-size: clamp(14px, 1.6vw, 16px); line-height: 1.4; color: var(--muted); }
+.bm-empty { margin-top: 48px; font-size: 17px; color: var(--muted); }
+
+@media (hover: hover) and (pointer: fine) {
+  .bm-photo img { transition: transform 700ms var(--ease-out); }
+  .bm-card:hover .bm-photo img { transform: scale(1.03); }
+}
+
+/* ─── Entrance (DESIGN.md §6): quiet. Cards fade and rise 16px as they enter;
+       the title's words rise once on load. The hidden state only exists once
+       JS has confirmed it can reveal (data-reveal-ready). ─── */
+[data-reveal-ready] [data-reveal] { opacity: 0; transform: translateY(16px); }
+[data-reveal-ready] [data-reveal].is-in {
+  opacity: 1; transform: none;
+  transition: opacity 600ms var(--ease-out) var(--d, 0ms), transform 600ms var(--ease-out) var(--d, 0ms);
+}
+.bm-word { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .1em; margin-bottom: -.1em; }
+.bm-word + .bm-word { margin-inline-start: .25em; }
+.bm-word > span { display: inline-block; animation: bm-rise 700ms var(--ease-out) calc(var(--i) * 70ms + 80ms) both; }
+@keyframes bm-rise { from { transform: translateY(105%); } }
+.bm-lede { animation: bm-fade 600ms var(--ease-out) 260ms both; }
+@keyframes bm-fade { from { opacity: 0; } }
+
+/* ─── Person page (QR / NFC landing): no intro animation — everything is
+       there at first paint, one tap to talk (DESIGN.md §6, §8). ─── */
+.bm-person {
+  max-width: 520px; margin: 0 auto; padding: 0 var(--gutter);
+  display: flex; flex-direction: column; min-height: calc(100dvh - 60px - env(safe-area-inset-top));
+}
+.bm-hero {
+  /* Height-led so name, role and actions always fit on the first screen */
+  position: relative; aspect-ratio: 4 / 5; max-width: 100%; margin: 8px auto 0;
+  height: clamp(200px, calc(100dvh - 340px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 600px);
+  border-radius: 22px; overflow: hidden; background: var(--soft); box-shadow: var(--shadow);
+}
+.bm-hero .bm-mono { font-size: clamp(64px, 22vw, 120px); }
+.bm-person-text { margin-top: 20px; }
+.bm-person-name { margin: 0; font-size: clamp(27px, 7.5vw, 34px); line-height: 1.15; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+.bm-person-role { margin: 4px 0 0; font-size: 17px; line-height: 1.4; color: var(--muted); }
+
+/* Actions sit in thumb reach, pinned to the bottom while the page scrolls */
+.bm-actions {
+  position: sticky; bottom: 0; margin-top: auto;
+  padding: 24px 0 calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--canvas) 72%, rgba(245,246,247,0));
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.bm-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border-radius: 16px;
+  font-size: 16px; font-weight: 500; white-space: nowrap;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  transition: transform 120ms var(--ease-out);
+}
+.bm-btn:active { transform: scale(.97); }
+/* WhatsApp — the racing green, the page's one strong accent */
+.bm-btn-primary { grid-column: 1 / -1; height: 56px; font-size: 17px; font-weight: 600; background: var(--green); color: #fff !important; box-shadow: 0 14px 30px -14px rgba(31,77,58,.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal-ready] [data-reveal] { transform: none; }
+  .bm-word > span { animation: none; }
+  .bm-card:active, .bm-btn:active { transform: none; }
+}

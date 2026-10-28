@@ -16,15 +16,6 @@ export type Agent = {
   updated_at: string
 }
 
-// What the public pages need. Phone stays server-side except as a wa.me link.
-export type PublicAgent = {
-  publicId: string
-  name: string
-  title: string | null
-  photoUrl: string | null
-  whatsapp: string
-}
-
 export const INSTAGRAM_URL = 'https://www.instagram.com/bavarianmotors'
 export const SITE_URL = 'https://contact.bavarian-motors.co.il'
 
@@ -48,18 +39,13 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
 }
 
+// First letter of the first and the last name ("שירה בן־דוד אלמוג" → "שא").
 export function initials(name: string): string {
-  return name.split(/[\s\u05BE-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('')
-}
-
-export function toPublicAgent(a: Agent): PublicAgent {
-  return {
-    publicId: a.public_id,
-    name: a.full_name,
-    title: a.title,
-    photoUrl: a.photo_url,
-    whatsapp: whatsappLink(a.phone),
-  }
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ''
+  const first = Array.from(words[0])[0]
+  const last = words.length > 1 ? Array.from(words[words.length - 1])[0] : ''
+  return first + last
 }
 
 function vEscape(v: string): string {
