@@ -42,7 +42,7 @@ html:has(.sr) { overflow: auto; }
   display: block; width: 100%; max-width: none; height: auto; opacity: 0;
   /* lit letters, defined but not cut out: a faint contact shade where they
      stand off the stone, a breath of glow at the edge, a wide soft halo */
-  filter: drop-shadow(0 .5px .8px rgba(0,0,0,.25)) drop-shadow(0 0 1px rgba(255,255,255,.25)) drop-shadow(0 0 24px rgba(255,255,255,.15));
+  filter: drop-shadow(0 .5px .8px rgba(0,0,0,.2)) drop-shadow(0 0 1.5px rgba(255,255,255,.4)) drop-shadow(0 0 26px rgba(255,255,255,.24));
 }
 /* coming on: smaller and dim, then grown to full size and full light, on the
    buttons' beat (opacity and scale only: cheap on any phone) */
@@ -110,6 +110,18 @@ html:has(.sr) { overflow: auto; }
   background: rgba(255,255,255,.3);
 }
 .sr-doors a:active { color: #fff; }
+/* the hall's channels as lit line icons, under the words */
+.sr-social { display: flex; justify-content: center; gap: 4px; margin-top: -6px; }
+.sr-social a {
+  display: grid; place-items: center; width: 44px; height: 44px; color: rgba(255,255,255,.86);
+  filter: drop-shadow(0 0 5px rgba(255,255,255,.38)); -webkit-tap-highlight-color: transparent;
+  transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
+}
+.sr-social a:active { color: #fff; transform: scale(.94); }
+.sr-social a { opacity: 0; }
+.sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-on 520ms cubic-bezier(.23,1,.32,1) backwards; }
+.sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 480ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 540ms; }
 @media (hover: hover) and (pointer: fine) {
   .sr-enter:hover { background: rgba(255,255,255,.12); }
   .sr-doors a:hover { color: #fff; }

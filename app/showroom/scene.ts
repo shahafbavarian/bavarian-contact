@@ -347,7 +347,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // on 200 ms after the view is ready, over a second: the same beat)
   const signLight = (k: number) => {
     for (const l of signLamps) l.intensity = 0.2 * k
-    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.04 * k
+    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.07 * k
   }
   signLight(0)
   // the street side is lit already when the page opens: only the hall's lights run
@@ -672,7 +672,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const target = drag
     angle += (target - angle) * (1 - Math.exp(-dt * 9))
     ring.rotation.y = angle
-    ring.position.y = 1.72 + Math.sin(time * 0.9) * 0.035
+    // it floats only once you are on your way in: from the street it stands still
+    // (its slow bob, drawn only now and then while the page loads, read as a flicker)
+    ring.position.y = 1.72 + Math.sin(time * 0.9) * 0.035 * fit(p, 0.1, 0.5)
     cardMeshes.forEach((m, i) => {
       let th = (-i * STEP + angle) % (Math.PI * 2)
       if (th > Math.PI) th -= Math.PI * 2
@@ -779,7 +781,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     frames.push(dt * 1000); if (frames.length > 600) frames.shift()
     // a weak device: when 30 drawn frames average under ~38 fps, draw fewer
     // pixels (down to 1x); the motion stays smooth instead of the detail
-    if (++sinceCheck >= 30) {
+    if (progress > 0.05 && ++sinceCheck >= 30) {   // judged on the walk and the gallery, not on load-time hitches
       const avg = frames.slice(-30).reduce((a, b) => a + b, 0) / 30
       sinceCheck = 0
       if (avg > 26 && curDpr > 1) { curDpr = Math.max(1, curDpr * 0.8); renderer.setPixelRatio(curDpr); composer.setPixelRatio(curDpr); setSize() }

@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
+import { INSTAGRAM_URL } from '@/lib/agent-format'
+
+const WHATSAPP = 'https://wa.me/97299561906'
 
 const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)))
 
@@ -213,6 +216,21 @@ export default function Showroom({ cards }: { cards: Card[] }) {
               <Link href="/team">הצוות</Link>
               <Link href="/contact">צרו קשר</Link>
             </nav>
+            <div className="sr-social">
+              <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" aria-label="וואטסאפ">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M20.4 11.7a8.4 8.4 0 0 1-12.5 7.3l-4.2 1.3 1.4-4.1a8.4 8.4 0 1 1 15.3-4.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                  <path d="M9.1 8.3c.2-.4.4-.5.7-.5h.5c.2 0 .4.1.5.3l.7 1.6c.1.2 0 .5-.1.7l-.5.6c-.1.2-.1.4 0 .6.6 1.1 1.5 2 2.6 2.6.2.1.4.1.6 0l.6-.5c.2-.2.5-.2.7-.1l1.6.7c.2.1.3.3.3.5v.5c0 .3-.1.6-.5.8-.6.3-1.6.4-3-.3-1.7-.8-3.1-2.2-3.9-3.9-.7-1.4-.6-2.4-.3-3z" fill="currentColor" />
+                </svg>
+              </a>
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" aria-label="אינסטגרם">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="currentColor" strokeWidth="1.4" />
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.4" />
+                  <circle cx="17" cy="7" r="1" fill="currentColor" />
+                </svg>
+              </a>
+            </div>
           </div>
 
           {/* the arrows stand beside the turning gallery, at the height of its front card */}
