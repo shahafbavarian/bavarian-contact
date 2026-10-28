@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getActiveAgents, getAgentByPublicId } from '@/lib/agents'
 import { INSTAGRAM_URL, whatsappLink } from '@/lib/agent-format'
+import { agentPhoto } from '@/lib/team-photos'
 import AgentMedia from '../AgentMedia'
+import SiteFooter from '../SiteFooter'
 import TopBar from '../TopBar'
 import { he as t } from '../strings'
 
@@ -21,10 +23,13 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const agent = await getAgentByPublicId(params.id)
   if (!agent || !agent.active) return { title: t.brand }
+  const photo = agentPhoto(agent)
   return {
     title: `${agent.full_name} | ${t.brand}`,
     description: agent.title ? `${agent.full_name} · ${agent.title} · ${t.brand}` : `${agent.full_name} · ${t.brand}`,
-    openGraph: agent.photo_url ? { images: [{ url: agent.photo_url }] } : undefined,
+    openGraph: photo
+      ? { images: [{ url: photo.startsWith('/') ? `https://contact.bavarian-motors.co.il${photo}` : photo }] }
+      : undefined,
   }
 }
 
@@ -38,7 +43,7 @@ export default async function PersonPage({ params }: Props) {
       <TopBar title={agent.full_name} back />
       <main className="bm-person">
         <div className="bm-hero">
-          <AgentMedia name={agent.full_name} photoUrl={agent.photo_url} eager />
+          <AgentMedia name={agent.full_name} photoUrl={agentPhoto(agent)} eager />
         </div>
 
         <div className="bm-person-text">
@@ -71,6 +76,7 @@ export default async function PersonPage({ params }: Props) {
           </a>
         </div>
       </main>
+      <SiteFooter />
     </div>
   )
 }

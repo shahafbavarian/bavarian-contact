@@ -62,7 +62,21 @@ html:has(.bm) body { overflow: visible; }
   transition: opacity var(--t-ui) var(--ease-out), transform var(--t-ui) var(--ease-out);
 }
 .bm-bar[data-scrolled="true"] .bm-bar-title { opacity: 1; transform: none; }
-.bm-logo { justify-self: start; display: block; height: 34px; width: auto; }
+.bm-logo-link { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; }
+.bm-logo-end { justify-self: end; }
+.bm-logo { display: block; height: 42px; width: auto; }
+.bm-nav { justify-self: end; display: flex; gap: 2px; }
+.bm-nav a {
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding-inline: 12px;
+  font-size: 16px; font-weight: 500; color: var(--muted);
+  transition: color var(--t-fast) var(--ease-out);
+}
+.bm-nav a[aria-current="page"] { color: var(--ink); }
+.bm-nav a[aria-current="page"]::after {
+  content: ''; position: absolute; inset-inline: 12px; bottom: 5px; height: 2px;
+  border-radius: 2px; background: var(--green);
+}
+@media (hover: hover) and (pointer: fine) { .bm-nav a:hover { color: var(--ink); } }
 .bm-back {
   justify-self: start; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 4px;
   font-size: 16px; font-weight: 500; color: var(--ink);
@@ -169,45 +183,43 @@ html:has(.bm) body { overflow: visible; }
 .bm-cars .bm-lede { max-width: none; }
 .bm-count, .bm-car-meta, .bm-car-price { font-variant-numeric: tabular-nums; }
 
-/* Toolbar: search + availability segmented control */
-.bm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-.bm-search {
-  position: relative; flex: 1 1 220px; display: flex; align-items: center;
-  background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); color: var(--muted);
-}
-.bm-search svg { position: absolute; inset-inline-start: 14px; pointer-events: none; }
+/* The console: search, availability and makes — one instrument, split by
+   hairlines. Active filters are marked typographically (ink + a green
+   underline), not with pills. */
+.bm-console { margin-top: 24px; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); }
+.bm-console-top { display: flex; flex-wrap: wrap; align-items: stretch; }
+.bm-search { position: relative; flex: 1 1 220px; display: flex; align-items: center; color: var(--muted); }
+.bm-search svg { position: absolute; inset-inline-start: 16px; pointer-events: none; }
 .bm-search input {
-  width: 100%; height: 48px; border: 0; background: none; border-radius: 14px;
-  padding-block: 0; padding-inline: 42px 14px;
+  width: 100%; height: 52px; border: 0; background: none; border-radius: 18px 18px 0 0;
+  padding-block: 0; padding-inline: 44px 16px;
   font: 400 16px var(--font-plex), system-ui, sans-serif; color: var(--ink); outline: none;
 }
 .bm-search input::placeholder { color: var(--muted); }
 .bm-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
-.bm-search:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.bm-search:focus-within { box-shadow: inset 0 -2px 0 var(--focus); }
 
-.bm-seg { display: flex; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 4px; gap: 2px; }
-.bm-seg button {
-  border: 0; background: none; cursor: pointer; border-radius: 10px; min-height: 40px; padding-inline: 14px;
+.bm-tabs { display: flex; align-items: stretch; }
+.bm-tab {
+  position: relative; flex-shrink: 0; border: 0; background: none; cursor: pointer; min-height: 48px; padding-inline: 14px;
   font: 500 14px var(--font-plex), system-ui, sans-serif; color: var(--muted);
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
-  transition: background-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out);
 }
-.bm-seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
-
-/* Make chips — one scrolling row, never wrapping the page wider */
-.bm-chips {
-  display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; scrollbar-width: none;
-  padding-block: 2px 8px; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
+.bm-tab[aria-pressed="true"] { color: var(--ink); }
+.bm-tab[aria-pressed="true"]::after {
+  content: ''; position: absolute; inset-inline: 12px; bottom: 0; height: 2px;
+  border-radius: 2px 2px 0 0; background: var(--green);
 }
-.bm-chips::-webkit-scrollbar { display: none; }
-.bm-chips button {
-  flex-shrink: 0; border: 0; cursor: pointer; min-height: 40px; padding-inline: 16px; border-radius: 999px;
-  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
-  font: 500 14px var(--font-plex), system-ui, sans-serif;
-  touch-action: manipulation; user-select: none; -webkit-user-select: none;
-  transition: background-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+@media (hover: hover) and (pointer: fine) { .bm-tab:hover { color: var(--ink); } }
+/* Availability: its own row on the phone, beside the search from 720px */
+.bm-tabs-stock { flex: 1 1 100%; border-top: 1px solid var(--soft); }
+@media (min-width: 720px) {
+  .bm-tabs-stock { flex: 0 0 auto; border-top: 0; border-inline-start: 1px solid var(--soft); padding-inline: 8px; }
 }
-.bm-chips button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+/* Makes: one scrolling line */
+.bm-tabs-makes { border-top: 1px solid var(--soft); overflow-x: auto; scrollbar-width: none; padding-inline: 4px; }
+.bm-tabs-makes::-webkit-scrollbar { display: none; }
 
 /* The rail: the freshest stock, swiped like a lookbook */
 .bm-rail-sec { margin-top: 28px; }
@@ -227,40 +239,51 @@ html:has(.bm) body { overflow: visible; }
 .bm-rail-card:active { transform: scale(.98); }
 .bm-rail-photo { position: relative; aspect-ratio: 16 / 10; background: var(--soft); }
 .bm-rail-photo img { object-fit: cover; }
-.bm-rail-info { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 14px 16px 16px; }
-.bm-rail-side { text-align: end; flex-shrink: 0; }
 .bm-rail-hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
+
+/* Grid cards: one surface, photo above, info below — like the rail */
+.bm-cars-grid { margin-top: 28px; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 640px) { .bm-cars-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 20px; margin-top: 40px; } }
+@media (min-width: 1024px) { .bm-cars-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 24px; } }
+.bm-car-card {
+  display: block; background: var(--surface); border-radius: 18px; overflow: hidden;
+  box-shadow: var(--shadow); -webkit-touch-callout: none;
+  transition: transform 120ms var(--ease-out);
+}
+.bm-car-card:active { transform: scale(.98); }
+.bm-car-photo { position: relative; aspect-ratio: 3 / 2; background: var(--soft); }
+.bm-car-photo img { object-fit: cover; object-position: 50% 50%; -webkit-user-drag: none; }
 @media (hover: hover) and (pointer: fine) {
-  .bm-rail-photo img { transition: transform 700ms var(--ease-out); }
-  .bm-rail-card:hover .bm-rail-photo img { transform: scale(1.03); }
+  .bm-rail-photo img, .bm-car-photo img { transition: transform 700ms var(--ease-out); }
+  .bm-rail-card:hover .bm-rail-photo img, .bm-car-card:hover .bm-car-photo img { transform: scale(1.03); }
   .bm-rail-hint { display: none; }
 }
 
-/* Grid cards */
-.bm-cars-grid { margin-top: 28px; }
-@media (min-width: 640px) { .bm-cars-grid { gap: 40px 24px; margin-top: 40px; } }
-.bm-car-photo { aspect-ratio: 3 / 2; }
-.bm-car-photo img { object-position: 50% 50%; }
-.bm-car-make { margin: 12px 0 0; font-size: clamp(16px, 2vw, 20px); font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
-.bm-car-model { margin: 1px 0 0; font-size: clamp(13px, 1.6vw, 15px); color: var(--muted); line-height: 1.35; }
-.bm-rail-info .bm-car-make { margin-top: 0; }
-.bm-car-price { margin: 8px 0 0; font-size: clamp(16px, 2vw, 19px); font-weight: 600; }
-.bm-rail-side .bm-car-price { margin-top: 0; }
-.bm-car-meta { margin: 3px 0 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); }
-.bm-rail-side .bm-car-meta { justify-content: flex-end; }
-
-/* Availability — the racing green lives here */
-.bm-status {
-  position: absolute; z-index: 1; top: 10px; inset-inline-start: 10px;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
-  background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  color: var(--ink);
+/* Card info — the English make and model read left, in LTR; price, specs and
+   availability read right, in Hebrew. Every line is exactly one row (ellipsis
+   when long, kept when empty) so all cards share one height. */
+.bm-cars-grid > li { display: flex; }
+.bm-cars-grid .bm-car-card { display: flex; flex-direction: column; width: 100%; }
+.bm-cars-grid .bm-car-photo { flex-shrink: 0; }
+.bm-car-info {
+  display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: flex-start;
+  gap: 12px; padding: 14px 16px 16px;
 }
-.bm-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-.bm-status.is-stock { color: var(--green); }
-.bm-status.is-transit { color: #6B5520; }
-.bm-status.is-transit i { background: #A8862F; }
+.bm-car-en { min-width: 0; flex: 1 1 auto; }
+.bm-car-he { flex: 0 0 auto; max-width: 55%; min-width: 0; }
+.bm-car-info p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-car-make { margin: 0; font-size: clamp(17px, 2vw, 20px); font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
+.bm-car-model { margin: 1px 0 0; font-size: clamp(13px, 1.6vw, 15px); color: var(--muted); line-height: 1.35; }
+.bm-car-price { margin: 0; font-size: clamp(16px, 2vw, 19px); font-weight: 600; line-height: 1.25; }
+.bm-car-meta { margin: 3px 0 0; display: flex; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.bm-car-meta span { flex-shrink: 0; }
+
+/* Availability — a dot and a word under the price, never on the photo */
+.bm-avail { margin: 6px 0 0; display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+.bm-avail i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.bm-avail.is-stock { color: var(--green); }
+.bm-avail.is-transit { color: #6B5520; }
+.bm-avail.is-transit i { background: #A8862F; }
 
 /* Momentum lean wrapper */
 .bm-lean { will-change: transform; }
@@ -277,5 +300,27 @@ html:has(.bm) body { overflow: visible; }
 
 @media (prefers-reduced-motion: reduce) {
   .bm-loading span { animation: none; }
-  .bm-rail-card:active { transform: none; }
+  .bm-rail-card:active, .bm-car-card:active { transform: none; }
+}
+
+/* ═══ Footer — the dark close of every page ═══ */
+.bm-footer { background: var(--ink); color: #E9ECEF; }
+.bm-footer-in { max-width: 1440px; margin: 0 auto; padding: 44px var(--gutter) calc(24px + env(safe-area-inset-bottom)); }
+.bm-footer-top { display: flex; flex-direction: column; gap: 36px; }
+.bm-footer-logo { display: block; height: 76px; width: auto; }
+.bm-footer-cols { display: flex; gap: 64px; }
+.bm-footer-cols h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; color: #8A929A; }
+.bm-footer-cols nav, .bm-footer-cols > div { display: flex; flex-direction: column; align-items: flex-start; }
+.bm-footer-cols a {
+  display: inline-flex; align-items: center; min-height: 40px; font-size: 15px; color: #C9CFD4;
+  transition: color var(--t-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .bm-footer-cols a:hover { color: #fff; } }
+.bm-footer-legal {
+  margin: 36px 0 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.12);
+  font-size: 13px; color: #8A929A;
+}
+@media (min-width: 900px) {
+  .bm-footer-top { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+  .bm-footer-in { padding-block: 56px 28px; }
 }

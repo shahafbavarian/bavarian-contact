@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getActiveAgents } from '@/lib/agents'
+import { agentPhoto } from '@/lib/team-photos'
 import AgentMedia from './AgentMedia'
 import Reveal from './Reveal'
+import SiteFooter from './SiteFooter'
 import TopBar from './TopBar'
 import { he as t } from './strings'
 
@@ -37,7 +39,7 @@ export default async function TeamPage() {
                 {/* Phone numbers never reach this page — only name, role, photo. */}
                 <Link href={`/team/${p.public_id}`} className="bm-card" aria-label={t.meet(p.full_name)}>
                   <div className="bm-photo">
-                    <AgentMedia name={p.full_name} photoUrl={p.photo_url} eager={i < 6} />
+                    <AgentMedia name={p.full_name} photoUrl={agentPhoto(p)} eager={i < 6} />
                   </div>
                   <div className="bm-text">
                     <p className="bm-name">{p.full_name}</p>
@@ -49,6 +51,7 @@ export default async function TeamPage() {
           </Reveal>
         )}
       </main>
+      <SiteFooter />
     </div>
   )
 }

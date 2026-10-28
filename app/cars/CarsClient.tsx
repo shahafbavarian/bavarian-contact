@@ -6,6 +6,7 @@ import Image from 'next/image'
 import type { CarSummary } from '@/lib/scraper'
 import TopBar from '../team/TopBar'
 import Reveal from '../team/Reveal'
+import SiteFooter from '../team/SiteFooter'
 
 const POLL_INTERVAL = 5 * 60 * 1000
 
@@ -64,24 +65,50 @@ function inStock(car: CarSummary): boolean {
   return car.status.includes('מלאי')
 }
 
-function StatusDot({ car }: { car: CarSummary }) {
+// A quiet one-line availability mark — a dot and a word, under the price,
+// never covering the photo.
+function Avail({ car }: { car: CarSummary }) {
   const stock = inStock(car)
   return (
-    <span className={`bm-status ${stock ? 'is-stock' : 'is-transit'}`}>
+    <p className={`bm-avail ${stock ? 'is-stock' : 'is-transit'}`}>
       <i aria-hidden="true" />
       {stock ? 'במלאי' : 'בדרך לארץ'}
-    </span>
+    </p>
   )
 }
 
 function CarMeta({ car }: { car: CarSummary }) {
   const km = mileageChip(car)
+  const empty = !car.year && km === null && !car.yad
   return (
     <p className="bm-car-meta">
       {car.year && <span>שנה <bdi dir="ltr">{car.year}</bdi></span>}
       {km !== null && <span>ק״מ <bdi dir="ltr">{km}</bdi></span>}
       {car.yad && <span>יד <bdi dir="ltr">{car.yad}</bdi></span>}
+      {empty && ' '}
     </p>
+  )
+}
+
+// One card body shared by the rail and the grid: the English make and model
+// sit on the left in their own LTR block; price, specs and availability sit
+// on the right in Hebrew. Every line always renders (missing values keep the
+// line) and clamps to one row, so every card is exactly the same height.
+function CarInfo({ car }: { car: CarSummary }) {
+  const make = getMake(car.name)
+  const model = car.name.slice(make.length).trim()
+  return (
+    <div className="bm-car-info">
+      <div className="bm-car-en" dir="ltr">
+        <p className="bm-car-make">{make}</p>
+        <p className="bm-car-model">{model || ' '}</p>
+      </div>
+      <div className="bm-car-he">
+        <p className="bm-car-price">{car.price ? <bdi dir="ltr">{car.price}</bdi> : ' '}</p>
+        <CarMeta car={car} />
+        <Avail car={car} />
+      </div>
+    </div>
   )
 }
 
@@ -187,40 +214,42 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
           </p>
         )}
 
-        {/* ─── Toolbar ─── */}
-        <div className="bm-toolbar">
-          <div className="bm-search">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-            <input
-              type="search"
-              placeholder="חיפוש רכב…"
-              aria-label="חיפוש רכב"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+        {/* ─── The console: search, availability and makes in one piece ─── */}
+        <div className="bm-console">
+          <div className="bm-console-top">
+            <div className="bm-search">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+              <input
+                type="search"
+                placeholder="חיפוש רכב…"
+                aria-label="חיפוש רכב"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="bm-tabs bm-tabs-stock" role="group" aria-label="זמינות">
+              {(['all', 'stock', 'europe'] as StockFilter[]).map(f => (
+                <button key={f} type="button" className="bm-tab" aria-pressed={stockFilter === f}
+                  onClick={() => setStockFilter(f)}>
+                  {STOCK_LABELS[f]}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="bm-seg" role="group" aria-label="זמינות">
-            {(['all', 'stock', 'europe'] as StockFilter[]).map(f => (
-              <button key={f} type="button" aria-pressed={stockFilter === f}
-                onClick={() => setStockFilter(f)}>
-                {STOCK_LABELS[f]}
-              </button>
-            ))}
-          </div>
+          {makes.length > 2 && (
+            <div className="bm-tabs bm-tabs-makes" role="group" aria-label="יצרן">
+              {makes.map(m => (
+                <button key={m} type="button" className="bm-tab" aria-pressed={m === activeMake}
+                  onClick={() => setActiveMake(m)}>
+                  {m === 'הכל' ? m : <bdi dir="ltr">{m}</bdi>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        {makes.length > 2 && (
-          <div className="bm-chips" role="group" aria-label="יצרן">
-            {makes.map(m => (
-              <button key={m} type="button" aria-pressed={m === activeMake}
-                onClick={() => setActiveMake(m)}>
-                {m === 'הכל' ? m : <bdi dir="ltr">{m}</bdi>}
-              </button>
-            ))}
-          </div>
-        )}
 
         {loading ? (
           <div className="bm-loading" aria-label="טוען">
@@ -237,30 +266,17 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
             {showRail && (
               <section className="bm-rail-sec" aria-label="נבחרת במלאי">
                 <ul className="bm-rail">
-                  {railCars.map((car, i) => {
-                    const make = getMake(car.name)
-                    const model = car.name.slice(make.length).trim()
-                    return (
-                      <li key={car.recNo}>
-                        <Link href={`/car/${car.recNo}`} className="bm-rail-card">
-                          <div className="bm-rail-photo">
-                            <Image src={car.imageUrl} alt={car.name} fill priority={i < 2}
-                              sizes="(min-width: 900px) 560px, 82vw" quality={85} />
-                          </div>
-                          <div className="bm-rail-info">
-                            <div>
-                              <p className="bm-car-make"><bdi dir="ltr">{make}</bdi></p>
-                              {model && <p className="bm-car-model"><bdi dir="ltr">{model}</bdi></p>}
-                            </div>
-                            <div className="bm-rail-side">
-                              {car.price && <p className="bm-car-price"><bdi dir="ltr">{car.price}</bdi></p>}
-                              <CarMeta car={car} />
-                            </div>
-                          </div>
-                        </Link>
-                      </li>
-                    )
-                  })}
+                  {railCars.map((car, i) => (
+                    <li key={car.recNo}>
+                      <Link href={`/car/${car.recNo}`} className="bm-rail-card">
+                        <div className="bm-rail-photo">
+                          <Image src={car.imageUrl} alt={car.name} fill priority={i < 2}
+                            sizes="(min-width: 900px) 560px, 82vw" quality={85} />
+                        </div>
+                        <CarInfo car={car} />
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
                 <p className="bm-rail-hint" aria-hidden="true">החליקו לעוד ←</p>
               </section>
@@ -269,33 +285,24 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
             {/* ─── The full collection ─── */}
             <div ref={gridWrap} className="bm-lean">
               <Reveal className="bm-grid bm-cars-grid">
-                {gridCars.map((car, i) => {
-                  const make = getMake(car.name)
-                  const model = car.name.slice(make.length).trim()
-                  return (
-                    <li key={car.recNo} data-reveal>
-                      <Link href={`/car/${car.recNo}`} className="bm-card bm-car-card">
-                        <div className="bm-photo bm-car-photo">
-                          <Image src={car.imageUrl} alt={car.name} fill
-                            sizes="(min-width: 640px) 33vw, 50vw"
-                            priority={!showRail && i < 4} quality={85} />
-                          <StatusDot car={car} />
-                        </div>
-                        <div className="bm-text">
-                          <p className="bm-car-make"><bdi dir="ltr">{make}</bdi></p>
-                          {model && <p className="bm-car-model"><bdi dir="ltr">{model}</bdi></p>}
-                          {car.price && <p className="bm-car-price"><bdi dir="ltr">{car.price}</bdi></p>}
-                          <CarMeta car={car} />
-                        </div>
-                      </Link>
-                    </li>
-                  )
-                })}
+                {gridCars.map((car, i) => (
+                  <li key={car.recNo} data-reveal>
+                    <Link href={`/car/${car.recNo}`} className="bm-car-card">
+                      <div className="bm-car-photo">
+                        <Image src={car.imageUrl} alt={car.name} fill
+                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                          priority={!showRail && i < 2} quality={85} />
+                      </div>
+                      <CarInfo car={car} />
+                    </Link>
+                  </li>
+                ))}
               </Reveal>
             </div>
           </>
         )}
       </main>
+      <SiteFooter />
     </div>
   )
 }
