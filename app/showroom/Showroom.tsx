@@ -108,7 +108,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/logo-full-light-sm.png" alt="" width={420} height={195} />
             </Link>
-            <Link href="/cars" className="sr-exit">כל הרכבים</Link>
           </header>
 
           <div ref={head} className="sr-head">
