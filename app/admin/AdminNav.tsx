@@ -42,6 +42,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/admin/team',
+    label: 'צוות',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M16 4.6a3.5 3.5 0 010 6.8M18.5 14.8c1.6.8 2.6 2.5 3 5.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ]
 
 export default function AdminNav() {
