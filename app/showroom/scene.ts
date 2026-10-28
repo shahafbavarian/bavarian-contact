@@ -457,7 +457,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
   // ─── Back: glass offices with frosted bands ───
   const officeZ = FRONT - D + 4
-  for (let x = -half + 2; x <= half - 2 + 0.01; x += 3) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
+  // frames set symmetric about the hall's centre line, the stand's axis
+  for (const x of [-8, -4.8, -1.6, 1.6, 4.8, 8]) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
   const frosted = new THREE.MeshBasicMaterial({ map: stripeTex(), transparent: true, opacity: 0.55, depthWrite: false })
   const og = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), frosted); og.position.set(0, H / 2, officeZ); scene.add(og)
   const og2 = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), mats.glass); og2.position.set(0, H / 2, officeZ + 0.01); scene.add(og2)
