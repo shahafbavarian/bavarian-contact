@@ -116,9 +116,9 @@ html:has(.sr) { overflow: auto; }
   display: grid; place-items: center; width: 44px; height: 44px; -webkit-tap-highlight-color: transparent;
   transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
 }
-/* in their own colours, each with a soft glow of that colour */
-.sr-wa { filter: drop-shadow(0 0 6px rgba(37,211,102,.45)); }
-.sr-ig { filter: drop-shadow(0 0 6px rgba(214,41,118,.4)); }
+/* a whisper of their own colours: near-white marks, each with a faint glow of its colour */
+.sr-wa { filter: drop-shadow(0 0 5px rgba(37,211,102,.22)); }
+.sr-ig { filter: drop-shadow(0 0 5px rgba(214,41,118,.2)); }
 .sr-social a:active { transform: scale(.94); }
 .sr-social a { opacity: 0; }
 .sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-on 520ms cubic-bezier(.23,1,.32,1) backwards; }
