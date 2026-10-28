@@ -20,7 +20,9 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#06080c',
+  // no theme colour in effect (a media query that never matches overrides the
+  // site's black one): Safari would paint it behind the clock, over the stone
+  themeColor: [{ media: 'not all', color: '#06080c' }],
   maximumScale: 5,
   userScalable: true,
   viewportFit: 'cover',

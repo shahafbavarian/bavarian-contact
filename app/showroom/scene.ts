@@ -39,7 +39,8 @@ type Opts = {
   /** the dark middle screen was tapped from the street: switch on and walk in */
   onEnter?: () => void
   /** where the sign on the building lands on screen (css px: centre, width) */
-  onSign?: (x: number, y: number, w: number, visible: boolean) => void
+  /** fade: 1 in the street, 0 once the canopy hides the sign from the walker */
+  onSign?: (x: number, y: number, w: number, fade: number) => void
   /** screen height (css px) of the front card's centre, for the arrows beside it */
   onGallery?: (y: number, x: number) => void
   /** every texture of the opening view has loaded: show the canvas */
@@ -358,7 +359,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!opts.onSign) return
     signL.set(-signW / 2, SIGN_Y, SIGN_Z).project(camera); signR.set(signW / 2, SIGN_Y, SIGN_Z).project(camera)
     const cw = canvas.clientWidth, ch = canvas.clientHeight
-    opts.onSign(((signL.x + signR.x) / 4 + 0.5) * cw, (0.5 - (signL.y + signR.y) / 4) * ch, (signR.x - signL.x) / 2 * cw, signL.z < 1 && signR.z < 1)
+    // as you come under the canopy its edge hides the sign: the page's sign (drawn
+    // over the scene, so it knows nothing of that) fades out before its glow could show
+    const fade = signL.z < 1 && signR.z < 1 ? fit(camera.position.z, SIGN_Z + 0.6, SIGN_Z + 3.2) : 0
+    opts.onSign(((signL.x + signR.x) / 4 + 0.5) * cw, (0.5 - (signL.y + signR.y) / 4) * ch, (signR.x - signL.x) / 2 * cw, fade)
     if (opts.onGallery) { signL.set(0, ring.position.y, STAND.z + R).project(camera); opts.onGallery((0.5 - signL.y / 2) * ch, (signL.x / 2 + 0.5) * cw) }
   }
   // Entrance mat, just inside: a needle-punch carpet. Charcoal pile you can
@@ -418,19 +422,29 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   scene.add(spotMesh)
   // the canopy's own downlights, outside: on from the start (the hall's are
   // off); theirs is the light on the pavement
+  const beamMat = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color('#ffd9b0') } },
+    vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float edge = pow(abs(dot(vN, vV)), 1.6); float a = pow(vUv.y, 1.8) * edge * .09; gl_FragColor = vec4(uColor, a); }',
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  })
   for (const x of [-3.75, 3.75]) {
     const disc = new THREE.Mesh(spotGeo, spotMat); disc.rotation.x = Math.PI / 2; disc.position.set(x, H + 0.035, FRONT + 1.2); scene.add(disc)
     // a spot aimed straight down, not a bare point: a point light this close to
     // the window shone in the glass as two stray dots on the hall's ceiling
     const l = new THREE.SpotLight('#ffcf98', 5, 10, Math.PI / 3, 0.6, 1.8); l.position.set(x, H - 0.1, FRONT + 1.2)
     l.target.position.set(x, 0, FRONT + 1.2); scene.add(l, l.target)
+    // its pool on the pavement, right under it
+    glow('light', 5.6, 5.6, x, FRONT + 1.4, 0.01, 0.34, '#ffd2a0')
+    // and the light falling from it: a faint cone, strongest at the lamp,
+    // gone by the ground and at its edges
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(1.7, H - 0.06, 48, 1, true), beamMat)
+    beam.position.set(x, (H - 0.06) / 2, FRONT + 1.2); scene.add(beam)
   }
   const spotC = new THREE.Color()
   spots.forEach(([, z], i) => power(depthDelay(z), k => {
     spotMesh.setColorAt(i, spotC.setScalar(0.03 + 0.97 * k)); spotMesh.instanceColor!.needsUpdate = true
   }))
-  // Interior spill onto the street
-  glow('light', 22, 9, 0, FRONT + 3.2, 0.01, 0.3, '#ffd2a0')
 
   // ─── Light and shade that make a room read as real ───
   // scallops: each downlight near a wall washes it in a soft arc

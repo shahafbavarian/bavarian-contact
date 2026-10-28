@@ -125,9 +125,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           mobile, cards,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
-          onSign: (x, y, w, visible) => {
+          onSign: (x, y, w, fade) => {
             const el = sign.current; if (!el) return
-            el.style.visibility = visible ? 'visible' : 'hidden'
+            el.style.visibility = fade > 0.01 ? 'visible' : 'hidden'
+            el.style.opacity = String(fade)
             el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
           },
           font: getComputedStyle(root.current!).fontFamily,
@@ -217,18 +218,19 @@ export default function Showroom({ cards }: { cards: Card[] }) {
               <Link href="/contact">צרו קשר</Link>
             </nav>
             <div className="sr-social">
-              {/* white line marks like the rest of the street; only their glow carries a hint of their colour */}
-              <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" aria-label="וואטסאפ" className="sr-wa">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M5.92 18.08A8.6 8.6 0 1 0 3.92 14.94L3.1 20.9z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                  <path d="M9.2 8.3c-.4.3-.8 1.1-.5 2.2.5 1.7 2.6 3.9 4.4 4.5 1.1.4 1.9 0 2.2-.4l.3-.6-1.9-1-.7.8c-1-.4-2-1.4-2.4-2.4l.8-.7-1-1.9z" fill="currentColor" />
+              {/* white line marks from one family, the same size and weight, lit like the rest of the street */}
+              <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" aria-label="וואטסאפ">
+                {/* drawn a touch smaller: its bubble spans more of the box than Instagram's square */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9" />
+                  <path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1" />
                 </svg>
               </a>
-              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" aria-label="אינסטגרם" className="sr-ig">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="5" stroke="currentColor" strokeWidth="1.4" />
-                  <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.4" />
-                  <circle cx="17" cy="7" r="1" fill="currentColor" />
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" aria-label="אינסטגרם">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="16" height="16" rx="4" />
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M16.5 7.5v.01" />
                 </svg>
               </a>
             </div>
