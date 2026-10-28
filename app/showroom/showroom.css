@@ -50,7 +50,9 @@ html:has(.sr) { overflow: auto; }
   display: block; width: 100%; max-width: none; height: auto; opacity: 0;
   /* lit letters, defined but not cut out: a faint contact shade where they
      stand off the stone, a breath of glow at the edge, a wide soft halo */
-  filter: drop-shadow(0 .5px .8px rgba(0,0,0,.2)) drop-shadow(0 0 1.5px rgba(255,255,255,.4)) drop-shadow(0 0 26px rgba(255,255,255,.24));
+  /* sized for the 1000px base the scene scales down to about a third: on screen
+     this is a ~1px edge glow and a ~20px halo */
+  filter: drop-shadow(0 1.5px 2.5px rgba(0,0,0,.2)) drop-shadow(0 0 4px rgba(255,255,255,.5)) drop-shadow(0 0 64px rgba(255,255,255,.32));
 }
 /* coming on: smaller and dim, then grown to full size and full light, on the
    buttons' beat (opacity and scale only: cheap on any phone) */
@@ -122,12 +124,14 @@ html:has(.sr) { overflow: auto; }
 }
 .sr-doors a:active { color: #fff; }
 /* the hall's channels as lit line icons, under the words */
-.sr-social { display: flex; justify-content: center; gap: 4px; margin-top: -14px; }
+/* secondary to the words above: icons at the words' optical size (~1.2x their
+   15px text), the same white and glow, 44px targets with clear space between */
+.sr-social { display: flex; justify-content: center; gap: 18px; margin-top: -8px; }
 .sr-social a {
   display: grid; place-items: center; width: 44px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
   transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
 }
-.sr-social a { filter: drop-shadow(0 0 5px rgba(255,255,255,.38)); }
+.sr-social a { color: rgba(255,255,255,.84); filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
 .sr-social a:active { color: #fff; }
 .sr-social a:active { transform: scale(.94); }
 .sr-social a { opacity: 0; }

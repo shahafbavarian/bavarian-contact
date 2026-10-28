@@ -349,8 +349,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // its light on the stone comes up with the letters (the page brings them
   // on 200 ms after the view is ready, over a second: the same beat)
   const signLight = (k: number) => {
-    for (const l of signLamps) l.intensity = 0.2 * k
-    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.07 * k
+    for (const l of signLamps) l.intensity = 0.35 * k
+    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.12 * k
   }
   signLight(0)
   // the street side is lit already when the page opens: only the hall's lights run
@@ -559,7 +559,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float open = smoothstep(0., .55, uPower);
       float pic = step(abs(vUv.y - .5), open * .5 + .004) * step(.001, uPower);
       col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
-      col += smoothstep(-.012, -.002, d) * .10;           // hairline edge
+      col += smoothstep(-.012, -.002, d) * .10 * uPower;  // hairline edge, only on a lit screen (dark, it read as a stray line of light)
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       gl_FragColor = vec4(col, a * uAlpha);
       #include <colorspace_fragment>
