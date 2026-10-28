@@ -23,6 +23,8 @@ export type SceneHandle = {
   /** Rotate the ring by whole cards (buttons, keyboard). */
   step: (dir: 1 | -1) => void
   resize: () => void
+  /** Offline rendering: place the camera at p and draw one frame now */
+  renderFrame: (p: number) => void
   dispose: () => void
   stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number }
 }
@@ -34,6 +36,9 @@ type Opts = {
   mobile: boolean; logoUrl: string; signUrl: string; cards: Card[]; font: string
   onFront: (i: number) => void
   onOpen: (i: number) => void
+  /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
+  manual?: boolean
+  dpr?: number
 }
 
 const fit = (v: number, a: number, b: number, from = 0, to = 1) => {
@@ -123,9 +128,9 @@ const TiltShift = {
 
 export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHandle {
   const { mobile } = opts
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const dpr = opts.dpr ?? Math.min(window.devicePixelRatio || 1, 2)
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', precision: 'highp' })
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', precision: 'highp', preserveDrawingBuffer: !!opts.manual })
   renderer.setPixelRatio(dpr)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
@@ -152,8 +157,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const half = W / 2
 
   const mats = {
-    metal: new THREE.MeshStandardMaterial({ color: '#15171a', roughness: 0.35, metalness: 0.8 }),
-    gloss: new THREE.MeshStandardMaterial({ color: '#060708', roughness: 0.14, metalness: 0.3, envMapIntensity: 1.4 }),
+    // dark anodised aluminium (frames, mullions, head band)
+    metal: new THREE.MeshStandardMaterial({ color: '#2a2d31', roughness: 0.38, metalness: 0.85, envMapIntensity: 1.1 }),
+    // black piano lacquer (columns, stand): a clear coat over a satin base
+    gloss: new THREE.MeshPhysicalMaterial({ color: '#050506', roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.6 }),
     glass: new THREE.MeshStandardMaterial({ color: '#6f8496', roughness: 0.04, metalness: 1, transparent: true, opacity: 0.12, envMapIntensity: 3, depthWrite: false }),
     ceiling: new THREE.MeshStandardMaterial({ color: '#c9c6c0', roughness: 0.95 }),
     wall: new THREE.MeshStandardMaterial({ map: wallTex(6), roughness: 0.85 }),
@@ -178,16 +185,18 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
 
   // ─── Floor: a real mirror under a semi-opaque polished tile ───
-  const reflScale = mobile ? 0.3 : 0.5
+  const reflScale = opts.manual ? 0.75 : mobile ? 0.3 : 0.5
+  // Phones skip the mirror (a second full render at reduced resolution is
+  // what shimmered in motion); the tile's own gloss carries the reflection.
   const mirror = new Reflector(new THREE.PlaneGeometry(W, D), {
     textureWidth: Math.round(innerWidth * dpr * reflScale),
     textureHeight: Math.round(innerHeight * dpr * reflScale),
     color: 0x5a5a5a,
   })
   mirror.rotation.x = -Math.PI / 2; mirror.position.set(0, 0, FRONT - D / 2)
-  scene.add(mirror)
+  if (!mobile) scene.add(mirror)
   const tile = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({
-    map: floorTex(W / 2.4, D / 2.4), roughness: 0.3, metalness: 0, transparent: true, opacity: 0.72, envMapIntensity: 0.25,
+    map: floorTex(W / 2.4, D / 2.4), roughness: mobile ? 0.16 : 0.3, metalness: 0, transparent: !mobile, opacity: mobile ? 1 : 0.72, envMapIntensity: mobile ? 0.9 : 0.25,
   }))
   tile.rotation.x = -Math.PI / 2; tile.position.set(0, 0.002, FRONT - D / 2)
   scene.add(tile)
@@ -283,12 +292,23 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   logoTex.colorSpace = THREE.SRGBColorSpace; logoTex.anisotropy = 8
 
   // Entrance mat with the logo, just inside
-  const mat = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.6), new THREE.MeshStandardMaterial({ color: '#0b0b0c', roughness: 1 }))
-  mat.rotation.x = -Math.PI / 2; mat.position.set(0, 0.006, FRONT - 1.3); scene.add(mat)
-  const matLogo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2 / (1189 / 553)), new THREE.MeshBasicMaterial({
-    map: logoTex, transparent: true, color: '#9a9a9a', depthWrite: false,
+  // black fibre with a bound edge; the logo printed on it, lit by the room
+  const fibre = canvasTex(256, 256, c => {
+    c.fillStyle = '#121213'; c.fillRect(0, 0, 256, 256)
+    for (let k = 0; k < 2600; k++) {
+      const v = 18 + Math.random() * 22
+      c.fillStyle = `rgb(${v},${v},${v + 1})`
+      c.fillRect(Math.random() * 256, Math.random() * 256, 1, 2 + Math.random() * 2)
+    }
+  }, [6, 3])
+  const matEdge = new THREE.Mesh(new THREE.BoxGeometry(3.24, 0.014, 1.64), new THREE.MeshStandardMaterial({ color: '#070708', roughness: 0.75 }))
+  matEdge.position.set(0, 0.007, FRONT - 1.3); scene.add(matEdge)
+  const mat = new THREE.Mesh(new THREE.PlaneGeometry(3.08, 1.48), new THREE.MeshStandardMaterial({ map: fibre, roughness: 1, color: '#bbbbbb' }))
+  mat.rotation.x = -Math.PI / 2; mat.position.set(0, 0.0145, FRONT - 1.3); scene.add(mat)
+  const matLogo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2 / (1189 / 553)), new THREE.MeshStandardMaterial({
+    map: logoTex, transparent: true, color: '#d8d8d8', roughness: 0.95, depthWrite: false,
   }))
-  matLogo.rotation.x = -Math.PI / 2; matLogo.rotation.z = Math.PI; matLogo.position.set(0, 0.008, FRONT - 1.3); scene.add(matLogo)
+  matLogo.rotation.x = -Math.PI / 2; matLogo.rotation.z = Math.PI; matLogo.position.set(0, 0.0155, FRONT - 1.3); scene.add(matLogo)
 
   // ─── Columns: black gloss, two on the floor ───
   const colGeo = new THREE.CylinderGeometry(0.34, 0.34, H, 48)
@@ -311,8 +331,30 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // Interior spill onto the street
   glow('light', 22, 9, 0, FRONT + 3.2, 0.01, 0.3, '#ffd2a0')
 
+  // ─── Light and shade that make a room read as real ───
+  // scallops: each downlight near a wall washes it in a soft arc
+  const scallopFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ vec2 p = vec2((vUv.x - .5) * 2., (1. - vUv.y)); float a = (1. - smoothstep(0., 1., length(vec2(p.x, p.y * .55)))) * smoothstep(0., .08, p.y); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
+  const scallopMat = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color('#ffdcb4') }, uOpacity: { value: 0.32 } },
+    vertexShader: radialVert, fragmentShader: scallopFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  })
+  for (let z = -2; z > -D + 4; z -= 3) for (const sx of [-1, 1]) {
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 3.4), scallopMat)
+    sc.rotation.y = -sx * Math.PI / 2; sc.position.set(sx * (half - 0.01), H - 1.7, z); scene.add(sc)
+  }
+  // contact shading where walls meet the floor and the ceiling
+  const edgeFrag = 'uniform float uOpacity; varying vec2 vUv; void main(){ float a = pow(1. - vUv.y, 2.2); gl_FragColor = vec4(0., 0., 0., a * uOpacity); }'
+  const edgeMat = (o: number) => new THREE.ShaderMaterial({ uniforms: { uOpacity: { value: o } }, vertexShader: radialVert, fragmentShader: edgeFrag, transparent: true, depthWrite: false })
+  for (const sx of [-1, 1]) {
+    const wb = new THREE.Mesh(new THREE.PlaneGeometry(D, 0.7), edgeMat(0.45))
+    wb.rotation.y = -sx * Math.PI / 2; wb.position.set(sx * (half - 0.012), 0.35, FRONT - D / 2); scene.add(wb)
+    const cb = new THREE.Mesh(new THREE.PlaneGeometry(D, 0.6), edgeMat(0.3))
+    cb.rotation.y = -sx * Math.PI / 2; cb.rotation.z = Math.PI; cb.position.set(sx * (half - 0.012), H - 0.3, FRONT - D / 2); scene.add(cb)
+  }
+  for (const [x, z] of [[-4.4, -7.2], [5.4, -15]]) glow('shadow', 1.6, 1.6, x, z, 0.0035, 0.55)
+
   // ─── Light ───
-  add(new THREE.HemisphereLight('#ffe2c4', '#141821', 0.22))
+  add(new THREE.HemisphereLight('#ffe8d2', '#101318', 0.16))
   for (const [x, z] of [[-5, -4], [5, -4], [-5, -13], [5, -13], [0, -20]]) {
     const l = new THREE.PointLight('#ffcf98', 5, 11, 1.8); l.position.set(x, H - 0.4, z); scene.add(l)
   }
@@ -323,7 +365,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const STAND = new THREE.Vector3(0, 0, -12.5)
   const N = opts.cards.length
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
-  const CW = mobile ? 1.7 : 1.9, CH = CW * (832 / 1024)
+  const CW = mobile ? 2.4 : 1.9, CH = CW * (832 / 1024)
   // The ring grows with the number of cars: every card gets a clear gap of
   // 35% of its width on each side, so no two cars ever touch
   const R = Math.max(3.0, (N * CW * 1.35) / (Math.PI * 2))
@@ -342,26 +384,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const frosted = new THREE.MeshBasicMaterial({ map: stripeTex(), transparent: true, opacity: 0.55, depthWrite: false })
   const og = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), frosted); og.position.set(0, H / 2, officeZ); scene.add(og)
   const og2 = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), mats.glass); og2.position.set(0, H / 2, officeZ + 0.01); scene.add(og2)
-  // lowered ceiling band over the offices (the real hall's bulkhead)
-  box(W, 0.5, 6, mats.ceiling, 0, H - 0.25, officeZ + 1)
-
-  // ─── Furniture from the real hall: the black accessories vitrine with its
-  //     screen on the right wall, black sales desks along the left ───
-  const black = new THREE.MeshStandardMaterial({ color: '#0d0e10', roughness: 0.35, metalness: 0.3 })
-  const shelfGlass = new THREE.MeshStandardMaterial({ color: '#9fb0bf', roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.25 })
-  const vx = half - 0.35, vz = -9.5
-  box(0.5, 2.6, 0.06, black, vx, 1.3, vz - 1.2); box(0.5, 2.6, 0.06, black, vx, 1.3, vz + 1.2)
-  box(0.5, 0.08, 2.46, black, vx, 2.6, vz); box(0.5, 0.3, 2.46, black, vx, 0.15, vz)
-  for (const y of [0.85, 1.45, 2.05]) box(0.46, 0.02, 2.34, shelfGlass, vx, y, vz)
-  const screenMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 0.5, 0.75) })
-  box(0.06, 0.7, 1.2, black, half - 0.05, 3.3, vz)
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.12, 0.62), screenMat); scr.rotation.y = -Math.PI / 2; scr.position.set(half - 0.09, 3.3, vz); scene.add(scr)
-  for (const z of [-5.5, -9]) {
-    box(1.6, 0.04, 0.8, black, -half + 1.6, 0.76, z)
-    box(0.04, 0.74, 0.76, black, -half + 0.84, 0.37, z); box(0.04, 0.74, 0.76, black, -half + 2.36, 0.37, z)
-    box(0.5, 0.3, 0.02, black, -half + 1.6, 1.0, z - 0.3)   // monitor
-  }
-
   // ─── The gallery: cards bent along the ring. Each card is designed, not a
   //     pasted photo: the car's photograph in a rounded frame, a band with the
   //     model and price, a hairline edge. Unlit, so the photos keep their
@@ -452,7 +474,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const composer = new EffectComposer(renderer, rt)
   composer.addPass(new RenderPass(scene, camera))
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.5, 1.0)
-  composer.addPass(bloom)
+  if (!mobile) composer.addPass(bloom)   // half-res bloom on tiny lights flickered on phones
   const tilt = new ShaderPass(TiltShift)
   if (!mobile) composer.addPass(tilt)
   composer.addPass(new OutputPass())
@@ -460,20 +482,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Camera: street → doors → inside → stops facing the stand. A narrow
   //     (portrait) screen stops further back so the front card and its
   //     neighbours still fit. ───
-  let path: THREE.CatmullRomCurve3, look: THREE.CatmullRomCurve3
+  let startZ = 16, endZ = 0, pitch0 = 0, pitch1 = 0
   const buildPath = (aspect: number) => {
-    // stop where the front card fills ~75% of a phone's width, ~40% of a desktop's
-    const endZ = STAND.z + R + (aspect < 1 ? 3.6 : 3.4)
-    path = new THREE.CatmullRomCurve3([
-      // portrait starts closer, so the storefront sits right under the logo header
-      new THREE.Vector3(0, 1.6, aspect < 1 ? 12 : 16), new THREE.Vector3(0, 1.58, aspect < 1 ? 6.5 : 8), new THREE.Vector3(0, 1.55, 1.6),
-      new THREE.Vector3(0.35, 1.58, (1.6 + endZ) / 2), new THREE.Vector3(0, 1.62, endZ),
-    ], false, 'centripetal')
-    look = new THREE.CatmullRomCurve3([
-      // the storefront sits mid-frame under the logo header; the stone above fades out
-      new THREE.Vector3(0, aspect < 1 ? 1.7 : 2.3, 0), new THREE.Vector3(0, 2.1, -6), new THREE.Vector3(0, 1.75, STAND.z),
-      new THREE.Vector3(0, 1.62, STAND.z), new THREE.Vector3(0, 1.58, STAND.z),
-    ], false, 'centripetal')
+    // the walk ends where the whole stand is in view
+    startZ = aspect < 1 ? 12 : 16
+    endZ = STAND.z + (aspect < 1 ? 11 : 8)
+    pitch0 = aspect < 1 ? 0.004 : 0.04        // level at the street (no leaning facade)
+    pitch1 = aspect < 1 ? -0.06 : -0.05       // a touch down to the stand at the end
   }
 
   // Progress map: 0 → .82 the walk in, .72 → .9 the gallery rises over the
@@ -488,10 +503,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
   function place(p: number, dt: number) {
     const t = smooth(fit(p, 0, WALK))
-    path.getPointAt(t, tmpP); look.getPointAt(t, tmpL)
-    tmpL.x += pointerS.x * 0.5; tmpL.y += pointerS.y * 0.25
+    const z = startZ + (endZ - startZ) * t
+    const pitch = pitch0 + (pitch1 - pitch0) * t
+    tmpP.set(0, 1.6, z)
+    tmpL.set(pointerS.x * 0.5, 1.6 + Math.tan(pitch) * 30 + pointerS.y * 0.25, z - 30)
     camera.position.copy(tmpP); camera.lookAt(tmpL)
-    const open = smooth(fit(p, 0.2, 0.45))
+    const open = smooth(fit(z, 7.5, 2.5))     // the doors part as you reach them
     doors.forEach((d, i) => {
       const s = i === 0 ? -1 : 1
       d.position.x = s * (0.6 + open * 1.15)
@@ -601,9 +618,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     composer.render()
     frames.push(dt * 1000); if (frames.length > 600) frames.shift()
   }
-  raf = requestAnimationFrame(tick)
+  if (!opts.manual) raf = requestAnimationFrame(tick)
 
   return {
+    renderFrame(p) { progress = p; time = 0; place(p, 1 / 30); composer.render() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
     step(dir) { settle(); drag += dir * STEP; dirty = true },

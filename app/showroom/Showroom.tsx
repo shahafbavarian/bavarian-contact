@@ -7,17 +7,13 @@ import type { Card, SceneHandle } from './scene'
 
 const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)))
 
-// Scroll drives one progress value (0–1) through a tall track; the stage is
-// sticky and the page scroll stays native (no hijack). Desktop eases toward
-// the scroll position (a wheel moves in steps); a finger is already
-// continuous, so the phone follows it 1:1.
-//   0  → .82  the street, the doors, the walk in to the stand
-//   .72 → .9  the gallery rises over the stand; the page scroll ends there.
-//             The gallery turns only sideways: finger, mouse or the arrows.
+// One gesture walks you in: a scroll, a swipe up or the arrow key plays the
+// whole entrance (street → doors → the stand) as one continuous move; the
+// opposite gesture walks you back out. The page itself never scrolls. Inside,
+// the gallery turns only sideways: finger, mouse or the arrows.
 export default function Showroom({ cards }: { cards: Card[] }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
-  const track = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const cap = useRef<HTMLDivElement>(null)
   const bar = useRef<HTMLDivElement>(null)
@@ -30,23 +26,28 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const [front, setFront] = useState(0)
 
   useEffect(() => {
-    const cv = canvas.current!, tr = track.current!
+    const cv = canvas.current!
     if (!cv.getContext('webgl2')) { setState('fallback'); return }
 
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 900
-    let target = 0, current = 0, raf = 0, last = performance.now(), alive = true
-
-    const read = () => {
-      const max = tr.offsetHeight - innerHeight
-      target = max > 0 ? Math.min(1, Math.max(0, -tr.getBoundingClientRect().top / max)) : 0
+    let current = 0, raf = 0, alive = true
+    // the walk: a timed ease from where we are to 0 (outside) or 1 (inside)
+    let from = 0, to = 0, t0 = 0, dur = 0
+    const DUR = mobile ? 3200 : 3600
+    const easeInOut = (x: number) => 0.5 - Math.cos(Math.PI * x) / 2
+    const go = (dest: 0 | 1) => {
+      if (dur && performance.now() - t0 < dur) return          // one walk at a time
+      if (current === dest) return
+      from = current; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - current)
     }
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
-      const dt = Math.min(0.05, (now - last) / 1000); last = now
-      // A light ease on the phone too (iOS delivers scroll in uneven steps), firmer than desktop
-      current += (target - current) * (1 - Math.exp(-dt * (mobile ? 14 : 7)))
-      if (Math.abs(target - current) < 1e-4) current = target
+      if (dur) {
+        const k = Math.min(1, (now - t0) / dur)
+        current = from + (to - from) * easeInOut(k)
+        if (k >= 1) { current = to; dur = 0 }
+      }
       handle.current?.setProgress(current)
       const c = cap.current
       if (c) {
@@ -66,7 +67,20 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
     const onPointer = (e: PointerEvent) => handle.current?.setPointer((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1))
     let rTimer = 0
-    const onResize = () => { clearTimeout(rTimer); rTimer = window.setTimeout(() => { handle.current?.resize(); read() }, 150) }
+    const onResize = () => { clearTimeout(rTimer); rTimer = window.setTimeout(() => handle.current?.resize(), 150) }
+    // gestures: wheel, a vertical swipe, keys
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); if (Math.abs(e.deltaY) > 4) go(e.deltaY > 0 ? 1 : 0) }
+    let ty = 0, tx = 0
+    const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault() }
+    const onTouchEnd = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx
+      if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) go(dy < 0 ? 1 : 0)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); go(1) }
+      if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); go(0) }
+    }
 
     import('./scene').then(({ createShowroom }) => {
       if (!alive) return
@@ -80,17 +94,23 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
-        read(); setState('ready')
+        setState('ready')
       } catch { setState('fallback') }
     })
 
-    addEventListener('scroll', read, { passive: true })
+    addEventListener('wheel', onWheel, { passive: false })
+    addEventListener('touchstart', onTouchStart, { passive: true })
+    addEventListener('touchmove', onTouchMove, { passive: false })
+    addEventListener('touchend', onTouchEnd)
+    addEventListener('keydown', onKey)
     addEventListener('resize', onResize)
     addEventListener('pointermove', onPointer, { passive: true })
     raf = requestAnimationFrame(frame)
     return () => {
       alive = false; cancelAnimationFrame(raf)
-      removeEventListener('scroll', read); removeEventListener('resize', onResize); removeEventListener('pointermove', onPointer)
+      removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart); removeEventListener('touchmove', onTouchMove)
+      removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
+      removeEventListener('resize', onResize); removeEventListener('pointermove', onPointer)
       handle.current?.dispose(); handle.current = null
     }
   }, [cards, router])
@@ -99,7 +119,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
   return (
     <div ref={root} className="sr" data-state={state}>
-      <div ref={track} className="sr-track">
+      <div className="sr-track">
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />
 

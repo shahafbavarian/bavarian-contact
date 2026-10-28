@@ -17,21 +17,15 @@ html:has(.sr) { overflow: auto; }
 .sr a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .sr :focus-visible { outline: 2px solid #6aa6ff; outline-offset: 3px; border-radius: 6px; }
 
-.sr-track { position: relative; height: 460svh; }
-.sr-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; background: #06080c; }
+.sr-track { position: relative; height: 100svh; }
+.sr-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; background: #06080c; touch-action: none; overscroll-behavior: none; }
 .sr-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; touch-action: pan-y; cursor: grab; transition: opacity 900ms cubic-bezier(.22,1,.36,1); }
 .sr[data-state="ready"] .sr-canvas { opacity: 1; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
    which also keeps the eye off the unimportant background at the margins */
 .sr-canvas {
-  -webkit-mask-image: radial-gradient(ellipse 72% 78% at 50% 48%, #000 58%, transparent 100%);
-          mask-image: radial-gradient(ellipse 72% 78% at 50% 48%, #000 58%, transparent 100%);
-}
-@media (max-aspect-ratio: 1/1) {
-  .sr-canvas {
-    -webkit-mask-image: radial-gradient(ellipse 95% 62% at 50% 50%, #000 62%, transparent 100%);
-            mask-image: radial-gradient(ellipse 95% 62% at 50% 50%, #000 62%, transparent 100%);
-  }
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 84%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 84%, transparent 100%);
 }
 
 .sr-top {
@@ -89,7 +83,6 @@ html:has(.sr) { overflow: auto; }
 .sr-fallback { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; text-align: center; padding: 24px; z-index: 4; }
 
 @media (max-width: 899.98px) {
-  .sr-track { height: 400svh; }
   .sr-cap { flex-direction: column; align-items: stretch; gap: 14px; }
   .sr-actions { gap: 8px; }
   .sr-actions .sr-cta { flex: 1; height: 52px; }
