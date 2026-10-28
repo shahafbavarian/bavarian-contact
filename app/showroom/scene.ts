@@ -94,13 +94,6 @@ const paverTex = (rx: number, ry: number) => canvasTex(1024, 1024, c => {
   noise(c, 512, 512, 14)
 }, [rx, ry])
 
-// Soft round light pool / contact shadow, used as additive or multiply decals.
-const radialTex = (inner: string, outer: string) => canvasTex(256, 256, c => {
-  const g = c.createRadialGradient(128, 128, 0, 128, 128, 128)
-  g.addColorStop(0, inner); g.addColorStop(1, outer)
-  c.fillStyle = g; c.fillRect(0, 0, 256, 256)
-})
-
 const stripeTex = () => canvasTex(64, 256, c => {
   c.clearRect(0, 0, 64, 256)
   c.fillStyle = 'rgba(255,255,255,.55)'
@@ -170,9 +163,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
     const b = add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); b.position.set(x, y, z); return b
   }
-  const decal = (tex: THREE.Texture, w: number, d: number, x: number, z: number, y: number, blending: THREE.Blending, opacity = 1, color: THREE.ColorRepresentation = '#ffffff') => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, depthWrite: false, blending, opacity, color, toneMapped: blending !== THREE.AdditiveBlending,
+  // Light pools and contact shadows: a radial falloff computed in the shader.
+  // (Not canvas gradients: Safari dithers those, and the additive light
+  // amplified the dither into coloured speckles on the floor.)
+  const radialVert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }'
+  const radialFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ float r = length(vUv - .5) * 2.; float a = 1. - smoothstep(0., 1., r); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
+  const glow = (kind: 'light' | 'shadow', w: number, d: number, x: number, z: number, y: number, opacity: number, color = '#ffd6aa') => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(kind === 'light' ? color : '#000000') }, uOpacity: { value: opacity } },
+      vertexShader: radialVert, fragmentShader: radialFrag, transparent: true, depthWrite: false,
+      blending: kind === 'light' ? THREE.AdditiveBlending : THREE.NormalBlending,
     }))
     m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m
   }
@@ -297,8 +297,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
 
   // ─── Ceiling spots + their light pools on the floor ───
-  const pool = radialTex('rgba(255,214,170,1)', 'rgba(255,214,170,0)')
-  const shadow = radialTex('rgba(0,0,0,.7)', 'rgba(0,0,0,0)')
   const spotGeo = new THREE.CircleGeometry(0.09, 24)
   const spotMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.1, 1.7), toneMapped: false })
   const spots: [number, number][] = []
@@ -307,11 +305,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0))
   spots.forEach(([x, z], i) => {
     spotMesh.setMatrixAt(i, m4.compose(new THREE.Vector3(x, H - 0.01, z), q, new THREE.Vector3(1, 1, 1)))
-    decal(pool, 3.0, 3.0, x, z, 0.004, THREE.AdditiveBlending, 0.16)
+    glow('light', 3.0, 3.0, x, z, 0.004, 0.16)
   })
   scene.add(spotMesh)
   // Interior spill onto the street
-  decal(radialTex('rgba(255,210,160,.9)', 'rgba(255,210,160,0)'), 22, 9, 0, FRONT + 3.2, 0.01, THREE.AdditiveBlending, 0.35)
+  glow('light', 22, 9, 0, FRONT + 3.2, 0.01, 0.3, '#ffd2a0')
 
   // ─── Light ───
   add(new THREE.HemisphereLight('#ffe2c4', '#141821', 0.22))
@@ -335,8 +333,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.95, 1.6), toneMapped: false })
   const lightRing = new THREE.Mesh(new THREE.TorusGeometry(PR + 0.03, 0.014, 8, 256), ringMat)
   lightRing.rotation.x = Math.PI / 2; lightRing.position.set(STAND.x, 0.082, STAND.z); scene.add(lightRing)
-  decal(shadow, PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, THREE.NormalBlending, 0.65)
-  decal(pool, PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, THREE.AdditiveBlending, 0.42)
+  glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
+  glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)
 
   // ─── Back: glass offices with frosted bands ───
   const officeZ = FRONT - D + 4
@@ -473,44 +471,37 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     ], false, 'centripetal')
     look = new THREE.CatmullRomCurve3([
       // the storefront sits mid-frame under the logo header; the stone above fades out
-      new THREE.Vector3(0, aspect < 1 ? 0.6 : 1.9, 0), new THREE.Vector3(0, 2.1, -6), new THREE.Vector3(0, 1.75, STAND.z),
+      new THREE.Vector3(0, aspect < 1 ? 1.7 : 2.3, 0), new THREE.Vector3(0, 2.1, -6), new THREE.Vector3(0, 1.75, STAND.z),
       new THREE.Vector3(0, 1.62, STAND.z), new THREE.Vector3(0, 1.58, STAND.z),
     ], false, 'centripetal')
   }
 
-  // Progress map:  0 → .5 the walk in  ·  .4 → .55 the gallery rises
-  //                .56 → .98 the scroll turns the gallery, resting on each car
-  const WALK = 0.5, TURN_A = 0.56, TURN_B = 0.98
+  // Progress map: 0 → .82 the walk in, .72 → .9 the gallery rises over the
+  // stand. That is where the page scroll ends: the gallery itself only turns
+  // sideways — finger, mouse or arrows — and always rests on a card.
+  const WALK = 0.82
   let progress = 0, shown = -1, dirty = true, time = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
   const tmpP = new THREE.Vector3(), tmpL = new THREE.Vector3()
 
-  // Scroll → ring angle with a detent on every car: the ring rests on each
-  // card for 40% of its share of the scroll and turns during the rest.
-  const scrollAngle = (p: number) => {
-    if (N < 2) return 0
-    const x = fit(p, TURN_A, TURN_B) * (N - 1)
-    const k = Math.floor(x), f = x - k
-    return (k + smooth(fit(f, 0.2, 0.8))) * STEP
-  }
 
   function place(p: number, dt: number) {
     const t = smooth(fit(p, 0, WALK))
     path.getPointAt(t, tmpP); look.getPointAt(t, tmpL)
     tmpL.x += pointerS.x * 0.5; tmpL.y += pointerS.y * 0.25
     camera.position.copy(tmpP); camera.lookAt(tmpL)
-    const open = smooth(fit(p, 0.12, 0.3))
+    const open = smooth(fit(p, 0.2, 0.45))
     doors.forEach((d, i) => {
       const s = i === 0 ? -1 : 1
       d.position.x = s * (0.6 + open * 1.15)
       ;(d.userData.frame as THREE.Mesh).position.x = s * (1.2 + open * 1.15)
     })
-    renderer.toneMappingExposure = 0.9 + 0.12 * fit(p, 0.18, 0.4)
-    bloom.strength = 0.6 - 0.25 * fit(p, 0.28, 0.5)
+    renderer.toneMappingExposure = 0.9 + 0.12 * fit(p, 0.3, 0.6)
+    bloom.strength = 0.6 - 0.25 * fit(p, 0.4, 0.7)
 
     // Gallery: rises out of the stand card by card, then floats
-    const target = scrollAngle(p) + drag
+    const target = drag
     angle += (target - angle) * (dragging ? 1 : 1 - Math.exp(-dt * 9))
     ring.rotation.y = angle
     ring.position.y = 1.72 + Math.sin(time * 0.9) * 0.035
@@ -519,7 +510,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (th > Math.PI) th -= Math.PI * 2
       if (th < -Math.PI) th += Math.PI * 2
       const u = m.material.uniforms
-      const rise = smooth(fit(p, 0.4 + (Math.abs(th) / Math.PI) * 0.08, 0.5 + (Math.abs(th) / Math.PI) * 0.08))
+      const rise = smooth(fit(p, 0.72 + (Math.abs(th) / Math.PI) * 0.06, 0.84 + (Math.abs(th) / Math.PI) * 0.06))
       u.uAlpha.value = rise
       m.position.y = (1 - rise) * -0.9
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
@@ -552,18 +543,21 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2()
   let downX = 0, downY = 0, lastX = 0, lastT = 0, vel = 0, moved = false
   const settle = () => {
-    const total = scrollAngle(progress) + drag
-    drag = Math.round(total / STEP) * STEP - scrollAngle(progress)
+    drag = Math.round(drag / STEP) * STEP
   }
   const onDown = (e: PointerEvent) => {
-    if (progress < WALK) return
+    if (progress < WALK - 0.04) return
     dragging = true; moved = false; downX = lastX = e.clientX; downY = e.clientY; lastT = performance.now(); vel = 0
   }
   const onMove = (e: PointerEvent) => {
     if (!dragging) return
     const dx = e.clientX - lastX, now = performance.now()
-    if (!moved && Math.abs(e.clientX - downX) < 6) return
-    moved = true
+    if (!moved) {
+      const ax = Math.abs(e.clientX - downX), ay = Math.abs(e.clientY - downY)
+      if (ay > ax && ay > 6) { dragging = false; return }   // a vertical gesture: not ours
+      if (ax < 8) return
+      moved = true
+    }
     const k = STEP / Math.max(160, canvas.clientWidth * 0.32)   // one card per ~third of the screen
     drag -= dx * k                                              // the ring follows the finger
     vel = (-dx * k) / Math.max(1, now - lastT) * 1000
@@ -598,8 +592,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     raf = requestAnimationFrame(tick)
     const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
-    if (progress > 0.3) loadCards()
-    const floating = progress > 0.38
+    if (progress > 0.45) loadCards()
+    const floating = progress > 0.7
     const moving = floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return
     dirty = false

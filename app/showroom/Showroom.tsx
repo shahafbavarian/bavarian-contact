@@ -11,9 +11,9 @@ const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a)
 // sticky and the page scroll stays native (no hijack). Desktop eases toward
 // the scroll position (a wheel moves in steps); a finger is already
 // continuous, so the phone follows it 1:1.
-//   0  → .5   the street, the sign, the doors, the walk in to the stand
-//   .4 → .55  the gallery rises over the stand
-//   .56 → .98 scrolling turns the gallery car by car (drag and the arrows too)
+//   0  → .82  the street, the doors, the walk in to the stand
+//   .72 → .9  the gallery rises over the stand; the page scroll ends there.
+//             The gallery turns only sideways: finger, mouse or the arrows.
 export default function Showroom({ cards }: { cards: Card[] }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
@@ -50,16 +50,16 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       handle.current?.setProgress(current)
       const c = cap.current
       if (c) {
-        const s = fit(current, 0.5, 0.56)
+        const s = fit(current, 0.86, 0.93)
         c.style.opacity = String(s); c.style.visibility = s > 0.01 ? 'visible' : 'hidden'
         c.style.transform = `translateY(${(1 - s) * 14}px)`
       }
       // Outside, the wide logo is the page's header; it lifts away as the doors
       // open, and the compact logo takes its place in the bar once inside
-      if (head.current) { const h = fit(current, 0.1, 0.24); head.current.style.opacity = String(1 - h); head.current.style.transform = `translateY(${-h * 40}px)`; head.current.style.visibility = h < 0.99 ? 'visible' : 'hidden'
+      if (head.current) { const h = fit(current, 0.14, 0.34); head.current.style.opacity = String(1 - h); head.current.style.transform = `translateY(${-h * 40}px)`; head.current.style.visibility = h < 0.99 ? 'visible' : 'hidden'
         // the bar sits under the header outside and rises to the top once inside
         if (top.current) top.current.style.transform = `translateY(${(1 - h) * head.current.offsetHeight}px)` }
-      if (logo.current) { const l = fit(current, 0.26, 0.34); logo.current.style.opacity = String(l); logo.current.style.visibility = l > 0.01 ? 'visible' : 'hidden' }
+      if (logo.current) { const l = fit(current, 0.4, 0.5); logo.current.style.opacity = String(l); logo.current.style.visibility = l > 0.01 ? 'visible' : 'hidden' }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       if (hint.current) hint.current.style.opacity = String(1 - fit(current, 0.02, 0.08))
     }
@@ -113,7 +113,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
           <div ref={head} className="sr-head">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo-wide-light.jpg" alt="Bavarian Motors Club" width={1283} height={232} />
+            <img src="/brand/logo-wide-light.png" alt="Bavarian Motors Club" width={1283} height={232} />
           </div>
 
           <p ref={hint} className="sr-hint">גללו כדי להיכנס</p>
