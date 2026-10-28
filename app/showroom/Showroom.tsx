@@ -29,24 +29,32 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     if (!cv.getContext('webgl2')) { setState('fallback'); return }
 
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 900
-    let current = 0, raf = 0, alive = true
-    // the walk: a timed ease from where we are to 0 (outside) or 1 (inside)
+    let current = 0, vel = 0, target = 0, last = performance.now(), raf = 0, alive = true
+    // the walk: a timed ease of the target from where it is to 0 (outside) or
+    // 1 (inside). A gesture the other way turns it around at any moment.
     let from = 0, to = 0, t0 = 0, dur = 0
     const DUR = mobile ? 3200 : 3600
     const easeInOut = (x: number) => 0.5 - Math.cos(Math.PI * x) / 2
     const go = (dest: 0 | 1) => {
-      if (dur && performance.now() - t0 < dur) return          // one walk at a time
-      if (current === dest) return
-      from = current; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - current)
+      if (dur ? to === dest : target === dest) return
+      from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
     }
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
+      const dt = Math.min(0.05, (now - last) / 1000); last = now
       if (dur) {
         const k = Math.min(1, (now - t0) / dur)
-        current = from + (to - from) * easeInOut(k)
-        if (k >= 1) { current = to; dur = 0 }
+        target = from + (to - from) * easeInOut(k)
+        if (k >= 1) { target = to; dur = 0 }
       }
+      // the camera follows the target on a critically damped spring, so a
+      // turn back eases through instead of snapping
+      const w = 2 / 0.22, x = w * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+      const off = current - target, tmp = (vel + w * off) * dt
+      vel = (vel - w * tmp) * e
+      current = Math.min(1, Math.max(0, target + (off + tmp) * e))
+      if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
       const c = cap.current
       if (c) {

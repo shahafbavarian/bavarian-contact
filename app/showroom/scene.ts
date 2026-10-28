@@ -83,17 +83,6 @@ const floorTex = (rx: number, ry: number) => canvasTex(512, 512, c => {
   c.fillRect(0, 0, 512, 3); c.fillRect(0, 256, 512, 3); c.fillRect(0, 0, 3, 512); c.fillRect(256, 0, 3, 512)
 }, [rx, ry])
 
-// Street pavers outside (as on the live page)
-const paverTex = (rx: number, ry: number) => canvasTex(1024, 1024, c => {
-  c.fillStyle = '#3c3d3d'; c.fillRect(0, 0, 1024, 1024)
-  for (let y = 0; y < 1024; y += 32) for (let x = 0; x < 1024; x += 64) {
-    const off = (y / 32) % 2 ? 32 : 0, s = 92 + Math.random() * 26
-    c.fillStyle = `rgb(${s},${s},${s - 3})`
-    c.fillRect(x + off + 2, y + 2, 60, 28)
-  }
-  noise(c, 512, 512, 14)
-}, [rx, ry])
-
 // The showroom's grooved wall: groups of three dark lines.
 const wallTex = (rx: number) => canvasTex(256, 512, c => {
   c.fillStyle = '#d2d0cb'; c.fillRect(0, 0, 256, 512)
@@ -218,7 +207,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
   // Street paving outside
   // concrete slabs scanned from a real pavement, ~2.5 m per tile
-  const pave = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({ map: paverTex(9, 4.5), roughness: 0.55, envMapIntensity: 0.15 }))
+  // concrete slabs scanned from a real pavement (Poly Haven, CC0), ~2.5 m each
+  const pave = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({
+    map: scanned('/showroom/pave_diff.jpg', 24, 12, true),
+    normalMap: scanned('/showroom/pave_nor.jpg', 24, 12),
+    roughnessMap: scanned('/showroom/pave_arm.jpg', 24, 12),
+    roughness: 1, envMapIntensity: 0.4, color: '#c9cacb',
+  }))
   pave.rotation.x = -Math.PI / 2; pave.position.set(0, 0, FRONT + 15)
   scene.add(pave)
 
@@ -391,6 +386,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   // night sky light from straight in front: it lights the facade evenly and
   // falls on neither inner wall more than the other
+  // light bouncing up off the floor onto the ceiling (only faces looking down catch it)
+  const bounce = new THREE.DirectionalLight('#ffe2c6', 0.9); bounce.position.set(0, -10, -12); bounce.target.position.set(0, 0, -12); scene.add(bounce, bounce.target)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at
