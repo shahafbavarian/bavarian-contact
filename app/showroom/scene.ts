@@ -40,8 +40,10 @@ type Opts = {
   onSign?: (x: number, y: number, w: number, visible: boolean) => void
   /** screen height (css px) of the front card's centre, for the arrows beside it */
   onGallery?: (y: number) => void
-  /** the sign's lamps came on (end of the opening light-up) */
-  onLit?: () => void
+  /** every texture of the opening view has loaded: show the canvas */
+  onReady?: () => void
+  /** the sign's light, 0..1, on the same clock as the hall's (drives the page's sign) */
+  onSignPower?: (k: number) => void
   /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
   manual?: boolean
   dpr?: number
@@ -139,7 +141,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   scene.environment = env
   scene.environmentIntensity = 0.35
   // Scanned materials (Poly Haven, CC0)
-  const texLoader = new THREE.TextureLoader()
+  // the opening view waits for its textures, so nothing pops in under the lights
+  let assetsReady = false
+  const ready = () => { if (assetsReady) return; assetsReady = true; dirty = true; opts.onReady?.() }
+  const manager = new THREE.LoadingManager(ready, undefined, ready)
+  setTimeout(ready, 4000)                                         // never hold the page back for long
+  const texLoader = new THREE.TextureLoader(manager)
   const scanned = (url: string, rx: number, ry: number, srgb = false) => {
     const t = texLoader.load(url, () => { dirty = true })
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 16
@@ -187,10 +194,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const radialFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ float r = length(vUv - .5) * 2.; float a = 1. - smoothstep(0., 1., r); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
   // ─── Power: the page opens on a dark hall; then its lights come on in a
   //     quick run from the doors to the back, and the sign last ───
-  const powered: { d: number; set: (k: number) => void }[] = []
-  const power = (d: number, set: (k: number) => void) => { powered.push({ d, set }); set(0) }
-  const P0 = 0.6                                                   // once the canvas has faded in
-  const depthDelay = (z: number) => P0 + Math.min(1, Math.max(0, -z / D)) * 0.5
+  // One clock, started once every texture of the opening view is in: each
+  // light ramps over half a second, the starts spread from the doors to the
+  // back over 0.45 s, so the whole run is one smooth wave of about 1.2 s.
+  const powered: { d: number; len: number; set: (k: number) => void }[] = []
+  const power = (d: number, set: (k: number) => void, len = 0.5) => { powered.push({ d, len, set }); set(0) }
+  const depthDelay = (z: number) => Math.min(1, Math.max(0, -z / D)) * 0.45
+  const POWER_END = 1.25
   const glow = (kind: 'light' | 'shadow', w: number, d: number, x: number, z: number, y: number, opacity: number, color = '#ffd6aa') => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(kind === 'light' ? color : '#000000') }, uOpacity: { value: opacity } },
@@ -308,21 +318,24 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     logo image (with the lit look approved on the live page), placed every
   //     frame exactly where this spot of the wall lands on screen, so it sits
   //     on the building and moves with it ───
-  const loader = new THREE.TextureLoader()
+  const loader = new THREE.TextureLoader(manager)
   const signW = 4.4
   const SIGN_Y = H + 1.8, SIGN_Z = FRONT + CANOPY   // the middle of a stone row
-  // its light on the stone: a lamp just in front of the letters washes the
-  // wall around them (out of reach of the soffit and the street below)
-  const signLamp = new THREE.PointLight('#fff1e2', 3.2, 5, 2); signLamp.position.set(0, SIGN_Y, SIGN_Z + 0.9); scene.add(signLamp)
-  const signWash = new THREE.Mesh(new THREE.PlaneGeometry(signW * 1.9, 3.2), new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.28 } },
-    vertexShader: radialVert, fragmentShader: radialFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  // its light on the stone, even along the whole sign: a row of small lamps
+  // close to the wall, and a soft band flat across the letters that fades
+  // only past their ends (out of reach of the soffit and the street)
+  const signLamps = [-1.8, -0.6, 0.6, 1.8].map(x => {
+    const l = new THREE.PointLight('#fff1e2', 0.9, 3.5, 2); l.position.set(x, SIGN_Y, SIGN_Z + 0.7); scene.add(l); return l
+  })
+  const washFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ vec2 p = abs(vUv - .5) * 2.; float a = (1. - smoothstep(.62, 1., p.x)) * (1. - smoothstep(.1, 1., p.y)); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
+  const signWash = new THREE.Mesh(new THREE.PlaneGeometry(signW * 1.45, 2.2), new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.24 } },
+    vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
   signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
-  let signOn = false
-  power(P0 + 0.75, k => {
-    signLamp.intensity = 3.2 * k; (signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.28 * k
-    if (k > 0 && !signOn) { signOn = true; opts.onLit?.() }
+  power(0, k => {                        // the sign first, with the doors' lights
+    opts.onSignPower?.(k)
+    for (const l of signLamps) l.intensity = 0.9 * k; (signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.24 * k
   })
   const signL = new THREE.Vector3(), signR = new THREE.Vector3()
   const reportSign = () => {
@@ -423,9 +436,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // falls on neither inner wall more than the other
   // light bouncing up off the floor onto the ceiling (only faces looking down catch it)
   const bounce = new THREE.DirectionalLight('#ffe2c6', 0.9); bounce.position.set(0, -10, -12); bounce.target.position.set(0, 0, -12); scene.add(bounce, bounce.target)
-  power(P0 + 0.25, k => { bounce.intensity = 0.9 * k })
-  power(P0 + 0.25, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k })
-  power(P0, k => { scene.environmentIntensity = 0.14 + 0.21 * k; mats.wall.envMapIntensity = 0.1 + 0.18 * k })
+  power(0.1, k => { bounce.intensity = 0.9 * k }, 0.7)
+  power(0.1, k => { scallopMat.uniforms.uOpacity.value = 0.32 * k }, 0.7)
+  power(0, k => { scene.environmentIntensity = 0.14 + 0.21 * k; mats.wall.envMapIntensity = 0.1 + 0.18 * k }, 0.8)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at
@@ -463,13 +476,18 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     void main(){
       vec2 p = (vUv - .5) * uSize;
       float d = rbox(p, uSize * .5, .055);
       float a = 1. - smoothstep(-.004, .002, d);
       vec3 col = mix(vec3(.075, .078, .085), texture2D(map, vUv).rgb, uReady);
+      // switched on like a screen: the picture opens out of a bright line
+      // across the middle, with a flash, then settles
+      float open = smoothstep(0., .55, uPower);
+      float pic = step(abs(vUv.y - .5), open * .5 + .004) * step(.001, uPower);
+      col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
       col += smoothstep(-.012, -.002, d) * .10;           // hairline edge
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       gl_FragColor = vec4(col, a * uAlpha);
@@ -481,13 +499,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   cards.forEach((_, i) => {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
     m.rotation.y = -i * STEP
     m.userData.index = i
     ring.add(m); cardMeshes.push(m)
+    power(depthDelay(STAND.z) + 0.05 + i * 0.06, k => { m.material.uniforms.uPower.value = k }, 0.5)
   })
 
   // Card faces are composed on a canvas once the font and photo are in
@@ -665,16 +684,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
   const frames: number[] = []
-  let last = performance.now(), raf = 0, running = true, powerT0 = -1
+  let last = performance.now(), raf = 0, running = true, powerT0 = -1, powerDone = false
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
-    if (powerT0 < 0) powerT0 = now
-    const pt = (now - powerT0) / 1000, powering = pt < P0 + 1.3
-    if (powering) for (const q of powered) q.set(smooth(fit(pt, q.d, q.d + 0.18)))
+    if (powerT0 < 0 && assetsReady) powerT0 = now + 300   // a breath of dark after the fade-in
+    // (the last step always lands on full: a slow device may skip past the end)
+    const pt = powerT0 < 0 ? -1 : (now - powerT0) / 1000, powering = !powerDone
+    if (powering && pt >= 0) { for (const q of powered) q.set(smooth(fit(pt, q.d, q.d + q.len))); powerDone = pt > POWER_END }
     const floating = progress > 0.7
     const moving = powering || floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return

@@ -24,6 +24,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [front, setFront] = useState(0)
+  const [menu, setMenu] = useState(false)
+  const menuOpen = useRef(false)
+  menuOpen.current = menu
 
   useEffect(() => {
     const cv = canvas.current!
@@ -86,6 +89,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     let wheelLock = false, wheelTimer = 0
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      if (menuOpen.current) return
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
         clearTimeout(wheelTimer); wheelTimer = window.setTimeout(() => { wheelLock = false }, 180)
         if (current > 0.95 && !wheelLock && Math.abs(e.deltaX) > 6) { wheelLock = true; handle.current?.step(e.deltaX > 0 ? -1 : 1) }
@@ -95,12 +99,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     }
     let ty = 0, tx = 0
     const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
-    const onTouchMove = (e: TouchEvent) => { e.preventDefault() }
+    const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current) e.preventDefault() }
     const onTouchEnd = (e: TouchEvent) => {
+      if (menuOpen.current) return
       const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx
       if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) go(dy < 0 ? 1 : 0)
     }
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setMenu(false); return }
+      if (menuOpen.current) return
       if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); go(1) }
       if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); go(0) }
     }
@@ -119,12 +126,16 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           },
           font: getComputedStyle(root.current!).fontFamily,
           onGallery: y => { if (arrows.current) arrows.current.style.top = `${y}px` },
-          onLit: () => { if (sign.current) sign.current.dataset.lit = 'true' },
+          onReady: () => setState('ready'),
+          // the sign's letters and halo follow the hall's light, frame by frame
+          onSignPower: k => {
+            const el = sign.current; if (!el) return
+            el.style.filter = `brightness(${0.38 + 0.77 * k}) drop-shadow(0 0 6.5px rgba(255,255,255,${0.65 * k})) drop-shadow(0 0 35px rgba(255,255,255,${0.4 * k}))`
+          },
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
-        setState('ready')
       } catch { setState('fallback') }
     })
 
@@ -161,25 +172,37 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
           {/* The site's bar, in the hall's dark: menu at the start, the long logo at the end */}
           <header ref={nav} className="sr-top">
-            <nav className="sr-nav" aria-label="ניווט ראשי">
-              <Link href="/cars">הרכבים</Link>
-              <Link href="/team">הצוות</Link>
-            </nav>
+            <button type="button" className="sr-burger" aria-label={menu ? 'סגירת התפריט' : 'תפריט'} aria-expanded={menu} aria-controls="sr-menu" onClick={() => setMenu(m => !m)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                {menu
+                  ? <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  : <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />}
+              </svg>
+            </button>
             <Link href="/" className="sr-logo" aria-label="בוואריאן מוטורס">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/logo-wide-light.png" alt="" width={1283} height={232} />
             </Link>
           </header>
 
+          {/* the menu: the site's pages, then the ways to reach the hall */}
+          <nav id="sr-menu" className="sr-menu" data-open={menu} aria-label="ניווט ראשי" hidden={!menu}>
+            <Link href="/cars" onClick={() => setMenu(false)}>הרכבים</Link>
+            <Link href="/team" onClick={() => setMenu(false)}>הצוות</Link>
+            {cards.filter(c => c.external).map(c => (
+              <a key={c.href} href={c.href} target="_blank" rel="noopener noreferrer" onClick={() => setMenu(false)}>{c.title}</a>
+            ))}
+          </nav>
+
           <p ref={hint} className="sr-hint">גללו כדי להיכנס</p>
 
           {/* the arrows stand beside the turning gallery, at the height of its front card */}
           <div ref={arrows} className="sr-arrows">
             <button type="button" className="sr-arrow" aria-label="הקודם" onClick={() => handle.current?.step(-1)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             <button type="button" className="sr-arrow" aria-label="הבא" onClick={() => handle.current?.step(1)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           </div>
 
