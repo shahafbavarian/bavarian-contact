@@ -460,10 +460,25 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const PR = R + 0.7                              // plinth radius
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), mats.gloss)
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
-  const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.95, 1.6), toneMapped: false })
-  // the stand's ring stays lit when the hall is dark (its glow on the plinth does not)
-  const lightRing = new THREE.Mesh(new THREE.TorusGeometry(PR + 0.03, 0.014, 8, 256), ringMat)
-  lightRing.rotation.x = Math.PI / 2; lightRing.position.set(STAND.x, 0.082, STAND.z); scene.add(lightRing)
+  // The light ring at the plinth's edge, drawn as a line of light in the
+  // shader, not a 1.4 cm tube: from the street a tube is thinner than a pixel
+  // and breaks into dashes. The line never gets thinner than about a pixel
+  // (fwidth) and dims as it widens, with a soft glow around it.
+  const ringMat = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(2.2, 1.95, 1.6) }, uR: { value: PR + 0.03 }, uW: { value: 0.012 } },
+    vertexShader: 'varying vec2 vPos; void main(){ vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+    fragmentShader: `uniform vec3 uColor; uniform float uR; uniform float uW; varying vec2 vPos;
+      void main(){
+        float r = length(vPos), d = abs(r - uR), aa = fwidth(r);
+        float w = max(uW, aa * .9);
+        float core = (1. - smoothstep(w, w + aa * 1.5, d)) * (uW / w * .6 + .4);
+        float halo = exp(-d * d / .0016) * .22;
+        gl_FragColor = vec4(uColor * (core + halo), 1.);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
+  })
+  const lightRing = new THREE.Mesh(new THREE.RingGeometry(PR - 0.12, PR + 0.18, 256, 1), ringMat)
+  lightRing.rotation.x = -Math.PI / 2; lightRing.position.set(STAND.x, 0.083, STAND.z); scene.add(lightRing)
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
   glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)   // the light on the plinth goes out with the hall
 
