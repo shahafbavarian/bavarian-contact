@@ -200,14 +200,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const depthDelay = (z: number) => Math.min(1, Math.max(0, -z / D)) * 0.3
   const POWER_END = 0.6
   const LIT = 0.1          // the walk's first step: the hall lights up while you still see it from the street
-  const glow = (kind: 'light' | 'shadow', w: number, d: number, x: number, z: number, y: number, opacity: number, color = '#ffd6aa') => {
+  const glow = (kind: 'light' | 'shadow', w: number, d: number, x: number, z: number, y: number, opacity: number, color = '#ffd6aa', always = false) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(kind === 'light' ? color : '#000000') }, uOpacity: { value: opacity } },
       vertexShader: radialVert, fragmentShader: radialFrag, transparent: true, depthWrite: false,
       blending: kind === 'light' ? THREE.AdditiveBlending : THREE.NormalBlending,
     }))
     m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m)
-    if (kind === 'light' && z < FRONT) power(depthDelay(z), k => {   // light on the street is on from the start
+    if (kind === 'light' && z < FRONT && !always) power(depthDelay(z), k => {   // light on the street is on from the start
       (m.material as THREE.ShaderMaterial).uniforms.uOpacity.value = opacity * k })
     return m
   }
@@ -359,8 +359,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   mc.fillStyle = '#2c2b2a'; mc.fillRect(0, 0, matCv.width, matCv.height); weave(mc, 22, 40, 60000)
   const matTex = new THREE.CanvasTexture(matCv); matTex.colorSpace = THREE.SRGBColorSpace; matTex.anisotropy = 16
-  const logoImg = new Image()
-  logoImg.onload = () => {
+  // through the loading manager: the page waits for it, so the logo is never late on the mat
+  new THREE.ImageLoader(manager).load(opts.logoUrl, logoImg => {
     const lc = document.createElement('canvas'); lc.width = matCv.width; lc.height = matCv.height
     const l = lc.getContext('2d')!
     l.fillStyle = '#8f8b86'; l.fillRect(0, 0, lc.width, lc.height); weave(l, 105, 70, 60000)
@@ -369,8 +369,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     l.globalCompositeOperation = 'destination-in'
     l.translate(lc.width / 2, lc.height / 2); l.rotate(Math.PI); l.drawImage(logoImg, -lw / 2, -lh / 2, lw, lh)
     mc.drawImage(lc, 0, 0); matTex.needsUpdate = true; dirty = true
-  }
-  logoImg.src = opts.logoUrl
+  })
   const matEdge = new THREE.Mesh(new THREE.BoxGeometry(MW + 0.16, 0.014, MD + 0.16), new THREE.MeshStandardMaterial({ color: '#0b0b0c', roughness: 0.8 }))
   matEdge.position.set(0, 0.007, FRONT - 1.3); scene.add(matEdge)
   const mat = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), new THREE.MeshStandardMaterial({ map: matTex, roughness: 1, envMapIntensity: 0 }))
@@ -461,11 +460,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), mats.gloss)
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
   const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.95, 1.6), toneMapped: false })
-  power(depthDelay(STAND.z), k => { ringMat.color.setRGB(2.2 * k, 1.95 * k, 1.6 * k) })
+  // the stand's ring stays lit when the hall is dark: the one light left on
   const lightRing = new THREE.Mesh(new THREE.TorusGeometry(PR + 0.03, 0.014, 8, 256), ringMat)
   lightRing.rotation.x = Math.PI / 2; lightRing.position.set(STAND.x, 0.082, STAND.z); scene.add(lightRing)
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
-  glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)
+  glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42, undefined, true)
 
   // ─── Back: glass offices with frosted bands ───
   const officeZ = FRONT - D + 4
@@ -699,11 +698,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
   const frames: number[] = []
-  let last = performance.now(), raf = 0, running = true
+  let last = performance.now(), raf = 0, running = true, sinceCheck = 0, curDpr = dpr
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     const floating = progress > 0.7
@@ -713,6 +712,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     place(progress, dt); shown = progress
     composer.render(); reportSign()
     frames.push(dt * 1000); if (frames.length > 600) frames.shift()
+    // a weak device: when 30 drawn frames average under ~38 fps, draw fewer
+    // pixels (down to 1x); the motion stays smooth instead of the detail
+    if (++sinceCheck >= 30) {
+      const avg = frames.slice(-30).reduce((a, b) => a + b, 0) / 30
+      sinceCheck = 0
+      if (avg > 26 && curDpr > 1) { curDpr = Math.max(1, curDpr * 0.8); renderer.setPixelRatio(curDpr); composer.setPixelRatio(curDpr); setSize() }
+    }
   }
   if (!opts.manual) raf = requestAnimationFrame(tick)
 

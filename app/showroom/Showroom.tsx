@@ -17,7 +17,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const cap = useRef<HTMLDivElement>(null)
   const bar = useRef<HTMLDivElement>(null)
-  const hint = useRef<HTMLParagraphElement>(null)
+  const floor = useRef<HTMLDivElement>(null)
+  const goRef = useRef<(dest: 0 | 1) => void>(() => {})
   const nav = useRef<HTMLElement>(null)
   const arrows = useRef<HTMLDivElement>(null)
   const sign = useRef<HTMLImageElement>(null)
@@ -44,10 +45,11 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (dur ? to === dest : target === dest) return
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
     }
+    goRef.current = go
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
-      const dt = Math.min(0.05, (now - last) / 1000); last = now
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now
       if (dur) {
         const k = Math.min(1, (now - t0) / dur)
         target = from + (to - from) * ease(k)
@@ -76,7 +78,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
-      if (hint.current) hint.current.style.opacity = String(1 - fit(current, 0.02, 0.08))
+      // the street's buttons give way as soon as you step in
+      if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
     }
 
     const onPointer = (e: PointerEvent) => handle.current?.setPointer((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1))
@@ -180,16 +183,27 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             </Link>
           </header>
 
-          {/* the menu: the site's pages, then the ways to reach the hall */}
+          {/* the menu: the site's pages */}
           <nav id="sr-menu" className="sr-menu" data-open={menu} aria-label="ניווט ראשי" hidden={!menu}>
             <Link href="/cars" onClick={() => setMenu(false)}>הרכבים</Link>
+            <Link href="/sold" onClick={() => setMenu(false)}>רכבים שנמכרו</Link>
             <Link href="/team" onClick={() => setMenu(false)}>הצוות</Link>
-            {cards.filter(c => c.external).map(c => (
-              <a key={c.href} href={c.href} target="_blank" rel="noopener noreferrer" onClick={() => setMenu(false)}>{c.title}</a>
-            ))}
+            <Link href="/contact" onClick={() => setMenu(false)}>צרו קשר</Link>
           </nav>
 
-          <p ref={hint} className="sr-hint">גללו כדי להיכנס</p>
+          {/* On the street, over the pavement: the way in and the site's other doors.
+              "כל הרכבים" walks you into the hall, where the cars are. */}
+          <div ref={floor} className="sr-floor">
+            <button type="button" className="sr-enter" onClick={() => goRef.current(1)}>
+              כל הרכבים
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <nav className="sr-doors" aria-label="עמודי האתר">
+              <Link href="/sold">רכבים שנמכרו</Link>
+              <Link href="/team">הצוות</Link>
+              <Link href="/contact">צרו קשר</Link>
+            </nav>
+          </div>
 
           {/* the arrows stand beside the turning gallery, at the height of its front card */}
           <div ref={arrows} className="sr-arrows">

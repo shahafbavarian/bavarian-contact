@@ -72,10 +72,50 @@ html:has(.sr) { overflow: auto; }
 .sr-logo { display: flex; height: 44px; align-items: center; }   /* the same 44px box as the hamburger: both centre on one line */
 .sr-logo img { height: clamp(30px, 3vw, 38px); width: auto; display: block; }
 
-.sr-hint {
-  position: absolute; z-index: 3; inset-inline: 0; bottom: calc(36px + env(safe-area-inset-bottom)); margin: 0;
-  text-align: center; font-size: 14px; color: var(--muted); letter-spacing: .02em;
+/* The street's buttons, on the pavement, lit like the sign on the stone:
+   white light with its glow, no box. One way in (a ring of light), the
+   site's other doors as a quiet line of lit words. No backdrop blur: over a
+   live WebGL canvas it is re-blurred every frame, too heavy for a weak phone. */
+.sr-floor {
+  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(26px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
+.sr-enter {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: 54px; min-width: 228px; padding-inline: 30px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.9); background: rgba(255,255,255,.06); color: #fff;
+  font: inherit; font-size: 17px; font-weight: 600; letter-spacing: .01em;
+  text-shadow: 0 0 10px rgba(255,255,255,.55);
+  box-shadow: 0 0 22px rgba(255,255,255,.22), inset 0 0 16px rgba(255,255,255,.1);
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms cubic-bezier(.23,1,.32,1), background-color 160ms ease;
+}
+.sr-enter svg { filter: drop-shadow(0 0 6px rgba(255,255,255,.5)); }
+.sr-enter:active { transform: scale(.97); background: rgba(255,255,255,.14); }
+.sr-doors { display: flex; align-items: center; justify-content: center; }
+.sr-doors a {
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding-inline: 14px;
+  font-size: 15px; font-weight: 500; color: rgba(255,255,255,.84); text-shadow: 0 0 8px rgba(255,255,255,.35);
+  -webkit-tap-highlight-color: transparent; transition: color 160ms ease;
+}
+/* hairline between the words */
+.sr-doors a + a::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 14px; margin-top: -7px;
+  background: rgba(255,255,255,.3);
+}
+.sr-doors a:active { color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  .sr-enter:hover { background: rgba(255,255,255,.12); }
+  .sr-doors a:hover { color: #fff; }
+}
+/* they come on one after another once the page is ready: opacity and a short rise only */
+.sr-enter, .sr-doors a { opacity: 0; }
+.sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a { animation: sr-on 520ms cubic-bezier(.23,1,.32,1) both; }
+.sr[data-state="ready"] .sr-enter { animation-delay: 200ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 300ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 360ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 420ms; }
+@keyframes sr-on { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* The front card's name, large and centred over the floor */
 .sr-cap {
@@ -98,8 +138,8 @@ html:has(.sr) { overflow: auto; }
 .sr-arrows > * { pointer-events: auto; }
 /* fine chevrons: a 44px target, a thin hairline circle around a light stroke */
 .sr-arrows .sr-arrow {
-  width: 44px; height: 44px; background: rgba(10,12,16,.22); color: var(--ink);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  width: 44px; height: 44px; background: rgba(10,12,16,.4); color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 .sr-arrow {
   display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; border: 0; padding: 0;
@@ -123,5 +163,7 @@ html:has(.sr) { overflow: auto; }
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
   .sr-canvas { transition: none; }
-  .sr-cta:active, .sr-arrow:active { transform: none; }
+  .sr-cta:active, .sr-arrow:active, .sr-enter:active, .sr-doors a:active { transform: none; }
+  .sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a { animation: sr-fade 300ms ease both; }
+  @keyframes sr-fade { from { opacity: 0; } to { opacity: 1; } }
 }
