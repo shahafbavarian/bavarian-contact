@@ -418,7 +418,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // off); theirs is the light on the pavement
   for (const x of [-3.75, 3.75]) {
     const disc = new THREE.Mesh(spotGeo, spotMat); disc.rotation.x = Math.PI / 2; disc.position.set(x, H + 0.035, FRONT + 1.2); scene.add(disc)
-    const l = new THREE.PointLight('#ffcf98', 4, 9, 1.8); l.position.set(x, H - 0.3, FRONT + 1.2); scene.add(l)
+    // a spot aimed straight down, not a bare point: a point light this close to
+    // the window shone in the glass as two stray dots on the hall's ceiling
+    const l = new THREE.SpotLight('#ffcf98', 5, 10, Math.PI / 3, 0.6, 1.8); l.position.set(x, H - 0.1, FRONT + 1.2)
+    l.target.position.set(x, 0, FRONT + 1.2); scene.add(l, l.target)
   }
   const spotC = new THREE.Color()
   spots.forEach(([, z], i) => power(depthDelay(z), k => {
@@ -484,6 +487,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // satin, not piano gloss: a mirror-bright edge caught the lamps as a stray streak by the ring
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), new THREE.MeshStandardMaterial({ color: '#070708', roughness: 0.45, metalness: 0 }))
   plinth.position.set(STAND.x, 0.04, STAND.z); scene.add(plinth)
+  // the plinth's sheen comes from the hall's light: dark from the street with
+  // the rest (lit by the street's sky alone it showed as a stray grey patch)
+  const plinthMat = plinth.material as THREE.MeshStandardMaterial
+  plinthMat.envMap = env
+  power(depthDelay(STAND.z), k => { plinthMat.envMapIntensity = 0.03 + 0.32 * k })
   // The light ring at the plinth's edge, drawn as a line of light in the
   // shader, not a 1.4 cm tube: from the street a tube is thinner than a pixel
   // and breaks into dashes. The line never gets thinner than about a pixel

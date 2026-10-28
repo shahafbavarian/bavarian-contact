@@ -83,7 +83,7 @@ html:has(.sr) { overflow: auto; }
    site's other doors as a quiet line of lit words. No backdrop blur: over a
    live WebGL canvas it is re-blurred every frame, too heavy for a weak phone. */
 .sr-floor {
-  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(26px + env(safe-area-inset-bottom));
+  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(58px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .sr-enter {
