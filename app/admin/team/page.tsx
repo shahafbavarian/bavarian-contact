@@ -60,7 +60,7 @@ const primaryBtn: React.CSSProperties = {
 const ghostBtn: React.CSSProperties = {
   padding: '9px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.05)',
   border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.75)',
-  fontFamily: 'var(--font-heebo)', fontSize: 13, cursor: 'pointer',
+  fontFamily: 'var(--font-heebo)', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
 }
 const iconBtn: React.CSSProperties = {
   width: 32, height: 32, borderRadius: 8, flexShrink: 0,
@@ -108,6 +108,17 @@ function PhotoPicker({ onPick, busy, label }: { onPick: (f: File) => void; busy:
   )
 }
 
+type ImportRow = { name: string; state: 'pending' | 'ok' | 'error'; text: string }
+type SourcePerson = { order?: number; recNo: number; name: string; role?: string | null; phone: string; email?: string | null; photo_url?: string | null }
+
+function describeImport(r: { status: string; photo: string }): string {
+  const base = r.status === 'created' ? 'נוסף' : 'כבר קיים'
+  if (r.photo === 'imported') return base + ' · תמונה יובאה'
+  if (r.photo === 'failed') return base + ' · ייבוא התמונה נכשל'
+  if (r.photo === 'none') return base + ' · ללא תמונה'
+  return base
+}
+
 export default function AdminTeamPage() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,6 +129,7 @@ export default function AdminTeamPage() {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [busy, setBusy] = useState<string | null>(null) // what is in flight
+  const [importLog, setImportLog] = useState<ImportRow[] | null>(null)
 
   useEffect(() => {
     api<{ agents: Agent[] }>('/api/admin/agents')
@@ -138,6 +150,41 @@ export default function AdminTeamPage() {
     body.append('file', await shrinkImage(file), 'photo.jpg')
     const r = await api<{ agent: Agent }>(`/api/admin/agents/${agentId}/photo`, { method: 'POST', body })
     return r.agent
+  }
+
+  // One request per person: visible progress, and a failure never undoes the rest.
+  async function runImport(file: File) {
+    let people: SourcePerson[]
+    try {
+      const json = JSON.parse(await file.text())
+      people = (Array.isArray(json) ? json : json.people) as SourcePerson[]
+      if (!Array.isArray(people)) throw new Error()
+    } catch {
+      setError('הקובץ אינו קובץ מיפוי צוות תקין (JSON)')
+      return
+    }
+    // Only real people: a name and a source id. Empty/glitch records are skipped.
+    people = people
+      .filter(p => p && typeof p.name === 'string' && p.name.trim() && Number.isInteger(p.recNo))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    if (!people.length) { setError('לא נמצאו אנשי צוות בקובץ'); return }
+
+    setError(null); setBusy('import')
+    const log: ImportRow[] = people.map(p => ({ name: p.name, state: 'pending', text: 'ממתין…' }))
+    setImportLog([...log])
+    for (let i = 0; i < people.length; i++) {
+      try {
+        const r = await api<{ status: string; photo: string }>('/api/admin/agents/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(people[i]),
+        })
+        log[i] = { name: people[i].name, state: r.photo === 'failed' ? 'error' : 'ok', text: describeImport(r) }
+      } catch (e) {
+        log[i] = { name: people[i].name, state: 'error', text: (e as Error).message }
+      }
+      setImportLog([...log])
+    }
+    try { setAgents((await api<{ agents: Agent[] }>('/api/admin/agents')).agents) } catch {}
+    setBusy(null)
   }
 
   const create = () => run('create', async () => {
@@ -161,7 +208,7 @@ export default function AdminTeamPage() {
   })
 
   const toggleActive = (a: Agent) => run('active:' + a.id, async () => {
-    if (a.active && !confirm(`להשבית את ${a.full_name}? הסוכן יוסתר מעמוד הצוות והעמוד האישי יפנה לעמוד הצוות.`)) return
+    if (a.active && !confirm(`להשבית את ${a.full_name}? הוא יוסתר מעמוד הצוות והעמוד האישי שלו יפנה לעמוד הצוות.`)) return
     const r = await api<{ agent: Agent }>(`/api/admin/agents/${a.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !a.active }),
     })
@@ -187,7 +234,7 @@ export default function AdminTeamPage() {
         padding: '20px 40px', borderBottom: `1px solid ${GOLD_BORDER}`,
         background: 'rgba(255,255,255,0.012)', backdropFilter: 'blur(12px)',
         position: 'sticky', top: 0, zIndex: 10,
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
       }}>
         <div>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: 10, letterSpacing: '0.3em', color: GOLD_DIM, textTransform: 'uppercase', margin: '0 0 3px' }}>ניהול</p>
@@ -198,7 +245,12 @@ export default function AdminTeamPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <a href="/team" target="_blank" rel="noopener noreferrer" style={{ ...ghostBtn, textDecoration: 'none' }}>עמוד הצוות</a>
-          {!adding && <button onClick={() => { setAdding(true); setError(null) }} style={{ ...primaryBtn, flex: 'none', padding: '9px 16px' }}>+ הוסף סוכן</button>}
+          <label style={{ ...ghostBtn, opacity: busy === 'import' ? 0.5 : 1, cursor: busy === 'import' ? 'wait' : 'pointer' }}>
+            <input type="file" accept="application/json,.json" hidden disabled={busy === 'import'}
+              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) runImport(f) }} />
+            {busy === 'import' ? 'מייבא…' : 'ייבוא מקובץ'}
+          </label>
+          {!adding && <button onClick={() => { setAdding(true); setError(null) }} style={{ ...primaryBtn, flex: 'none', padding: '9px 16px' }}>+ הוסף</button>}
         </div>
       </header>
 
@@ -210,9 +262,29 @@ export default function AdminTeamPage() {
           </div>
         )}
 
+        {importLog && (
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${GOLD_BORDER}`, borderRadius: 12, padding: 14, display: 'grid', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 14, color: '#fff' }}>
+                ייבוא · {importLog.filter(r => r.state !== 'pending').length}/{importLog.length}
+              </span>
+              {busy !== 'import' && <button onClick={() => setImportLog(null)} style={{ ...ghostBtn, padding: '4px 10px' }}>סגור</button>}
+            </div>
+            {importLog.map((r, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontFamily: 'var(--font-heebo)', fontSize: 13 }}>
+                <span style={{ color: 'rgba(255,255,255,0.85)' }}>{r.name}</span>
+                <span style={{ color: r.state === 'error' ? '#f87171' : r.state === 'ok' ? 'rgba(100,200,120,0.85)' : 'rgba(255,255,255,0.35)', textAlign: 'left' }}>{r.text}</span>
+              </div>
+            ))}
+            {busy !== 'import' && importLog.some(r => r.state === 'error') && (
+              <div style={{ ...labelStyle, marginTop: 4 }}>אפשר להריץ את הייבוא שוב — מי שכבר יובא לא ייווצר פעמיים, ורק מה שחסר יושלם.</div>
+            )}
+          </div>
+        )}
+
         {adding && (
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,169,110,0.35)', borderRadius: 12, padding: 14, display: 'grid', gap: 12 }}>
-            <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15, color: '#fff' }}>סוכן חדש</div>
+            <div style={{ fontFamily: 'var(--font-heebo)', fontWeight: 700, fontSize: 15, color: '#fff' }}>איש צוות חדש</div>
             <Fields draft={newDraft} setDraft={setNewDraft} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <PhotoPicker busy={false} label={newPhoto ? 'החלף תמונה' : 'בחר תמונה (רשות)'} onPick={setNewPhoto} />
@@ -220,7 +292,7 @@ export default function AdminTeamPage() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={create} disabled={busy === 'create'} style={{ ...primaryBtn, opacity: busy === 'create' ? 0.5 : 1 }}>
-                {busy === 'create' ? 'יוצר…' : 'צור סוכן'}
+                {busy === 'create' ? 'יוצר…' : 'הוסף לצוות'}
               </button>
               <button onClick={() => { setAdding(false); setNewDraft(EMPTY); setNewPhoto(null) }} style={ghostBtn}>ביטול</button>
             </div>
@@ -231,7 +303,7 @@ export default function AdminTeamPage() {
           <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-heebo)', paddingTop: 40 }}>טוען…</p>
         ) : agents.length === 0 && !adding ? (
           <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-heebo)', paddingTop: 40 }}>
-            עדיין אין סוכנים. לחצו על &quot;הוסף סוכן&quot; כדי להתחיל.
+            עדיין אין אנשי צוות. לחצו על &quot;הוסף&quot; או &quot;ייבוא מקובץ&quot; כדי להתחיל.
           </p>
         ) : agents.map((a, i) => {
           const isEditing = editing === a.id
@@ -293,7 +365,7 @@ export default function AdminTeamPage() {
                     )}
                     <button style={{ ...ghostBtn, color: a.active ? 'rgba(255,120,120,0.85)' : 'rgba(100,200,120,0.9)' }}
                       disabled={!!busy} onClick={() => toggleActive(a)}>
-                      {a.active ? 'השבת סוכן' : 'הפעל סוכן'}
+                      {a.active ? 'השבת' : 'הפעל מחדש'}
                     </button>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>

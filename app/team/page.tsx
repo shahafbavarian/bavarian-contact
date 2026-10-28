@@ -7,7 +7,7 @@ export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'הצוות שלנו | Bavarian Motors',
-  description: 'הכירו את יועצי הרכב של Bavarian Motors',
+  description: 'הצוות של Bavarian Motors',
 }
 
 export default async function TeamPage() {

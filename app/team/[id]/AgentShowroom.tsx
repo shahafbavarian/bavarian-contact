@@ -129,7 +129,7 @@ export default function AgentShowroom({ agent }: { agent: PublicAgent }) {
 
           <div className="sr-agent-side">
             <div className="sr-info sr-stagger" style={{ '--d': '0ms' } as React.CSSProperties}>
-              <span className="sr-label">Bavarian Motors · Advisor</span>
+              <span className="sr-label">Bavarian Motors · Team</span>
               <h1 className="sr-name">{agent.name}</h1>
               {agent.title && <div className="sr-title">{agent.title}</div>}
             </div>

@@ -245,8 +245,8 @@ export default function TeamShowroom({ agents }: { agents: TeamAgent[] }) {
         </div>
 
         <header className="sr-head">
-          <span className="sr-label">Bavarian Motors · Advisors</span>
-          <h1>הכירו את <b>הצוות</b></h1>
+          <span className="sr-label">Bavarian Motors · Our Team</span>
+          <h1><b>הצוות</b> שלנו</h1>
         </header>
 
         {N === 0 ? (

@@ -23,6 +23,10 @@ create table if not exists agents (
 
 create index if not exists agents_active_sort on agents (active, sort_order);
 
+-- recNo of the person on the main site (bavarian-motors.co.il), used only to
+-- match re-imports. The permanent public identity is public_id.
+alter table agents add column if not exists source_rec_no integer unique;
+
 -- RLS: the public anon key may only read active agents (exactly what the team
 -- page shows anyway). All writes go through /api/admin/agents with the
 -- service-role key.

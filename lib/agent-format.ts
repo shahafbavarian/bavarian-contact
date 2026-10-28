@@ -11,6 +11,7 @@ export type Agent = {
   photo_url: string | null
   active: boolean
   sort_order: number
+  source_rec_no: number | null
   created_at: string
   updated_at: string
 }

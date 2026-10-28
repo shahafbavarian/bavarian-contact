@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import sharp from 'sharp'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { AGENT_PHOTO_BUCKET, revalidateAgent } from '@/lib/agents'
+import { saveAgentPhoto } from '@/lib/agent-photos'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,32 +25,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!file.type.startsWith('image/')) return NextResponse.json({ error: 'הקובץ אינו תמונה' }, { status: 400 })
     if (file.size > MAX_BYTES) return NextResponse.json({ error: 'התמונה גדולה מדי' }, { status: 400 })
 
-    const agent = await loadAgent(params.id)
-
-    // Portrait 3:4, EXIF-rotated, cropped toward the most interesting region
-    // (usually the face), WebP for size.
-    const webp = await sharp(Buffer.from(await file.arrayBuffer()))
-      .rotate()
-      .resize(900, 1200, { fit: 'cover', position: sharp.strategy.attention })
-      .webp({ quality: 82 })
-      .toBuffer()
-
-    const sb = getSupabaseAdmin()
-    // A fresh path per upload, so CDNs and phones never show the old photo.
-    const path = `${agent.public_id}/${Date.now()}.webp`
-    const { error: upErr } = await sb.storage.from(AGENT_PHOTO_BUCKET)
-      .upload(path, webp, { contentType: 'image/webp', cacheControl: '31536000', upsert: false })
-    if (upErr) throw upErr
-    const { data: { publicUrl } } = sb.storage.from(AGENT_PHOTO_BUCKET).getPublicUrl(path)
-
-    const { data, error } = await sb.from('agents')
-      .update({ photo_path: path, photo_url: publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', agent.id).select('*').single()
-    if (error) throw error
-
-    if (agent.photo_path) await sb.storage.from(AGENT_PHOTO_BUCKET).remove([agent.photo_path])
-    revalidateAgent(agent.public_id)
-    return NextResponse.json({ agent: data })
+    const agent = await saveAgentPhoto(await loadAgent(params.id), Buffer.from(await file.arrayBuffer()))
+    return NextResponse.json({ agent })
   } catch (err) {
     console.error('[/api/admin/agents/photo]', err)
     return NextResponse.json({ error: 'העלאת התמונה נכשלה' }, { status: 500 })
