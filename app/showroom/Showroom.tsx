@@ -201,10 +201,13 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           {/* On the street, over the pavement: the way in and the site's other doors.
               "כל הרכבים" walks you into the hall, where the cars are. */}
           <div ref={floor} className="sr-floor">
-            <button type="button" className="sr-enter" onClick={() => goRef.current(1)}>
-              כל הרכבים
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
+            {/* only the way in hovers; the line of words below stays put */}
+            <div className="sr-hover">
+              <button type="button" className="sr-enter" onClick={() => goRef.current(1)}>
+                כל הרכבים
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            </div>
             <nav className="sr-doors" aria-label="עמודי האתר">
               <Link href="/sold">רכבים שנמכרו</Link>
               <Link href="/team">הצוות</Link>

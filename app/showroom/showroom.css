@@ -40,9 +40,9 @@ html:has(.sr) { overflow: auto; }
 }
 .sr-sign-img {
   display: block; width: 100%; max-width: none; height: auto; opacity: 0;
-  /* lit letters with sharp edges: a fine dark contact line where they stand off
-     the stone (no white glow at the edge to soften it), and a faint wide halo */
-  filter: drop-shadow(0 1px 1.2px rgba(0,0,0,.5)) drop-shadow(0 0 20px rgba(255,255,255,.1));
+  /* lit letters, defined but not cut out: a faint contact shade where they
+     stand off the stone, a breath of glow at the edge, a wide soft halo */
+  filter: drop-shadow(0 .5px .8px rgba(0,0,0,.25)) drop-shadow(0 0 1px rgba(255,255,255,.25)) drop-shadow(0 0 24px rgba(255,255,255,.15));
 }
 /* coming on: smaller and dim, then grown to full size and full light, on the
    buttons' beat (opacity and scale only: cheap on any phone) */
@@ -116,17 +116,16 @@ html:has(.sr) { overflow: auto; }
 }
 /* they come on one after another once the page is ready: opacity and a short rise only */
 .sr-enter, .sr-doors a { opacity: 0; }
-.sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a { animation: sr-on 520ms cubic-bezier(.23,1,.32,1) both; }
+.sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a { opacity: 1; animation: sr-on 520ms cubic-bezier(.23,1,.32,1) backwards; }
 .sr[data-state="ready"] .sr-enter { animation-delay: 200ms; }
 .sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 300ms; }
 .sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 360ms; }
 .sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 420ms; }
 @keyframes sr-on { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-/* then they hover, gently: a few pixels up and down, the words a beat behind */
-.sr[data-state="ready"] .sr-floor { animation: sr-float 5.2s ease-in-out 1s infinite; }
-.sr[data-state="ready"] .sr-doors { animation: sr-float-sm 5.2s ease-in-out 1.7s infinite; }
+/* then the way in hovers, gently: a few pixels up and down */
+.sr-hover { display: flex; justify-content: center; }
+.sr[data-state="ready"] .sr-hover { animation: sr-float 5.2s ease-in-out 1s infinite; }
 @keyframes sr-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes sr-float-sm { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 
 /* The front card's name, large and centred over the floor */
 .sr-cap {
@@ -173,7 +172,7 @@ html:has(.sr) { overflow: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
-  .sr[data-state="ready"] .sr-floor, .sr[data-state="ready"] .sr-doors { animation: none; }
+  .sr[data-state="ready"] .sr-hover { animation: none; }
   .sr[data-state="ready"] .sr-sign-img { animation: sr-fade 300ms ease both; }
   .sr-canvas { transition: none; }
   .sr-cta:active, .sr-arrow:active, .sr-enter:active, .sr-doors a:active { transform: none; }

@@ -275,7 +275,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   stoneTex.offset.y = 0.125
   const stone = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, 34), new THREE.MeshStandardMaterial({
     map: stoneTex, normalMap: scanned('/showroom/stone_nor.jpg', (W + 16) / 2.4, 34 / 2.4), normalScale: new THREE.Vector2(0.7, 0.7),
-    roughness: 0.85, emissiveMap: stoneTex, emissive: new THREE.Color('#5a4c3c'), emissiveIntensity: 0.55,
+    roughness: 0.85, emissiveMap: stoneTex, emissive: new THREE.Color('#5a4c3c'), emissiveIntensity: 0.42,   // a shade darker: the lit sign stands out
   }))
   // the stone comes down to the canopy's edge: stone, then the soffit, then the glass
   stone.position.set(0, H + 17, FRONT + CANOPY); scene.add(stone)
@@ -407,6 +407,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     glow('light', 3.0, 3.0, x, z, 0.004, 0.16)
   })
   scene.add(spotMesh)
+  // the canopy's own downlights, outside: on from the start (the hall's are
+  // off); theirs is the light on the pavement
+  for (const x of [-3.75, 3.75]) {
+    const disc = new THREE.Mesh(spotGeo, spotMat); disc.rotation.x = Math.PI / 2; disc.position.set(x, H + 0.035, FRONT + 1.2); scene.add(disc)
+    const l = new THREE.PointLight('#ffcf98', 4, 9, 1.8); l.position.set(x, H - 0.3, FRONT + 1.2); scene.add(l)
+  }
   const spotC = new THREE.Color()
   spots.forEach(([, z], i) => power(depthDelay(z), k => {
     spotMesh.setColorAt(i, spotC.setScalar(0.03 + 0.97 * k)); spotMesh.instanceColor!.needsUpdate = true
@@ -440,8 +446,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   add(new THREE.HemisphereLight('#ffe8d2', '#101318', 0.16))
   for (const [x, z] of [[-5, -4], [5, -4], [-5, -13], [5, -13], [0, -20]]) {
     const l = new THREE.PointLight('#ffcf98', 5, 11, 1.8); l.position.set(x, H - 0.4, z); scene.add(l)
-    // the two by the entrance stay on: theirs is the light on the pavement outside
-    if (z !== -4) power(depthDelay(z), k => { l.intensity = 5 * k })
+    power(depthDelay(z), k => { l.intensity = 5 * k })
   }
   // night sky light from straight in front: it lights the facade evenly and
   // falls on neither inner wall more than the other
@@ -454,7 +459,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   mats.ceiling.envMap = env; tileMat.envMap = env
   power(0, k => {
     mats.wall.envMapIntensity = 0.05 + 0.23 * k
-    mats.ceiling.envMapIntensity = tileMat.envMapIntensity = 0.06 + 0.29 * k
+    mats.ceiling.envMapIntensity = 0.06 + 0.29 * k
+    tileMat.envMapIntensity = 0.15 + 0.2 * k      // the floor's tiles still read, softly, in the dark hall
   }, 0.4)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
@@ -489,6 +495,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
   })
+  // dark from the street like the rest of the hall; it comes on with the lights
+  power(depthDelay(STAND.z), k => { ringMat.uniforms.uColor.value.setRGB(2.2 * k, 1.95 * k, 1.6 * k) })
   const lightRing = new THREE.Mesh(new THREE.RingGeometry(PR - 0.1, PR + 0.16, 512, 1), ringMat)
   lightRing.rotation.x = -Math.PI / 2; lightRing.position.set(STAND.x, 0.083, STAND.z); scene.add(lightRing)
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
@@ -511,8 +519,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uIcon; uniform vec2 uSize; varying vec2 vUv;
-    float seg(vec2 p, vec2 a, vec2 b){ vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.); return length(pa - ba * h); }
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     void main(){
       vec2 p = (vUv - .5) * uSize;
@@ -524,14 +531,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float open = smoothstep(0., .55, uPower);
       float pic = step(abs(vUv.y - .5), open * .5 + .004) * step(.001, uPower);
       col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
-      // standby: the power symbol printed on the dark middle screen, unlit grey,
-      // gone the moment the screen switches on (tapping it walks you in)
-      vec2 q = p - vec2(0., -.03);
-      float ringD = abs(length(q) - .24) - .022;
-      if (abs(atan(q.x, q.y)) < .6) ringD = 1.;                  // the gap at the top
-      float iconD = min(ringD, seg(q, vec2(0., .02), vec2(0., .29)) - .022);
-      float iaa = fwidth(iconD);
-      col = mix(col, vec3(.12, .124, .13), (1. - smoothstep(-iaa, iaa, iconD)) * uIcon * (1. - step(.001, uPower)));
       col += smoothstep(-.012, -.002, d) * .10;           // hairline edge
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       gl_FragColor = vec4(col, a * uAlpha);
@@ -543,7 +542,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   cards.forEach((_, i) => {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uIcon: { value: i === 0 ? 1 : 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
