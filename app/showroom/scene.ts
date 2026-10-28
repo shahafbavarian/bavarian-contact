@@ -36,6 +36,8 @@ type Opts = {
   mobile: boolean; logoUrl: string; cards: Card[]; font: string
   onFront: (i: number) => void
   onOpen: (i: number) => void
+  /** the dark middle screen was tapped from the street: switch on and walk in */
+  onEnter?: () => void
   /** where the sign on the building lands on screen (css px: centre, width) */
   onSign?: (x: number, y: number, w: number, visible: boolean) => void
   /** screen height (css px) of the front card's centre, for the arrows beside it */
@@ -509,7 +511,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uIcon; uniform vec2 uSize; varying vec2 vUv;
+    float seg(vec2 p, vec2 a, vec2 b){ vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.); return length(pa - ba * h); }
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     void main(){
       vec2 p = (vUv - .5) * uSize;
@@ -521,6 +524,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float open = smoothstep(0., .55, uPower);
       float pic = step(abs(vUv.y - .5), open * .5 + .004) * step(.001, uPower);
       col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
+      // standby: the power symbol printed on the dark middle screen, unlit grey,
+      // gone the moment the screen switches on (tapping it walks you in)
+      vec2 q = p - vec2(0., -.03);
+      float ringD = abs(length(q) - .24) - .022;
+      if (abs(atan(q.x, q.y)) < .6) ringD = 1.;                  // the gap at the top
+      float iconD = min(ringD, seg(q, vec2(0., .02), vec2(0., .29)) - .022);
+      float iaa = fwidth(iconD);
+      col = mix(col, vec3(.12, .124, .13), (1. - smoothstep(-iaa, iaa, iconD)) * uIcon * (1. - step(.001, uPower)));
       col += smoothstep(-.012, -.002, d) * .10;           // hairline edge
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       gl_FragColor = vec4(col, a * uAlpha);
@@ -532,7 +543,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   cards.forEach((_, i) => {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uIcon: { value: i === 0 ? 1 : 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
@@ -689,7 +700,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const settle = () => {
     drag = Math.round(drag / STEP) * STEP
   }
+  let tapOut = false
   const onDown = (e: PointerEvent) => {
+    if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // from the street: only a tap on the middle screen
     if (progress < WALK - 0.04) return
     dragging = true; moved = false; downX = e.clientX; downY = e.clientY
   }
@@ -702,6 +715,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     settle(); drag += Math.sign(dx) * STEP; dirty = true // swipe right, cards go right
   }
   const onUp = (e: PointerEvent) => {
+    if (tapOut) {
+      tapOut = false
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 8) return
+      const r = canvas.getBoundingClientRect()
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+      ray.setFromCamera(ndc, camera)
+      const hit = ray.intersectObjects(cardMeshes, false)[0]
+      if (hit && hit.object.userData.index === front) opts.onEnter?.()
+      return
+    }
     if (!dragging) return
     dragging = false
     if (moved) return

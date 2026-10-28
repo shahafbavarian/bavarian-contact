@@ -18,7 +18,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const cap = useRef<HTMLDivElement>(null)
   const bar = useRef<HTMLDivElement>(null)
   const floor = useRef<HTMLDivElement>(null)
-  const power = useRef<HTMLButtonElement>(null)
   const goRef = useRef<(dest: 0 | 1) => void>(() => {})
   const nav = useRef<HTMLElement>(null)
   const arrows = useRef<HTMLDivElement>(null)
@@ -81,7 +80,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       // the street's buttons give way as soon as you step in
       if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
-      if (power.current) { const f = 1 - fit(current, 0.01, 0.06); power.current.style.opacity = String(f); power.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
     }
 
     const onPointer = (e: PointerEvent) => handle.current?.setPointer((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1))
@@ -130,12 +128,11 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
           },
           font: getComputedStyle(root.current!).fontFamily,
-          onGallery: (y, x) => {
+          onGallery: y => {
             if (arrows.current) arrows.current.style.top = `${y}px`
-            // the power button sits on the middle screen, seen through the glass
-            if (power.current) power.current.style.transform = `translate3d(${x - 22}px, ${y - 22}px, 0)`
           },
           onReady: () => setState('ready'),
+          onEnter: () => goRef.current(1),
           onFront: setFront,
           onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
@@ -203,13 +200,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
 
           {/* On the street, over the pavement: the way in and the site's other doors.
               "כל הרכבים" walks you into the hall, where the cars are. */}
-          {/* on the dark middle screen: switch the hall on (and walk in) */}
-          <button ref={power} type="button" className="sr-power" aria-label="הדלקה וכניסה לאולם" onClick={() => goRef.current(1)}>
-            <span aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-            </span>
-          </button>
-
           <div ref={floor} className="sr-floor">
             <button type="button" className="sr-enter" onClick={() => goRef.current(1)}>
               כל הרכבים
