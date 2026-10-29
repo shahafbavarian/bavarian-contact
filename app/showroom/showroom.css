@@ -21,12 +21,7 @@ html:has(.sr) { overflow: auto; }
 /* The page never scrolls: the stage is pinned to the whole window, in any
    orientation (a fixed box follows Safari's real viewport, svh did not) */
 .sr-track { position: relative; height: 100%; }
-/* Behind the clock: Safari 26 paints a flat strip for a fixed layer at the top
-   edge, but shows the page itself when that layer is visibility: hidden and its
-   content visible (Hawkshift's iOS 26 tests: "pinned scroll scene with
-   visibility: hidden and its content visible", the page, reliably) */
-.sr-stage { position: fixed; inset: 0; overflow: hidden; background: transparent; touch-action: none; overscroll-behavior: none; pointer-events: none; visibility: hidden; }
-.sr-stage > * { visibility: visible; }
+.sr-stage { position: fixed; inset: 0; overflow: hidden; background: transparent; touch-action: none; overscroll-behavior: none; pointer-events: none; }
 /* the stage and the canvas let touches through (the scene listens on the
    window); only buttons and links take them */
 .sr-stage a, .sr-stage button, .sr-stage .sr-menu { pointer-events: auto; }
@@ -54,7 +49,7 @@ html:has(.sr) { overflow: auto; }
      stand off the stone, a breath of glow at the edge, a wide soft halo */
   /* sized for the 1000px base the scene scales down to about a third: on screen
      this is a ~1px edge glow and a ~20px halo */
-  filter: drop-shadow(0 1.5px 2.5px rgba(0,0,0,.2)) drop-shadow(0 0 4px rgba(255,255,255,.5)) drop-shadow(0 0 36px rgba(255,255,255,.3));
+  filter: drop-shadow(0 1.5px 2.5px rgba(0,0,0,.2)) drop-shadow(0 0 4px rgba(255,255,255,.5)) drop-shadow(0 0 64px rgba(255,255,255,.32));
 }
 /* coming on: smaller and dim, then grown to full size and full light, on the
    buttons' beat (opacity and scale only: cheap on any phone) */

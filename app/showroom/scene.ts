@@ -285,7 +285,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.fillStyle = '#2b2e31'; c.fillRect(0, 0, 512, 256); noise(c, 512, 256, 8)
     c.fillStyle = 'rgba(0,0,0,.6)'; for (let x = 0; x <= 512; x += 128) c.fillRect(x - 2, 0, 3, 256)
   }, [(W + 16) / 3, 1])
-  const soffit = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, CANOPY), new THREE.MeshStandardMaterial({ map: soffitTex, roughness: 0.7 }))
+  // matte and without reflections: seen from below at a grazing angle, the studio
+  // environment's glare on it showed as a white haze over the doors
+  const soffit = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, CANOPY), new THREE.MeshStandardMaterial({ map: soffitTex, roughness: 0.95, envMap: env, envMapIntensity: 0 }))
   soffit.rotation.x = Math.PI / 2 - 0.03; soffit.position.set(0, H + 0.04, FRONT + CANOPY / 2); scene.add(soffit)
   box(4, H, 0.6, mats.metal, -half - 2, H / 2, FRONT - 0.3)
   box(4, H, 0.6, mats.metal, half + 2, H / 2, FRONT - 0.3)
@@ -335,9 +337,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.1 } },
     vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
-  // (no band of light painted on the stone: as you walk up to the canopy the
-  // letters leave the top of the screen and that band stayed, a white haze)
-  signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005)
+  signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)   // the sign's glow on the stone
   // the stone right behind the letters a shade darker, fading out past their
   // ends, so the lit sign stands out without darkening the whole facade
   // a wide, soft-edged shade (a gaussian, no visible border)
@@ -537,9 +537,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const officeZ = FRONT - D + 0.15
   // frames set symmetric about the hall's centre line, the stand's axis
   for (const x of [-8, -4.8, -1.6, 1.6, 4.8, 8]) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
-  // the glass wall's head channel along the ceiling: the frames end in it (seen from below,
-  // without it they ran on past the ceiling line through the glass)
-  box(W - 4 + 0.12, 0.1, 0.1, mats.metal, 0, H - 0.05, officeZ)
   const frosted = new THREE.MeshBasicMaterial({ map: stripeTex(), transparent: true, opacity: 0.55, depthWrite: false })
   const og = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), frosted); og.position.set(0, H / 2, officeZ); scene.add(og)
   const og2 = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), mats.glass); og2.position.set(0, H / 2, officeZ + 0.01); scene.add(og2)
