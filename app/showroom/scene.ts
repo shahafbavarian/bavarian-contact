@@ -785,7 +785,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const u = m.material.uniforms, pad = cardW * 0.07
     u.uSize.value.set(cardW, cardH); u.uPad.value = pad; u.uStripH.value = cardW * STRIP
     const h = viewH || canvas.clientHeight
-    u.uClip.value.set(insetBottom * dpr, (h - insetTop) * dpr, 30 * dpr)
+    u.uClip.value.set(insetBottom * dpr, (h - insetTop) * dpr, 10 * dpr)
   }
   const takeMesh = () => {
     const f = freeMeshes.pop()
@@ -1069,6 +1069,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!mapped && N && screenOn && readyAt >= 0 && performance.now() - readyAt > 2500) {
       const r0 = Math.round(drag / STEP)
       for (let d = -1; d <= 4; d++) { const ci = view[mod(r0 - base + d, N)]; ensureCard(ci); ensureTex(ci) }
+      // and the gallery's own next photos, so a slide never starts a texture
+      if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
     }
     if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
     const full = throwK >= 1

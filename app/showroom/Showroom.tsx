@@ -301,9 +301,9 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     let gridMid = 0
     const insets = () => {
       const n = nav.current, c = cap.current
-      const top = (n ? n.offsetTop + n.offsetHeight : 64) + 8
+      const top = (n ? n.offsetTop + n.offsetHeight : 64) + 4
       // from the screen's bottom edge to the foot's top, plus a breath
-      const bottom = c ? cv.clientHeight - c.offsetTop + 12 : 150
+      const bottom = c ? cv.clientHeight - c.offsetTop + 6 : 150
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
