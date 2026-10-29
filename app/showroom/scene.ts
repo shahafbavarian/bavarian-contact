@@ -169,7 +169,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     metal: new THREE.MeshStandardMaterial({ color: '#2a2d31', roughness: 0.38, metalness: 0.85, envMapIntensity: 1.1 }),
     // black piano lacquer (columns, stand): a clear coat over a satin base
     gloss: new THREE.MeshPhysicalMaterial({ color: '#050506', roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.6 }),
-    glass: new THREE.MeshStandardMaterial({ color: '#6f8496', roughness: 0.04, metalness: 1, transparent: true, opacity: 0.12, envMapIntensity: 3, depthWrite: false }),
+    // mirror-smooth but barely reflective: at intensity 3 the studio environment's
+    // light boxes mirrored in the panes as a pale band across the glass, read as a
+    // stray line under the hall's ceiling
+    glass: new THREE.MeshStandardMaterial({ color: '#6f8496', roughness: 0.04, metalness: 1, transparent: true, opacity: 0.14, envMapIntensity: 0.55, depthWrite: false }),
     // matte surfaces take their light from the room's own lights, as in the live
     // version; the environment photo is only for the glossy ones
     ceiling: new THREE.MeshStandardMaterial({ color: '#c9c6c0', roughness: 0.95, envMapIntensity: 0.25 }),
@@ -312,7 +315,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const frame = box(0.05, 2.7, 0.06, mats.metal, s * 1.2, 1.35, FRONT + 0.04)
     d.userData.frame = frame
   }
-  box(2.5, 0.1, 0.16, mats.metal, 0, 2.75, FRONT + 0.02)
+  // the door header spans the whole track (5 m, like the transom above it):
+  // the sliding leaves' posts stay under it through their full travel,
+  // instead of sliding out past a short 2.5 m beam and standing detached
+  box(5, 0.1, 0.16, mats.metal, 0, 2.75, FRONT + 0.02)
 
   // ─── The sign on the stone over the canopy. The letters are the page's own
   //     logo image (with the lit look approved on the live page), placed every
