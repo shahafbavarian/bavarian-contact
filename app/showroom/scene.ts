@@ -26,6 +26,11 @@ export type SceneHandle = {
   setView: (ids: number[] | null) => void
   /** The screen's edges the cards keep clear of (css px): the bar above, the search below, the sides */
   setInsets: (top: number, bottom: number, side: number) => void
+  /** inside, with the cards out: up and down is theirs */
+  inside: () => boolean
+  atTop: () => boolean
+  /** a wheel turn inside; false: it was a pull out at the top */
+  wheel: (dy: number) => boolean
   resize: () => void
   /** Offline rendering: place the camera at p and draw one frame now */
   renderFrame: (p: number) => void
@@ -38,13 +43,15 @@ export type SceneHandle = {
 export type Card = {
   title: string; sub: string; href: string; external?: boolean; images: string[]
   /** the car's own fields, for search: maker, model, year, price, in stock */
-  make?: string; model?: string; year?: string; price?: string; stock?: boolean
+  make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string
 }
 type Opts = {
   mobile: boolean; logoUrl: string; cards: Card[]; font: string
   onFront: (i: number) => void
-  /** inside, the cards' page and how many pages there are */
-  onPage?: (page: number, pages: number) => void
+  /** inside, at the top of the list: how far the pull out has gone (1: let go to leave) */
+  onPull?: (k: number) => void
+  /** the pull at the top was let go past its mark: walk out */
+  onExit?: () => void
   onOpen: (i: number) => void
   /** the dark middle screen was tapped from the street: switch on and walk in */
   onEnter?: () => void
@@ -584,7 +591,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform float uSwap; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform float uSwap; uniform float uFade; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     // exact inverse of three's ACES filmic fit: the composer tone-maps the
     // whole frame at the end, so the screen pixels are pre-inverted here and
@@ -617,7 +624,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       col = mix(col, vec3(.018, .019, .022), uSwap);      // mid-change, the glass goes dark
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       col = min(acesInv(max(col, vec3(0.))), vec3(uCap)); // capped where bloom runs, so white photos don't flare
-      gl_FragColor = vec4(col, a * uAlpha);
+      gl_FragColor = vec4(col, a * uAlpha * uFade);
       #include <colorspace_fragment>
     }`
   const ring = new THREE.Group()
@@ -626,7 +633,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   for (let i = 0; i < SLOTS; i++) {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uSwap: { value: 0 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uSwap: { value: 0 }, uFade: { value: 1 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
@@ -694,19 +701,21 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (N > 1) { ensureTex(carAt(1)); ensureTex(carAt(-1)); ensureTex(carAt(2)) }
   }
 
-  // ─── Inside, the stock as cards: once you are in, the cars leave the
-  //     screens and float in the hall as cards, a page at a time on a band
-  //     around you (a sideways swipe turns it one page); the screens dim
-  //     behind. The cards are drawn after the hall's bloom and blur, so they
-  //     stay crisp in front of it ───
+  // ─── The screens and the cards, drawn over the hall (after its bloom and
+  //     blur, so they stay crisp). A beat after the screens light up they
+  //     grow out of the hall and stand big in front of you — the ring as
+  //     seen from the hall's middle, carried with you. Walking in, they go in
+  //     with you; once inside, the three facing you scatter into the stock:
+  //     one card a row, the middle one whole, the ones before and after it
+  //     showing above and below; up and down runs through the whole stock ───
   const wallScene = new THREE.Scene()
-  const WALL_R = 3                      // the band's distance from you (m)
-  const STRIP = 0.234                   // the card's info band, as a share of its width
-  const CARD_A = 2 / 3 + STRIP          // the card's height over its width
-  const CARD_PX = 640                   // its face, in canvas pixels
+  const WALL_R = 3                      // the cards' distance from you (m)
+  const CARD_PX = 768                   // a card's face, in canvas pixels
+  let STRIP = 0.26                      // its info band, as a share of its width (set by layout)
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
-    uniform sampler2D map; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad; varying vec2 vUv;
+    uniform sampler2D map; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
+    uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     vec3 odtInv(vec3 y){
       vec3 a = 1. - .983729 * y;
@@ -721,98 +730,157 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     }
     void main(){
       vec2 p = (vUv - .5) * (uSize + 2. * uPad);
-      float d = rbox(p, uSize * .5, uSize.x * .035);
+      // the band under the photo opens as a screen becomes a card
+      float hv = uSize.y - uStripH * (1. - uStrip);
+      vec2 c = vec2(0., (uSize.y - hv) * .5);
+      float d = rbox(p - c, vec2(uSize.x, hv) * .5, uSize.x * .028);
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
-      vec3 col = mix(vec3(.05, .055, .065), texture2D(map, uv).rgb, uReady);
+      vec3 col = mix(vec3(.05, .055, .065), texture2D(map, uv).rgb, uReady) * uBright;
       // a hairline of light at the edge, like the screens' (brighter under the hand)
-      col += (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (.14 + .16 * uLift);
+      col += (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (.14 + .16 * uLift) * uBright;
       col = acesInv(max(col, vec3(0.)));   // the photo exactly as it is (the frame is tone-mapped after)
       // a soft shadow around the card lifts it off the hall
       float sh = (1. - smoothstep(0., uPad, d)) * .4 * (1. - inCard);
-      gl_FragColor = vec4(col * inCard, (inCard + sh) * uAlpha);
+      // kept clear of the bar above and the search below: faded at those lines
+      float fy = gl_FragCoord.y;
+      float clip = mix(1., smoothstep(uClip.x, uClip.x + uClip.z, fy) * (1. - smoothstep(uClip.y - uClip.z, uClip.y, fy)), uClipOn);
+      gl_FragColor = vec4(col * inCard, (inCard + sh) * uAlpha * clip);
       #include <colorspace_fragment>
     }`
+  // the screens' twins: the very same screens (same material, so the same
+  // car, light and dimming), flat, drawn over the hall
+  const showGeo = new THREE.PlaneGeometry(CW, CH)
+  const showMeshes = cardMeshes.map(m => { const sm = new THREE.Mesh(showGeo, m.material); sm.visible = false; sm.userData.slot = m.userData.slot; wallScene.add(sm); return sm })
+  const showP = cardMeshes.map(() => new THREE.Vector3()), showQ = cardMeshes.map(() => new THREE.Quaternion())
+  const slotDim = cardMeshes.map(() => 0)
   const wallGeo = new THREE.PlaneGeometry(1, 1)
-  // a pool of card meshes; each car in the band holds one while it is there
+  // a pool of card meshes; each car on show holds one while it is there
   const allMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
   const freeMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
+  let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 4, pitchPx = 300, cardCss = 340, cy = 0
+  let insetTop = 80, insetBottom = 170, insetSide = 16
+  const dress = (m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>) => {
+    const u = m.material.uniforms, pad = cardW * 0.07
+    u.uSize.value.set(cardW, cardH); u.uPad.value = pad; u.uStripH.value = cardW * STRIP
+    const h = viewH || canvas.clientHeight
+    u.uClip.value.set(insetBottom * dpr, (h - insetTop) * dpr, 30 * dpr)
+  }
   const takeMesh = () => {
     const f = freeMeshes.pop()
     if (f) return f
     const m = new THREE.Mesh(wallGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 }, uSize: { value: new THREE.Vector2(cardW, cardW * CARD_A) }, uPad: { value: cardW * 0.07 } },
+      uniforms: {
+        map: { value: null }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
+        uSize: { value: new THREE.Vector2(1, 1) }, uPad: { value: 0.05 }, uStrip: { value: 1 }, uStripH: { value: 0.3 },
+        uBright: { value: 1 }, uClip: { value: new THREE.Vector3(0, 1e5, 1) }, uClipOn: { value: 1 },
+      },
       vertexShader: cardVert, fragmentShader: wallFrag, transparent: true, depthTest: false, depthWrite: false,
     }))
     m.visible = false; m.userData.car = -1
-    wallScene.add(m); allMeshes.push(m)
+    dress(m); wallScene.add(m); allMeshes.push(m)
     return m
   }
-  // A car in the band: its mesh, where it stands (pa: the page it is on,
-  // eased; lp: its spot on the page, eased — so a filter moves it softly to
-  // its new place), and vis: in (1) or on its way out (0)
-  type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; pa: number; lp: THREE.Vector3; vis: number; live: boolean; j: number }
+  // A car on show: its mesh, its place in the list (pi, eased — so a filter
+  // moves it softly to its new place) and vis: in (1) or on its way out (0)
+  type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pi: number; vis: number; live: boolean }
   const held = new Map<number, Held>()
-  // the page's layout, worked out from the screen (see layout)
-  let cols = 2, rows = 3, perPage = 6, cardW = 0.5, gapW = 0.03, pageAngle = 0.6, cardCss = 170
-  let insetTop = 80, insetBottom = 170, insetSide = 16
-  let pageTarget = 0, pagePos = 0, wallOn = false, reported = '', hovered: THREE.Object3D | null = null
-  let throwK = 0, viewChanged = false
+  let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
+  let throwK = 0, growT = -1, viewChanged = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
-  const slotLocal: THREE.Vector3[] = []
   const layCam = new THREE.PerspectiveCamera()
-  const pivot = new THREE.Vector3(), yAxis = new THREE.Vector3(0, 1, 0), tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion()
+  const invLay = new THREE.Matrix4(), layQi = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0)
+  const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion()
   const srcP = new THREE.Vector3(), srcQ = new THREE.Quaternion(), endP = new THREE.Vector3(), endQ = new THREE.Quaternion()
-  const pages = () => Math.max(1, Math.ceil(N / perPage))
-  const easeOut = (x: number) => 1 - (1 - x) ** 3
   const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
+  const mod = (a: number, n: number) => ((a % n) + n) % n
+  const listCar = (i: number) => (N ? view[mod(listStart + i, N)] : -1)
+  // the three screens facing you, in list order: before, middle, after
+  const flightE = (rel: number) => {
+    if (calm) return throwK > 0 ? 1 : 0
+    const o = rel === 0 ? 0 : rel < 0 ? 0.1 : 0.18
+    return easeInOut(fit(throwK, o, o + 0.72))
+  }
+  const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
+  const relOfSlot = (sIdx: number) => {
+    if (!mapped) return null
+    for (let rel = -1; rel <= 1; rel++) {
+      const li = anchor + rel
+      if (li >= 0 && li < N && slotOf(rel) === sIdx) return rel
+    }
+    return null
+  }
 
   // the face of a card: the photo (3:2, untouched), and under it a dark band
-  // with the car: maker and model in English from the left; price, year and
-  // availability in Hebrew from the right — sized to read at the card's size
-  const fitText = (c: CanvasRenderingContext2D, t: string, max: number) => {
-    if (c.measureText(t).width <= max) return t
-    while (t && c.measureText(t + '…').width > max) t = t.slice(0, -1)
-    return t + '…'
-  }
+  // with the whole car — nothing cut: the maker and model in full (on two
+  // lines if they need), then price, year, kilometres and availability; the
+  // type steps down a little only if a line would not fit
   const drawInfo = (c: CanvasRenderingContext2D, card: Card, y0: number) => {
-    const Wc = CARD_PX, Hs = c.canvas.height - y0, pad = Math.round(Wc * 0.05)
+    const Wc = CARD_PX, Hs = c.canvas.height - y0, k = Wc / cardCss, pad = Math.round(16 * k), maxW = Wc - pad * 2
     c.fillStyle = '#0d0f13'; c.fillRect(0, y0, Wc, Hs)
     c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(0, y0, Wc, 2)
-    const k = Wc / cardCss                                   // canvas px per css px
-    const css1 = Math.min(16, Math.max(12.5, cardCss * 0.075))
-    const f1 = Math.round(css1 * k), f2 = Math.round(css1 * 0.86 * k)
-    const total = f1 + f2 + f1 * 0.35
-    const b1 = y0 + (Hs - total) / 2 + f1 * 0.82, b2 = b1 + f1 * 0.38 + f2 * 0.95
     const font = opts.font
     c.textBaseline = 'alphabetic'
-    const make = card.make ?? card.title, model = card.model ?? ''
+    // the name: maker bold, model regular, word by word onto at most two lines
+    const words = [
+      ...(card.make ?? card.title).split(/\s+/).filter(Boolean).map(t => ({ t, b: true })),
+      ...(card.model ?? '').split(/\s+/).filter(Boolean).map(t => ({ t, b: false })),
+    ]
+    const wrap = (fs: number) => {
+      const lines: { t: string; b: boolean }[][] = [[]]
+      let w = 0
+      for (const wd of words) {
+        c.font = `${wd.b ? 700 : 400} ${fs}px ${font}`
+        const ww = c.measureText(wd.t).width, sp = c.measureText(' ').width
+        if (lines[lines.length - 1].length && w + sp + ww > maxW) { lines.push([]); w = 0 }
+        w += (lines[lines.length - 1].length ? sp : 0) + ww
+        lines[lines.length - 1].push(wd)
+      }
+      const fits = lines.every(l => l.reduce((a, wd, n) => { c.font = `${wd.b ? 700 : 400} ${fs}px ${font}`; return a + c.measureText((n ? ' ' : '') + wd.t).width }, 0) <= maxW)
+      return { lines, fits }
+    }
+    let f1 = 17
+    let name = wrap(f1 * k)
+    while ((name.lines.length > 2 || !name.fits) && f1 > 12) { f1 -= 0.5; name = wrap(f1 * k) }
+    // the facts, in Hebrew from the right
+    const facts: { t: string; color: string; w: number; dir: CanvasDirection }[] = []
+    const dot = { t: '  ·  ', color: 'rgba(255,255,255,.38)', w: 400, dir: 'ltr' as CanvasDirection }
+    if (card.price) facts.push({ t: card.price, color: '#ffffff', w: 600, dir: 'ltr' })
+    if (card.year) facts.push({ t: card.year, color: 'rgba(255,255,255,.7)', w: 400, dir: 'ltr' })
+    if (card.km) facts.push({ t: card.km, color: 'rgba(255,255,255,.7)', w: 400, dir: 'rtl' })
+    if (card.make) facts.push({ t: card.stock === false ? 'בדרך לארץ' : 'במלאי', color: 'rgba(255,255,255,.7)', w: 400, dir: 'rtl' })
+    const seq = facts.flatMap((f, n) => (n ? [dot, f] : [f]))
+    const widthAt = (fs: number) => seq.reduce((a, f) => { c.direction = f.dir; c.font = `${f.w} ${fs}px ${font}`; return a + c.measureText(f.t).width }, 0)
+    let f2 = 14.5
+    while (widthAt(f2 * k) > maxW && f2 > 10.5) f2 -= 0.5
+    const lh1 = f1 * k * 1.24, lh2 = f2 * k * 1.3, gap = 7 * k
+    const total = name.lines.length * lh1 + gap + lh2
+    let y = y0 + (Hs - total) / 2
     c.direction = 'ltr'; c.textAlign = 'left'
-    c.font = `700 ${f1}px ${font}`; c.fillStyle = '#ffffff'
-    const mk = fitText(c, make, Wc - pad * 2)
-    c.fillText(mk, pad, b1)
-    const mw = c.measureText(mk + ' ').width
-    c.font = `400 ${f1}px ${font}`; c.fillStyle = 'rgba(255,255,255,.72)'
-    if (model && mw < Wc - pad * 2 - f1) c.fillText(fitText(c, model, Wc - pad * 2 - mw), pad + mw, b1)
+    for (const line of name.lines) {
+      let x = pad
+      y += lh1
+      line.forEach((wd, n) => {
+        c.font = `${wd.b ? 700 : 400} ${f1 * k}px ${font}`; c.fillStyle = wd.b ? '#ffffff' : 'rgba(255,255,255,.78)'
+        const t = (n ? ' ' : '') + wd.t
+        c.fillText(t, x, y - lh1 * 0.22); x += c.measureText(t).width
+      })
+    }
+    y += gap + lh2
     c.textAlign = 'right'
     let x = Wc - pad
-    const seg = (t: string, color: string, weight: number, dir: CanvasDirection) => {
-      if (!t) return
-      c.direction = dir; c.font = `${weight} ${f2}px ${font}`; c.fillStyle = color
-      c.fillText(t, x, b2); x -= c.measureText(t).width
+    for (const f of seq) {
+      c.direction = f.dir; c.font = `${f.w} ${f2 * k}px ${font}`; c.fillStyle = f.color
+      c.fillText(f.t, x, y - lh2 * 0.24); x -= c.measureText(f.t).width
     }
-    const dot = '  ·  '
-    if (card.price) seg(card.price, '#ffffff', 600, 'ltr')
-    if (card.year) { if (card.price) seg(dot, 'rgba(255,255,255,.4)', 400, 'ltr'); seg(card.year, 'rgba(255,255,255,.66)', 400, 'ltr') }
-    if (card.make) { seg(dot, 'rgba(255,255,255,.4)', 400, 'ltr'); seg(card.stock === false ? 'בדרך לארץ' : 'במלאי', 'rgba(255,255,255,.66)', 400, 'rtl') }
   }
   const wallCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
   const ensureCard = (ci: number) => {
     let e = wallCache.get(ci)
     if (e) return e
-    const cv = document.createElement('canvas'); cv.width = CARD_PX; cv.height = Math.round(CARD_PX * CARD_A)
+    const cv = document.createElement('canvas'); cv.width = CARD_PX; cv.height = Math.round(CARD_PX * (2 / 3 + STRIP))
     const c = cv.getContext('2d')!
     c.fillStyle = '#0d0f13'; c.fillRect(0, 0, cv.width, cv.height)
     const tex = new THREE.CanvasTexture(cv)
@@ -830,7 +898,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (card) drawInfo(c, card, ph)
       tex.needsUpdate = true; entry.ready = true; dirty = true
     })
-    if (wallCache.size > perPage * 3 + 8) {   // let go of the card shown longest ago (never one in the band)
+    if (wallCache.size > 14) {   // let go of the card shown longest ago (never one on show)
       let worst = -1, wd = Infinity
       wallCache.forEach((v, k) => { if (k !== ci && !held.has(k) && v.used < wd) { wd = v.used; worst = k } })
       const w = wallCache.get(worst)
@@ -838,95 +906,114 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     }
     return entry
   }
-  // The page is laid out on the screen first: the room between the bar above
-  // and the search below, a margin at the sides; as many columns and rows as
-  // read well there (two by three on a phone, four by two on a computer),
-  // the cards as large as fit. Then it is set into the hall, WALL_R metres
-  // ahead of where the walk ends, facing you
+  // The cards are laid out on the screen: the room between the bar above and
+  // the search below; one card a row, as wide as fits (a phone's full width),
+  // the middle one about half the room high, so the one before and the one
+  // after show above and below it — three at a time
   const layout = () => {
     const w = viewW || canvas.clientWidth, h = viewH || canvas.clientHeight
     if (!w || !h) return
     layCam.copy(camera)
     layCam.position.set(0, 1.6, endZ); layCam.lookAt(0, 1.6 + Math.tan(pitch1) * 30, endZ - 30); layCam.updateMatrixWorld()
-    pivot.copy(layCam.position)
     const hy = WALL_R * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), hx = hy * camera.aspect
-    const mpp = (2 * hy) / h                                     // metres per css px at the band
+    const mpp = (2 * hy) / h                                     // metres per css px at the cards
     const availW = 2 * hx - 2 * insetSide * mpp
     const top = hy - insetTop * mpp, bottom = -hy + insetBottom * mpp, availH = Math.max(0.2, top - bottom)
-    const aspect = w / h
-    cols = aspect < 0.75 ? 2 : aspect < 1.25 ? 3 : 4
-    rows = aspect < 0.75 ? 3 : 2
-    const GAP = 0.07
-    // no row smaller than reads: fewer rows on a short screen
-    rows = Math.max(1, Math.min(rows, Math.floor((availH / mpp + 14) / (150 + 14))))
-    cardW = Math.min(availW / (cols + (cols - 1) * GAP), availH / (rows * CARD_A + (rows - 1) * GAP))
-    gapW = cardW * GAP
-    const gw = cols * cardW + (cols - 1) * gapW, gh = rows * cardW * CARD_A + (rows - 1) * gapW
-    const cy = (top + bottom) / 2
-    const css = cardW / mpp
-    if (Math.abs(css - cardCss) / cardCss > 0.15) {   // much larger or smaller: the faces are drawn again at the new size
+    let W = availW, strip = 0.26
+    for (let it = 0; it < 3; it++) {
+      W = Math.min(availW, (availH * 0.54) / (2 / 3 + strip), 520 * mpp)
+      const css = W / mpp
+      strip = Math.min(116, Math.max(88, css * 0.25)) / css
+    }
+    const css = W / mpp
+    const redraw = Math.abs(css - cardCss) / cardCss > 0.12 || Math.abs(strip - STRIP) > 0.01
+    STRIP = strip; cardCss = css
+    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH * 1.06; drumR = pitch * 2.6; pitchPx = pitch / mpp; cy = (top + bottom) / 2
+    if (redraw) {   // much larger or smaller: the faces are drawn again at the new size
       wallCache.forEach(v => v.tex.dispose()); wallCache.clear()
       held.forEach(hd => { hd.m.material.uniforms.map.value = ensureCard(hd.car).tex })
     }
-    cardCss = css
-    perPage = cols * rows
-    slotLocal.length = 0
-    // reading order, right to left
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      slotLocal.push(new THREE.Vector3(gw / 2 - cardW / 2 - c * (cardW + gapW), cy + gh / 2 - cardW * CARD_A / 2 - r * (cardW * CARD_A + gapW), -WALL_R))
-    }
-    pageAngle = 2 * Math.atan(gw / 2 / WALL_R) + 0.08
-    allMeshes.forEach(m => { m.material.uniforms.uSize.value.set(cardW, cardW * CARD_A); m.material.uniforms.uPad.value = cardW * 0.07 })
-    held.forEach(hd => { const sl = slotLocal[hd.j % perPage]; if (sl) hd.lp.copy(sl) })
-    pageTarget = Math.min(pageTarget, pages() - 1); dirty = true
+    allMeshes.forEach(dress)
+    dirty = true
   }
-  // Sideways: the band turns a page; past either end it gives a little and comes back
-  const turnPage = (dir: number) => {
-    const t = pageTarget + dir
-    if (t < 0 || t > pages() - 1) { pagePos += dir * 0.14; dirty = true; return }
-    pageTarget = t; dirty = true
+  const maxScroll = () => Math.max(0, N - 1)
+  // the screens out in front of you: from their place on the ring to the same
+  // place as seen from the hall's middle, carried with you
+  const placeShow = (dt: number) => {
+    if (growT >= 0 && growT < 1) { growT = Math.min(1, growT + dt / 1.4); dirty = true }
+    const g = growT < 0 ? 0 : calm ? 1 : easeInOut(growT)
+    ring.updateMatrixWorld(true); camera.updateMatrixWorld()
+    invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
+    cardMeshes.forEach((m, i) => {
+      const sm = showMeshes[i], u = m.material.uniforms
+      const on = m.visible
+      srcP.set(0, 0, R).applyMatrix4(m.matrixWorld); m.getWorldQuaternion(srcQ)
+      endP.copy(srcP).applyMatrix4(invLay).applyMatrix4(camera.matrixWorld)
+      endQ.copy(camera.quaternion).multiply(tmpQ.copy(layQi).multiply(srcQ))
+      showP[i].lerpVectors(srcP, endP, g); showQ[i].slerpQuaternions(srcQ, endQ, g)
+      sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i])
+      // the three facing you become cards (each hides as its card leaves);
+      // the others fade as you go in
+      const rel = relOfSlot(i)
+      u.uFade.value = mapped && rel === null ? 1 - smooth(fit(throwK, 0, 0.45)) : 1
+      const gone = rel !== null && flightE(rel) > 0
+      sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
+      if (g > 0) m.visible = false
+    })
   }
   const placeWall = (p: number, dt: number) => {
-    // the throw: once you are in (and the screens are on), the cars leave the
-    // front screen one after another; walking out, they fly back into it
+    // walking in: once past the doors the screens scatter, in step with the walk
     const tk = throwK
-    throwK = Math.min(1, Math.max(0, throwK + (p > 0.86 && screenOn ? dt / 1.1 : -dt / 0.55)))
+    throwK = fit(p, 0.68, 0.97)
     if (throwK !== tk) dirty = true
-    wallOn = throwK > 0.5
-    pagePos += (pageTarget - pagePos) * (1 - Math.exp(-dt * 7))
-    if (Math.abs(pageTarget - pagePos) > 1e-3) dirty = true; else pagePos = pageTarget
-    const rep = `${pageTarget}/${pages()}`
-    if (rep !== reported) { reported = rep; opts.onPage?.(pageTarget, pages()) }
-    // which cars belong in the band: the pages around where it stands
-    const want = new Map<number, { pg: number; j: number }>()
-    if (throwK > 0) {
-      const lo = Math.max(0, Math.floor(Math.min(pagePos, pageTarget)) - 1), hi = Math.min(pages() - 1, Math.ceil(Math.max(pagePos, pageTarget)) + 1)
-      for (let pg = lo; pg <= hi; pg++) for (let j = 0; j < perPage; j++) {
-        const idx = pg * perPage + j
-        if (idx < N) want.set(view[idx], { pg, j })
-      }
+    wallOn = throwK >= 0.98
+    // the screens facing you, frozen as the walk begins: their cars open the list
+    if (p > 0.02 && !mapped && N) {
+      drag = Math.round(angle / STEP) * STEP; angle = drag; ring.rotation.y = angle
+      r0m = Math.round(drag / STEP)
+      listStart = r0m - 1 - base; anchor = N > 1 ? 1 : 0
+      scrollPos = scrollTarget = anchor; mapped = true
+    }
+    if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
+    const full = throwK >= 1
+    if (wasFull && !full) {
+      // walking out: the cards in front of you go back into the screens
+      const ci = Math.min(N - 1, Math.max(0, Math.round(scrollPos)))
+      anchor = ci; base = r0m - listStart - ci; dirty = true
+    }
+    wasFull = full
+    if (!holding) {
+      const sp = scrollPos
+      scrollPos += (scrollTarget - scrollPos) * (1 - Math.exp(-dt * 9))
+      if (Math.abs(scrollTarget - scrollPos) < 1e-4) scrollPos = scrollTarget
+      if (scrollPos !== sp) dirty = true
+    }
+  }
+  const placeCards = (dt: number) => {
+    const want = new Map<number, number>()   // car → its place in the list
+    if (throwK > 0 && N) {
+      const lo = Math.max(0, Math.floor(scrollPos) - 2), hi = Math.min(N - 1, Math.ceil(scrollPos) + 2)
+      for (let i = lo; i <= hi; i++) want.set(listCar(i), i)
+      if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
     const ease = 1 - Math.exp(-dt * 9)
-    want.forEach(({ pg, j }, car) => {
+    want.forEach((i, car) => {
       let hd = held.get(car)
       if (!hd) {
         const m = takeMesh()
         m.userData.car = car; m.material.uniforms.map.value = ensureCard(car).tex
-        // new with a filter: it grows in where it belongs; with the page or the throw: just there
-        hd = { m, car, pa: pg, lp: slotLocal[j].clone(), vis: viewChanged ? 0 : 1, live: true, j }
+        // new with a filter: it grows in where it belongs; otherwise just there
+        hd = { m, car, i, pi: i, vis: viewChanged ? 0 : 1, live: true }
         held.set(car, hd)
-      } else if (viewChanged && Math.abs(hd.pa - pg) > 1) { hd.pa = pg; hd.lp.copy(slotLocal[j]); hd.vis = 0 }
-      hd.live = true; hd.j = j
-      hd.pa += (pg - hd.pa) * ease
-      hd.lp.lerp(slotLocal[j], ease)
-      if (Math.abs(pg - hd.pa) > 1e-3 || hd.lp.distanceToSquared(slotLocal[j]) > 1e-7) dirty = true
+      } else if (viewChanged && Math.abs(hd.pi - i) > 2) { hd.pi = i; hd.vis = 0 }
+      hd.live = true; hd.i = i
+      const p0 = hd.pi
+      hd.pi += (i - hd.pi) * ease
+      if (Math.abs(i - hd.pi) < 1e-4) hd.pi = i
+      if (hd.pi !== p0) dirty = true
     })
     viewChanged = false
-    // the front screen: where the cars come out of
-    srcP.set(STAND.x, ring.position.y, STAND.z + R); srcQ.identity()
-    const srcS = (CW * 0.96) / cardW
-    // opening: the tapped card comes up to you until it fills the screen
     let openK = 0
     if (opening) {
       opening.t += dt; dirty = true
@@ -944,42 +1031,55 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (e) e.used = time
       u.uReady.value = e?.ready ? 1 : 0
       u.uExp.value = renderer.toneMappingExposure
-      // its place on its page, the page turned about you by where it is on the band
-      const off = hd.pa - pagePos
-      tmpV.copy(hd.lp).applyMatrix4(layCam.matrixWorld).sub(pivot).applyAxisAngle(yAxis, off * pageAngle).add(pivot)
-      tmpQ.setFromAxisAngle(yAxis, off * pageAngle).multiply(layCam.quaternion)
-      // the flight out of the screen: an arc up and over, turning to face you,
-      // shrinking from the screen's size to the card's; in reading order
-      const fj = calm ? 1 : easeOut(fit(throwK, (hd.j % perPage) * 0.055, (hd.j % perPage) * 0.055 + 0.5))
-      let sc = 1, a = calm ? throwK : fit(fj, 0, 0.18)
-      if (fj < 1) {
-        m.position.lerpVectors(srcP, tmpV, fj); m.position.y += Math.sin(Math.PI * fj) * 0.45
-        m.quaternion.slerpQuaternions(srcQ, tmpQ, fj)
-        sc = srcS + (1 - srcS) * fj
-      } else { m.position.copy(tmpV); m.quaternion.copy(tmpQ) }
-      // under the mouse it lifts a touch
+      // its place on the drum: the middle card square to you, the others
+      // turning away above and below
+      const off = hd.pi - scrollPos, phi = (off * pitch) / drumR
+      tmpV.set(0, cy - drumR * Math.sin(phi), -WALL_R - drumR * (1 - Math.cos(phi))).applyMatrix4(camera.matrixWorld)
+      tmpQ.copy(camera.quaternion).multiply(tmpQ2.setFromAxisAngle(xAxis, phi))
+      let bright = 1 - 0.3 * smooth(fit(Math.abs(off), 0.15, 1.1))
+      let sc = 1, a = 1, strip = 1
+      const rel = hd.i - anchor
+      if (mapped && Math.abs(rel) <= 1 && throwK < 1) {
+        // the scatter: the screen flies to its place, turning to you, and the
+        // band opens under its photo as it lands
+        const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
+        srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
+        srcP.sub(tmpV2.set(0, ((cardH - (cardW * 2) / 3) / 2) * sc0, 0).applyQuaternion(srcQ))   // its photo exactly on the screen
+        m.position.lerpVectors(srcP, tmpV, fe); m.position.y += Math.sin(Math.PI * fe) * 0.12
+        m.quaternion.slerpQuaternions(srcQ, tmpQ, fe)
+        sc = sc0 + (1 - sc0) * fe
+        const sb = 1 - 0.72 * slotDim[sl]
+        bright = sb + (bright - sb) * fe
+        strip = fit(fe, 0.45, 1)
+        if (fe <= 0) a = 0
+      } else {
+        m.position.copy(tmpV); m.quaternion.copy(tmpQ)
+        a = calm ? throwK : fit(throwK, 0.8, 1)   // the rest of the stock comes in once the screens have landed
+      }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
       if (Math.abs(lift - u.uLift.value) > 1e-3) dirty = true
       u.uLift.value = lift
-      sc *= 1 + lift * 0.03
-      // in or out with a filter: it grows in, it shrinks away
+      sc *= 1 + lift * 0.02
       const vv = smooth(hd.vis)
       sc *= calm ? 1 : 0.86 + 0.14 * vv
-      a *= vv * (1 - smooth(fit(Math.abs(off), 0.3, 1)))
+      a *= vv * (1 - smooth(fit(Math.abs(off), 1.6, 2.4)))
+      u.uClipOn.value = 1
       if (opening) {
         if (opening.h === hd) {
           // up to the camera, square to it, near enough to cover the whole screen
           const vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * camera.aspect)
-          const dist = Math.min((cardW * CARD_A) / 2 / Math.tan(vf), cardW / 2 / Math.tan(hf)) * 0.96
+          const dist = Math.min(cardH / 2 / Math.tan(vf), cardW / 2 / Math.tan(hf)) * 0.96
           endP.set(0, 0, -dist).applyMatrix4(camera.matrixWorld); endQ.copy(camera.quaternion)
           m.position.lerp(endP, openK); m.quaternion.slerp(endQ, openK)
+          bright += (1 - bright) * openK
+          u.uClipOn.value = 1 - openK
           m.renderOrder = 1
         } else a *= 1 - openK
       } else m.renderOrder = 0
-      u.uAlpha.value = a
+      u.uAlpha.value = a; u.uBright.value = bright; u.uStrip.value = strip
       m.visible = a > 0.002
       const pad = cardW * 0.07
-      m.scale.set((cardW + pad * 2) * sc, (cardW * CARD_A + pad * 2) * sc, 1)
+      m.scale.set((cardW + pad * 2) * sc, (cardH + pad * 2) * sc, 1)
     })
   }
   const wallHit = (e: PointerEvent) => {
@@ -1079,7 +1179,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const before = u.uPower.value
       u.uPower.value = Math.min(1, Math.max(0, before + (onNow ? dt / 0.35 : -dt / 0.25)))
       if (u.uPower.value !== before) dirty = true
-      u.uDim.value = Math.max(smooth(fit(Math.abs(th), 0.18, 1.1)), throwK * 0.72)   // behind the cards, the screens dim
+      u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1)); slotDim[i] = u.uDim.value
     })
     // dress each slot with the car that belongs at its spot of the ring, so
     // browsing runs through the whole stock, newest to oldest, in a loop
@@ -1090,7 +1190,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (swap >= 1) {
         view = pendingView; pendingView = null; N = view.length
         drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
-        pageTarget = 0; pagePos = 0; viewChanged = true
+        listStart = 0; scrollTarget = 0; viewChanged = true
       }
     } else if (swap > 0) {
       // hold the dark a moment for the front photo, never long
@@ -1122,7 +1222,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     })
     const f = carAt(Math.round(angle / STEP))
     if (f !== front) { front = f; opts.onFront(f) }
-    placeWall(p, dt)
+    placeWall(p, dt); placeShow(dt); placeCards(dt)
   }
 
   function setSize() {
@@ -1154,20 +1254,40 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     drag = Math.round(drag / STEP) * STEP; autoT = 0
   }
   let tapOut = false
+  let lastWheelAt = 0, wheelArmed = false, wheelAcc = 0, snapT = 0, pullOff = 0
+  // inside: the finger holds the list (1:1), lets go with its speed and the
+  // list comes to rest on a card; at the top, pulled on further, it gives
+  // like rubber, and let go past the mark it walks you out
+  let scroll0 = 0, vy = 0, lastMy = 0, lastMt = 0, topStart = false, pullPx = 0
+  const PULL = 90
   const onDown = (e: PointerEvent) => {
     autoT = 0
-    if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // from the street: only a tap on the middle screen
-    if (progress < WALK - 0.04) return
+    if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // from the street: only a tap on a screen
+    if (progress < WALK - 0.04 || !wallOn) return
     dragging = true; moved = false; downX = e.clientX; downY = e.clientY
+    holding = true; scroll0 = scrollPos; scrollTarget = scrollPos; vy = 0; lastMy = e.clientY; lastMt = performance.now()
+    topStart = scrollPos < 0.05; pullPx = 0
   }
   const onMove = (e: PointerEvent) => {
-    if (!dragging || moved) return
-    const dx = e.clientX - downX, ax = Math.abs(dx), ay = Math.abs(e.clientY - downY)
-    if (ay > ax && ay > 6) { dragging = false; return }   // a vertical gesture: not ours
-    if (ax < 28) return
-    moved = true                                         // one card per swipe
-    if (wallOn) { turnPage(Math.sign(dx)); return }      // RTL: swipe right for the next page
-    settle(); drag += Math.sign(dx) * STEP; dirty = true // swipe right, cards go right
+    if (!dragging || !holding) return
+    const dx = e.clientX - downX, dy = e.clientY - downY
+    if (!moved) { if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) return; moved = true }
+    const raw = scroll0 - dy / pitchPx, max = maxScroll()
+    scrollPos = raw < 0 ? raw * 0.35 : raw > max ? max + (raw - max) * 0.35 : raw
+    scrollTarget = scrollPos
+    pullPx = topStart ? Math.max(0, dy) : 0
+    opts.onPull?.(Math.min(1, pullPx / PULL))
+    const now = performance.now(), dtm = Math.max(8, now - lastMt)
+    vy = vy * 0.5 + ((-(e.clientY - lastMy) / pitchPx) / (dtm / 1000)) * 0.5   // cards a second
+    lastMy = e.clientY; lastMt = now; dirty = true
+  }
+  const release = (exit: boolean) => {
+    holding = false
+    opts.onPull?.(0)
+    if (exit && topStart && pullPx >= PULL) { scrollTarget = 0; dirty = true; opts.onExit?.(); return }
+    if (performance.now() - lastMt > 120) vy = 0
+    scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollPos + vy * 0.22)))
+    dirty = true
   }
   const onUp = (e: PointerEvent) => {
     if (tapOut) {
@@ -1176,26 +1296,20 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const r = canvas.getBoundingClientRect()
       ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
       ray.setFromCamera(ndc, camera)
-      const hit = ray.intersectObjects(cardMeshes, false).find(h => h.object.userData.shown)
+      const hit = ray.intersectObjects([...cardMeshes, ...showMeshes], false).find(h => h.object.visible)
       if (hit) opts.onEnter?.()
       return
     }
     if (!dragging) return
     dragging = false
-    if (moved) return
-    if (Math.abs(e.clientY - downY) > 6) return
-    const r = canvas.getBoundingClientRect()
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
-    ray.setFromCamera(ndc, camera)
-    if (wallOn) { const o = wallHit(e); if (o) openCard(o); return }
-    const hit = ray.intersectObjects(cardMeshes, false).find(h => h.object.userData.shown)
-    if (!hit) return
-    const sIdx = hit.object.userData.slot as number
-    let th = (-sIdx * STEP + angle) % (Math.PI * 2)
-    if (th > Math.PI) th -= Math.PI * 2
-    if (th < -Math.PI) th += Math.PI * 2
-    if (Math.abs(th) < STEP / 2) { opts.onOpen(hit.object.userData.car as number); return }
-    drag -= Math.round(th / STEP) * STEP; dirty = true
+    if (moved) { release(true); return }
+    holding = false
+    // a tap: on the middle card it opens; on the one above or below, brings it to the middle
+    const o = wallHit(e)
+    if (!o) { scrollTarget = Math.round(scrollPos); return }
+    const hd = held.get(o.userData.car as number)
+    if (hd && Math.abs(hd.pi - scrollPos) > 0.5) { scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(hd.pi))); dirty = true }
+    else openCard(o)
   }
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses
@@ -1211,7 +1325,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   addEventListener('pointermove', onMove, { passive: true })
   addEventListener('pointermove', onHover, { passive: true })
   addEventListener('pointerup', onUp)
-  addEventListener('pointercancel', () => { if (dragging) { dragging = false; settle() } })
+  addEventListener('pointercancel', () => { if (dragging) { dragging = false; if (holding) release(false) } })
 
   // ─── Loop: always running while the gallery floats; while walking it
   //     renders only when something moved ───
@@ -1225,9 +1339,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
     // the kick wakes the render loop so the switch-on plays even at rest
     if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
+    if (growT < 0 && readyAt >= 0 && (progress > 0.5 || (screenOn && now - readyAt > 1250))) { growT = progress > 0.5 ? 1 : 0; dirty = true }
     // the ring slides one screen on its own every three seconds: the middle
     // car moves to the next screen and its neighbour takes the middle
-    if (screenOn && N > 1 && !dragging && !pendingView && !swap && !wallOn) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
+    if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     let signRising = false
@@ -1246,7 +1361,33 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     renderFrame(p) { hallClock = p > LIT ? POWER_END : 0; progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
-    step(dir) { if (wallOn) { turnPage(dir); return } settle(); drag += dir * STEP; dirty = true },
+    step(dir) {
+      if (wallOn) { scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollTarget) + dir)); dirty = true; return }
+      settle(); drag += dir * STEP; dirty = true
+    },
+    inside: () => wallOn,
+    atTop: () => scrollTarget <= 0.001,
+    wheel(dy) {
+      if (!wallOn) return false
+      const now = performance.now(), gap = now - lastWheelAt
+      lastWheelAt = now
+      if (dy < 0 && scrollTarget <= 0.001) {
+        // at the top: a fresh turn up (after a pause — not a scroll's tail) leads out
+        if (gap > 280) { wheelArmed = true; wheelAcc = 0 }
+        if (wheelArmed) {
+          wheelAcc -= dy
+          opts.onPull?.(Math.min(1, wheelAcc / 160))
+          clearTimeout(pullOff); pullOff = window.setTimeout(() => opts.onPull?.(0), 320)
+          if (wheelAcc >= 160) { wheelArmed = false; wheelAcc = 0; opts.onPull?.(0); return false }
+        }
+        return true
+      }
+      wheelArmed = false
+      scrollTarget = Math.min(maxScroll(), Math.max(0, scrollTarget + dy / pitchPx))
+      clearTimeout(snapT); snapT = window.setTimeout(() => { scrollTarget = Math.round(scrollTarget); dirty = true }, 160)
+      dirty = true
+      return true
+    },
     setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
     setView(ids) {
       const next = ids ?? Array.from({ length: TOTAL }, (_, i) => i)

@@ -15,6 +15,13 @@ const PORTRAITS = ['257080', '257075', '257076', '257077', '258775', '259104', '
 // The gallery is the inventory: one card per car, in stock and on the way as
 // one list, shuffled afresh on every visit (client side). The caption carries
 // the car's own details: the maker large, the rest below
+// the kilometres as the cars page shows them: a number, or new
+const km = (mileage?: string) => {
+  if (!mileage) return ''
+  const n = parseInt(mileage.replace(/[^\d]/g, ''), 10)
+  return !isNaN(n) && n > 0 ? `${n.toLocaleString('en-US')} ק״מ` : 'חדש'
+}
+
 export default async function ShowroomPage() {
   let cards: Card[] = []
   try {
@@ -32,7 +39,7 @@ export default async function ShowroomPage() {
         sub: [model, c.year, c.price, stock ? 'במלאי' : 'בדרך לארץ'].filter(Boolean).join(' · '),
         href: `/car/${c.recNo}`,
         images: [img(c.imageUrl)],
-        make, model, year: c.year ?? '', price: c.price ?? '', stock,
+        make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage),
       }
     })
   } catch {}
