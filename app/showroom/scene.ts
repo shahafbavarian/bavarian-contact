@@ -181,7 +181,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
 
   const flat = new THREE.Scene(); flat.background = new THREE.Color(1, 1, 1)
-  mats.wall.envMap = pmrem.fromScene(flat).texture   // walls: one even fill from every side, no tone jump at the corners
+  const flatEnv = pmrem.fromScene(flat).texture
+  // THE WHITE HAZE, found by A/B: the glass front mirrored the studio
+  // environment's bright overhead "sky box"; looking up on the way in, the
+  // transom pane over the doors showed it as a soft white blot. The glass
+  // takes the flat, even fill instead: a sheen with nothing to mirror
+  mats.glass.envMap = flatEnv; mats.glass.envMapIntensity = 0.3
+  mats.wall.envMap = flatEnv   // walls: one even fill from every side, no tone jump at the corners
   const add = <T extends THREE.Object3D>(o: T) => { scene.add(o); return o }
   const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
     const b = add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); b.position.set(x, y, z); return b
@@ -487,7 +493,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // the hall's own surfaces take the soft fill from their own copy of the
   // environment, so it can go dark with the lights while the street keeps its own
   const tileMat = tile.material as THREE.MeshStandardMaterial
-  mats.ceiling.envMap = env; tileMat.envMap = env
+  // THE WHITE HAZE: with the studio environment on the ceiling, its big
+  // overhead light box reflected as a huge soft white blot mid-ceiling on
+  // the way in. The ceiling takes the flat, even fill instead
+  mats.ceiling.envMap = flatEnv; tileMat.envMap = env
   power(0, k => {
     mats.wall.envMapIntensity = 0.05 + 0.23 * k
     mats.ceiling.envMapIntensity = 0.06 + 0.29 * k
