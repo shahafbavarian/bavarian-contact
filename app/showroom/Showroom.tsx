@@ -129,8 +129,13 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {
             const el = sign.current; if (!el) return
-            el.style.visibility = fade > 0.01 && current < 0.16 ? 'visible' : 'hidden'
-            el.style.opacity = String(fade * (1 - fit(current, 0.03, 0.16)))   // gone in the first steps in: its glow never reaches the canopy
+            // The haze: walking up, the sign rises past the top of the screen while
+            // the scene scales it up many times, and its halo (scaled with it)
+            // spilled into view as a white glow with no letters. It fades out on its
+            // way to the top edge, before it leaves the screen, and before it grows
+            const f = fade * fit(y, innerHeight * 0.04, innerHeight * 0.16) * (1 - fit(w, innerWidth * 1.1, innerWidth * 1.6))
+            el.style.visibility = f > 0.01 ? 'visible' : 'hidden'
+            el.style.opacity = String(f)
             el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
           },
           font: getComputedStyle(root.current!).fontFamily,

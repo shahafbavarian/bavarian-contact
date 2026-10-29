@@ -328,15 +328,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // its light on the stone, even along the whole sign: a row of small lamps
   // close to the wall, and a soft band flat across the letters that fades
   // only past their ends (out of reach of the soffit and the street)
-  const signLamps = [-1.8, -0.6, 0.6, 1.8].map(x => {
-    const l = new THREE.PointLight('#fff1e2', 0.4, 3.5, 2); l.position.set(x, SIGN_Y, SIGN_Z + 0.7); scene.add(l); return l
-  })
+  // (no lamps of its own: four more lights on every lit pixel cost the walk its
+  // smoothness on a phone, for a glow the sign's own halo already gives)
   const washFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ vec2 p = abs(vUv - .5) * 2.; float a = (1. - smoothstep(.62, 1., p.x)) * (1. - smoothstep(.1, 1., p.y)); gl_FragColor = vec4(uColor, a * a * uOpacity); }'
   const signWash = new THREE.Mesh(new THREE.PlaneGeometry(signW * 1.45, 2.2), new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color('#fff0de') }, uOpacity: { value: 0.1 } },
     vertexShader: radialVert, fragmentShader: washFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }))
-  signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005); scene.add(signWash)
+  // (no band of light painted on the stone: as you walk up to the canopy the
+  // letters leave the top of the screen and that band stayed, a white haze)
+  signWash.position.set(0, SIGN_Y, SIGN_Z + 0.005)
   // the stone right behind the letters a shade darker, fading out past their
   // ends, so the lit sign stands out without darkening the whole facade
   // a wide, soft-edged shade (a gaussian, no visible border)
@@ -349,16 +350,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // its light on the stone comes up with the letters (the page brings them
   // on 200 ms after the view is ready, over a second: the same beat)
   const signLight = (k: number) => {
-    for (const l of signLamps) l.intensity = 0.35 * k
     ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.12 * k
   }
   signLight(0)
   // the street side is lit already when the page opens: only the hall's lights run
   const signL = new THREE.Vector3(), signR = new THREE.Vector3()
+  let viewW = canvas.clientWidth, viewH = canvas.clientHeight
   const reportSign = () => {
     if (!opts.onSign) return
     signL.set(-signW / 2, SIGN_Y, SIGN_Z).project(camera); signR.set(signW / 2, SIGN_Y, SIGN_Z).project(camera)
-    const cw = canvas.clientWidth, ch = canvas.clientHeight
+    const cw = viewW, ch = viewH   // cached on resize: reading layout every frame forced a reflow each time
     // as you come under the canopy its edge hides the sign: the page's sign (drawn
     // over the scene, so it knows nothing of that) fades out before its glow could show
     const fade = signL.z < 1 && signR.z < 1 ? fit(camera.position.z, SIGN_Z + 0.6, SIGN_Z + 3.2) : 0
@@ -531,7 +532,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)   // the light on the plinth goes out with the hall
 
   // ─── Back: glass offices with frosted bands ───
-  const officeZ = FRONT - D + 4
+  // the glass wall stands against the back wall: its frames meet the ceiling line
+  // (4 m in front of it, seen from below they rose past that line)
+  const officeZ = FRONT - D + 0.15
   // frames set symmetric about the hall's centre line, the stand's axis
   for (const x of [-8, -4.8, -1.6, 1.6, 4.8, 8]) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
   // the glass wall's head channel along the ceiling: the frames end in it (seen from below,
@@ -708,6 +711,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
   function setSize() {
     const w = canvas.clientWidth, h = canvas.clientHeight
+    viewW = w; viewH = h
     renderer.setSize(w, h, false)
     composer.setSize(w, h)
     bloom.resolution.set(w * (mobile ? 0.5 : 1), h * (mobile ? 0.5 : 1))
