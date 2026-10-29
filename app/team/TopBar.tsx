@@ -35,8 +35,15 @@ export default function TopBar({ title, watch, back }: { title: string; watch?: 
     <img className="bm-logo" src="/brand/logo-full-dark-sm.png" alt={t.logoAlt} width={94} height={44} />
   )
 
+  // like a native app's bar: a tap on its empty part goes back to the top
+  // (the iPhone's tap-on-the-clock, which some setups miss, gets a fallback)
+  const toTop = (e: React.MouseEvent) => {
+    if ((e.target as Element).closest('a, button')) return
+    window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
+
   return (
-    <header ref={bar} className="bm-bar" data-scrolled="false">
+    <header ref={bar} className="bm-bar" data-scrolled="false" onClick={toTop}>
       {back ? (
         <>
           <Link href="/team" className="bm-back">

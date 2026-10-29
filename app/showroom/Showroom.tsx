@@ -196,9 +196,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         const l = fit(current, 0.42, 0.6)
         nav.current.style.opacity = String(l); nav.current.style.visibility = l > 0.01 ? 'visible' : 'hidden'
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
-        if (light) nav.current.toggleAttribute('data-bright', current > 0.8)
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
+      // the bright trial: the page's chrome follows the hall's own brightening
+      if (light) root.current?.toggleAttribute('data-bright', current > 0.96)
       // the street's buttons give way as soon as you step in
       if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
     }
@@ -344,6 +345,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       {/* Safari 26 looks at what is fixed at the very top edge to decide what to draw
           behind the clock; a transparent, click-through strip there lets the page show */}
       <div ref={strip} className="sr-safari-strip" aria-hidden="true" />
+      <div className="sr-safari-strip sr-strip-b" aria-hidden="true" />
       <div className="sr-track">
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />

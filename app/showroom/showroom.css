@@ -26,7 +26,8 @@ html:has(.sr) { overflow: auto; }
    window); only buttons and links take them */
 .sr-stage a, .sr-stage button, .sr-stage .sr-menu { pointer-events: auto; }
 /* the strip behind the iPhone clock stays black (it takes this colour) */
-.sr-safari-strip { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #06080c; pointer-events: none; z-index: 2147483647; }
+.sr-safari-strip { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #06080c; pointer-events: none; z-index: 2147483647; transition: background-color 500ms ease; }
+.sr-strip-b { top: auto; bottom: 0; }
 .sr-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; touch-action: pan-y; cursor: grab; transition: opacity 400ms cubic-bezier(.22,1,.36,1); }
 .sr[data-state="ready"] .sr-canvas { opacity: 1; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
@@ -35,8 +36,8 @@ html:has(.sr) { overflow: auto; }
   /* the top fades softly, the stone still showing behind the clock */
   /* a long fade into black at the top, so the joint with the clock strip is
      nowhere to be seen */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 19%, #000 86%, transparent 100%);
-          mask-image: linear-gradient(to bottom, transparent 0, #000 19%, #000 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 95%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 95%, transparent 100%);
 }
 
 /* The sign on the building: the live header's lit look, moved every frame by
@@ -275,9 +276,10 @@ html:has(.sr) { overflow: auto; }
 .sr-tool[data-on] svg { color: #fff; filter: drop-shadow(0 0 7px rgba(255,255,255,.85)); }
 .sr-tool:active { transform: scale(.94); }
 /* the row pours in as you arrive, on the street's beat */
-.sr-cap[data-in] .sr-find { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 120ms backwards; }
-.sr-cap[data-in] .sr-tool:nth-of-type(1) { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 155ms backwards; }
-.sr-cap[data-in] .sr-tool:nth-of-type(2) { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 190ms backwards; }
+.sr-cap[data-in] .sr-find { animation: sr-pour-box 640ms cubic-bezier(.22,1,.36,1) 120ms backwards; }
+.sr-cap[data-in] .sr-tool:nth-of-type(1) { animation: sr-pour-box 640ms cubic-bezier(.22,1,.36,1) 155ms backwards; }
+.sr-cap[data-in] .sr-tool:nth-of-type(2) { animation: sr-pour-box 640ms cubic-bezier(.22,1,.36,1) 190ms backwards; }
+@keyframes sr-pour-box { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* One line of lit words over the row: the makers or models to pick from,
    the filter, the order. Hairlines between the words (the street's doors);
@@ -382,11 +384,35 @@ html:has(.sr) { overflow: auto; }
   @keyframes sr-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 
-/* ─── The bright trial (?theme=light): inside, ink on a light wash ─── */
-.sr-logo .sr-logo-ink { display: none; }
-.sr[data-theme="light"] .sr-top[data-bright] .sr-logo img { display: none; }
-.sr[data-theme="light"] .sr-top[data-bright] .sr-logo .sr-logo-ink { display: block; }
-.sr[data-theme="light"] .sr-top[data-bright] .sr-burger { color: #14171A; }
+/* ─── The bright trial (?theme=light): once the walk in ends, the hall
+   itself comes up bright, and the page's chrome crossfades with it — the
+   iPhone's own strips included, so no edge is ever stuck on the wrong
+   colour between black and white ─── */
+.sr[data-theme="light"][data-bright] .sr-safari-strip { background: #f5f6f7; }
+/* the bar: a white sheet fades in under its content; the two logos crossfade */
+.sr[data-theme="light"] .sr-top::before {
+  content: ''; position: absolute; inset: calc(-1 * env(safe-area-inset-top)) 0 0; z-index: -1;
+  background: rgba(245,246,247,.97); box-shadow: 0 8px 28px rgba(0,0,0,.18);
+  opacity: 0; transition: opacity 500ms ease;
+}
+.sr[data-theme="light"][data-bright] .sr-top::before { opacity: 1; }
+.sr[data-theme="light"] .sr-logo { position: relative; }
+.sr[data-theme="light"] .sr-logo .sr-logo-ink {
+  display: block; position: absolute; inset-inline-start: 0; top: 50%; transform: translateY(-50%);
+  height: clamp(30px, 3vw, 38px); width: auto; opacity: 0; transition: opacity 450ms ease;
+}
+.sr[data-theme="light"] .sr-logo > img:first-of-type { transition: opacity 450ms ease; }
+.sr[data-theme="light"][data-bright] .sr-logo > img:first-of-type { opacity: 0; }
+.sr[data-theme="light"][data-bright] .sr-logo .sr-logo-ink { opacity: 1; }
+.sr[data-theme="light"] .sr-burger { transition: color 450ms ease; }
+.sr[data-theme="light"][data-bright] .sr-burger { color: #14171A; }
+/* the foot: a white sheet rises behind the search as the hall brightens */
+.sr[data-theme="light"] .sr-cap::before {
+  content: ''; position: absolute; z-index: -1; inset: -12px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
+  background: rgba(245,246,247,.97); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgba(0,0,0,.14);
+  opacity: 0; transition: opacity 500ms ease;
+}
+.sr[data-theme="light"][data-bright] .sr-cap::before { opacity: 1; }
 .sr[data-theme="light"] .sr-find, .sr[data-theme="light"] .sr-tool {
   border-color: rgba(20,23,26,.22); background: rgba(255,255,255,.7); color: #14171A; box-shadow: 0 1px 2px rgba(20,23,26,.06), 0 6px 18px rgba(20,23,26,.06);
 }
@@ -404,17 +430,9 @@ html:has(.sr) { overflow: auto; }
 .sr[data-theme="light"] .sr-word[aria-pressed="true"]::after, .sr[data-theme="light"] .sr-word[aria-selected="true"]::after { background: #14171A; box-shadow: none; }
 .sr[data-theme="light"] .sr-word + .sr-word::before { background: rgba(20,23,26,.2); }
 .sr[data-theme="light"] .sr-word small, .sr[data-theme="light"] .sr-word .sr-dir { color: #8a9098; }
-.sr[data-theme="light"] .sr-pull { color: #14171A; text-shadow: none; }
-.sr[data-theme="light"] .sr-pull svg { filter: none; }
 
-/* the bright trial over the dark hall: the bar above and the search below
-   sit on white, as on the site's pages; the hall stays as it is between them */
-.sr[data-theme="light"] .sr-top[data-bright] { background: rgba(255,255,255,.96); box-shadow: 0 8px 28px rgba(0,0,0,.28); }
-.sr[data-theme="light"] .sr-cap::before {
-  content: ''; position: absolute; z-index: -1; inset: -12px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
-  background: rgba(255,255,255,.96); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgba(0,0,0,.28);
-}
-.sr[data-theme="light"] .sr-find, .sr[data-theme="light"] .sr-tool { background: #f3f4f6; box-shadow: none; }
+.sr[data-theme="light"] .sr-find, .sr[data-theme="light"] .sr-tool { background: #ffffff; box-shadow: 0 1px 3px rgba(20,23,26,.07); }
 .sr[data-theme="light"] .sr-words { -webkit-mask-image: none; mask-image: none; }
-/* the pull hint is on the hall itself: it stays light */
-.sr[data-theme="light"] .sr-pull { color: rgba(255,255,255,.82); text-shadow: 0 0 8px rgba(255,255,255,.35); }
+/* the pull hint sits on the brightened hall: ink */
+.sr[data-theme="light"][data-bright] .sr-pull { color: #14171A; text-shadow: none; }
+.sr[data-theme="light"][data-bright] .sr-pull svg { filter: none; }

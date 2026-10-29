@@ -7,9 +7,12 @@ html:has(.bm), html:has(.bm) body {
   position: static; height: auto; touch-action: auto; overscroll-behavior: auto;
   background: #F5F6F7;
 }
-/* Only the root scrolls. If body also had overflow:auto it would become the
-   (non-scrolling) scroll container and break position:sticky. */
-html:has(.bm) { overflow: auto; }
+/* Both stay `visible` — the browser's own default document scroll. An
+   explicit overflow:auto on html made the page scroll through a scroller of
+   its own, and the iPhone's tap-on-the-clock scroll-to-top only serves the
+   native document scroll. (body must not be auto: it would become the
+   non-scrolling scroll container and break position:sticky.) */
+html:has(.bm) { overflow: visible; }
 html:has(.bm) body { overflow: visible; }
 
 .bm {

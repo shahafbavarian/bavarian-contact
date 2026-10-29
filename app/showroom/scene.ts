@@ -52,7 +52,7 @@ type Opts = {
   onPull?: (k: number) => void
   /** the pull at the top was let go past its mark: walk out */
   onExit?: () => void
-  /** a trial: inside, a bright theme over the hall as it is (white cards; veil: an optional light wash) */
+  /** a trial: a bright theme — at the end of the walk in, the whole hall comes up bright to carry it */
   light?: boolean
   veil?: number
   onOpen: (i: number) => void
@@ -762,7 +762,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // a pool of card meshes; each car on show holds one while it is there
   const allMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
   const freeMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
-  let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 8, pitchPx = 300, cardCss = 170, cy = 0, gridTop = 1, colX = 0.9, rowsFit = 2, wideFace = false
+  let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 8, pitchPx = 300, cardCss = 170, cy = 0, gridTop = 1, colX = 0.9, rowsFit = 2, wideFace = false, gcols = 2
   let insetTop = 80, insetBottom = 170, insetSide = 16
   const dress = (m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>) => {
     const u = m.material.uniforms, pad = cardW * 0.07
@@ -873,9 +873,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     }
     const drawHe = (x: number, y: number, h: ReturnType<typeof heLines>) => {
       c.textAlign = 'right'
-      if (card.price) { y += px(h.pr * 1.22); c.direction = 'ltr'; c.font = `600 ${px(h.pr)}px ${font}`; c.fillStyle = face.ink; c.fillText(card.price, x, y) }
+      y += px(h.pr * 1.22)
+      if (card.price) { c.direction = 'ltr'; c.font = `600 ${px(h.pr)}px ${font}`; c.fillStyle = face.ink; c.fillText(card.price, x, y) }
+      y += px(h.mt * 1.5)
       if (meta.length) {
-        y += px(h.mt * 1.5); c.direction = 'rtl'; c.font = `400 ${px(h.mt)}px ${font}`; c.fillStyle = face.muted
+        c.direction = 'rtl'; c.font = `400 ${px(h.mt)}px ${font}`; c.fillStyle = face.muted
         let mx = x
         for (const m of meta) { c.fillText(m, mx, y); mx -= c.measureText(m).width + px(10) }
       }
@@ -960,12 +962,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const availW = 2 * hx - 2 * insetSide * mpp
     const top = hy - insetTop * mpp, bottom = -hy + insetBottom * mpp, availH = Math.max(0.2, top - bottom)
     const gap = 12 * mpp
-    const W = Math.min((availW - gap) / 2, 420 * mpp)
+    // a handful of cars (a narrow filter): one a row, large; otherwise two
+    const W = gcols === 1 ? Math.min(availW, 430 * mpp) : Math.min((availW - gap) / 2, 420 * mpp)
     const css = W / mpp, wide = css >= 300
     const strip = (wide ? 94 : 132) / css
     const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
     STRIP = strip; cardCss = css; wideFace = wide
-    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = (W + gap) / 2
+    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : (W + gap) / 2
     gridTop = top; cy = (top + bottom) / 2; drumR = pitch * 5; pitchPx = pitch / mpp
     rowsFit = Math.max(1, Math.floor((availH + gap) / pitch))
     if (redraw) {   // the faces are drawn again at the new size
@@ -983,7 +986,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     outP.set(colX * (1 - 2 * col), cy + drumR * Math.sin(u), -WALL_R - drumR * (1 - Math.cos(u))).applyMatrix4(camera.matrixWorld)
     outQ.copy(camera.quaternion).multiply(tmpQ2.setFromAxisAngle(xAxis, -u))
   }
-  const maxScroll = () => Math.max(0, Math.ceil(N / 2) - rowsFit)
+  const maxScroll = () => Math.max(0, Math.ceil(N / gcols) - rowsFit)
   // the screens out in front of you: from their place on the ring to the same
   // place as seen from the hall's middle, carried with you
   const placeShow = (dt: number) => {
@@ -1036,10 +1039,24 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (wasFull && !full) {
       // walking out: the cards in front of you go back into the screens
       // the first row in view goes back to the screens facing you
-      const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * 2))
+      const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
       anchor = Math.min(N - 1, i0 + 1); base = r0m - listStart - anchor; dirty = true
     }
     wasFull = full
+    if (opts.light) {
+      // once the walk in has ended the hall brightens to the light template's
+      // background, and darkens again the moment you turn back — eased both ways
+      const b0 = briK
+      briK = Math.min(1, Math.max(0, briK + (full ? dt / 0.45 : -dt / 0.3)))
+      if (briK !== b0) dirty = true
+      const k = smooth(briK)
+      renderer.toneMappingExposure *= 1 + 0.9 * k
+      dayFill.intensity = 2.2 * k
+      scene.environmentIntensity = 0.35 + 0.9 * k
+      bloom.strength *= 1 - k
+      const va = (opts.veil ?? 0.88) * k
+      veil.material.uniforms.uA.value = va; veil.material.uniforms.uExp.value = renderer.toneMappingExposure; veil.visible = va > 0.002
+    }
     if (!holding) {
       const sp = scrollPos
       scrollPos += (scrollTarget - scrollPos) * (1 - Math.exp(-dt * 9))
@@ -1066,15 +1083,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }))
   veil.frustumCulled = false; veil.renderOrder = -10; veil.visible = false
   if (opts.light) wallScene.add(veil)
+  // the bright hall: a soft white fill, so its own shapes read light, under the wash
+  const dayFill = new THREE.HemisphereLight('#ffffff', '#e8eaee', 0)
+  if (opts.light) scene.add(dayFill)
+  let briK = 0
   const placeCards = (dt: number) => {
-    if (opts.light) {
-      const va = (opts.veil ?? 0) * smooth(fit(throwK, 0.25, 1))
-      veil.material.uniforms.uA.value = va; veil.material.uniforms.uExp.value = renderer.toneMappingExposure; veil.visible = va > 0.002
-    }
+    // the column count follows the stock on show
+    const wc = N <= 5 ? 1 : 2
+    if (wc !== gcols) { gcols = wc; layout() }
+
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
       const r0 = Math.max(0, Math.floor(scrollPos) - 1), r1 = Math.ceil(scrollPos) + rowsFit + 1
-      for (let i = r0 * 2; i <= Math.min(N - 1, r1 * 2 + 1); i++) want.set(listCar(i), i)
+      for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
@@ -1085,11 +1106,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const m = takeMesh()
         m.userData.car = car; m.material.uniforms.map.value = ensureCard(car).tex
         // new with a filter: it grows in where it belongs; otherwise just there
-        hd = { m, car, i, pr: Math.floor(i / 2), pc: i % 2, vis: viewChanged ? 0 : 1, live: true }
+        hd = { m, car, i, pr: Math.floor(i / gcols), pc: i % gcols, vis: viewChanged ? 0 : 1, live: true }
         held.set(car, hd)
-      } else if (viewChanged && Math.abs(hd.pr - Math.floor(i / 2)) > 2) { hd.pr = Math.floor(i / 2); hd.pc = i % 2; hd.vis = 0 }
+      } else if (viewChanged && Math.abs(hd.pr - Math.floor(i / gcols)) > 2) { hd.pr = Math.floor(i / gcols); hd.pc = i % gcols; hd.vis = 0 }
       hd.live = true; hd.i = i
-      const tr = Math.floor(i / 2), tc = i % 2, r0 = hd.pr, c0 = hd.pc
+      const tr = Math.floor(i / gcols), tc = i % gcols, r0 = hd.pr, c0 = hd.pc
       hd.pr += (tr - hd.pr) * ease; hd.pc += (tc - hd.pc) * ease
       if (Math.abs(tr - hd.pr) < 1e-4) hd.pr = tr
       if (Math.abs(tc - hd.pc) < 1e-4) hd.pc = tc
