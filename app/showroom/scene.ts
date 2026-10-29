@@ -606,39 +606,57 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip()
     c.drawImage(img, x + (w - iw) / 2, y + (h - ih) * fy, iw, ih); c.restore()
   }
-  const drawCard = async (card: Card, mesh: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>) => {
+  // The front screen has two faces: outside, one car at a time, changing by
+  // itself every few seconds; inside, nine car tiles, three to a row
+  let show: { mode: 'in' | 'out'; t: number; swap: number; tiles: (k?: number) => void; solo: (idx: number, k?: number) => void; tex: THREE.CanvasTexture } | null = null
+  const tilesIn = (sh: NonNullable<typeof show>, k: number) => { sh.tiles(k) }
+  const drawCard = async (card: Card, mesh: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>, idx: number) => {
     const imgs = (await Promise.all(card.images.map(loadImg))).filter(Boolean) as HTMLImageElement[]
     const logoImg = imgs.length ? null : (await loadImg(opts.logoUrl)) as HTMLImageElement | null
     const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 832
     const c = cv.getContext('2d')!
-    // no titles on the screens: the caption under the gallery already names
-    // the card, so the screen carries only its picture
-    const drawGrid = (alpha = 1) => {
-      c.save(); c.globalAlpha = alpha
+    // no titles on the screens: the caption under the gallery already names the card
+    const tiles = (k = 1) => {
+      // card tiles, three to a row, up to nine: rounded, real air between, hairline edge
+      c.save(); c.globalAlpha = k
       c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832)
-      if (imgs.length === 1) cover(c, imgs[0], 0, 0, 1024, 832)
-      else if (imgs.length > 1) {
-        // a grid of several, full bleed, hairline gaps
-        const cols = imgs.length >= 7 ? 4 : imgs.length > 4 ? 3 : 2
-        const rows = Math.max(1, Math.min(2, Math.ceil(Math.min(imgs.length, cols * 2) / cols)))
-        const g = 4, cw = (1024 - g * (cols - 1)) / cols, rh = (832 - g * (rows - 1)) / rows
-        imgs.slice(0, cols * rows).forEach((im, k) => cover(c, im, (k % cols) * (cw + g), Math.floor(k / cols) * (rh + g), cw, rh, 0.25))
-      } else {
-        const gr = c.createLinearGradient(0, 0, 1024, 832)
-        gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
-        c.fillStyle = gr; c.fillRect(0, 0, 1024, 832)
-        if (logoImg) {   // the brand mark, quiet, instead of repeating the caption
-          const w = 560, h = w * (logoImg.naturalHeight / logoImg.naturalWidth)
-          c.globalAlpha = alpha * 0.5; c.drawImage(logoImg, (1024 - w) / 2, (832 - h) / 2, w, h)
-        }
-      }
+      const n = Math.min(imgs.length, 9), cols = 3, rows = Math.max(1, Math.ceil(n / cols))
+      const pad = 32, g = 20
+      const cw = (1024 - pad * 2 - g * (cols - 1)) / cols
+      const rh = (832 - pad * 2 - g * (rows - 1)) / rows
+      imgs.slice(0, n).forEach((im, t) => {
+        const x = pad + (t % cols) * (cw + g), y = pad + Math.floor(t / cols) * (rh + g)
+        c.save(); c.beginPath(); c.roundRect(x, y, cw, rh, 18); c.clip()
+        cover(c, im, x, y, cw, rh, 0.3)
+        c.restore()
+        c.beginPath(); c.roundRect(x + 0.75, y + 0.75, cw - 1.5, rh - 1.5, 18)
+        c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; c.stroke()
+      })
       c.restore()
     }
-    drawGrid()
+    const solo = (sidx: number, k = 1) => {
+      const n = imgs.length
+      c.save(); c.globalAlpha = k
+      c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832)
+      cover(c, imgs[((sidx % n) + n) % n], 0, 0, 1024, 832)
+      c.restore()
+    }
+    if (imgs.length === 1) { c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832); cover(c, imgs[0], 0, 0, 1024, 832) }
+    else if (imgs.length > 1) { if (idx === 0 && progress < 0.5) solo(0); else tiles() }
+    else {
+      const gr = c.createLinearGradient(0, 0, 1024, 832)
+      gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
+      c.fillStyle = gr; c.fillRect(0, 0, 1024, 832)
+      if (logoImg) {   // the brand mark, quiet, instead of repeating the caption
+        const w = 560, h = w * (logoImg.naturalHeight / logoImg.naturalWidth)
+        c.globalAlpha = 0.5; c.drawImage(logoImg, (1024 - w) / 2, (832 - h) / 2, w, h); c.globalAlpha = 1
+      }
+    }
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
     mesh.material.uniforms.map.value = tex
     mesh.material.uniforms.uReady.value = 1
+    if (idx === 0 && imgs.length > 1) show = { mode: progress < 0.5 ? 'out' : 'in', t: 0, swap: 1, tiles, solo, tex }
     dirty = true
   }
   let loaded = false
@@ -646,7 +664,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (loaded) return
     loaded = true
     document.fonts?.load(`600 46px ${opts.font}`).catch(() => {}).finally(() => {
-      cards.forEach((card, i) => drawCard(card, cardMeshes[i]))
+      cards.forEach((card, i) => drawCard(card, cardMeshes[i], i))
     })
   }
 
@@ -724,12 +742,28 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the screen facing the street is on from the start (once everything
       // has loaded); the other screens come on only inside and go off on the
       // way out. Ramped per frame, so a slow device still reaches full
-      const onNow = p > LIT ? tvClock > 0.15 + i * 0.05 : assetsReady && Math.abs(th) < 0.35
+      const onNow = p > LIT ? tvClock > 0.15 + i * 0.05 : screenOn && Math.abs(th) < 0.35
       const before = u.uPower.value
       u.uPower.value = Math.min(1, Math.max(0, before + (onNow ? dt / 0.35 : -dt / 0.25)))
       if (u.uPower.value !== before) dirty = true
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
     })
+    // the front screen: one car at a time outside (changing every few
+    // seconds), the nine tiles inside, swapped with a soft crossfade
+    if (show) {
+      const want: 'in' | 'out' = p > 0.5 ? 'in' : 'out'
+      if (want !== show.mode) { show.mode = want; show.swap = 0 }
+      const cyc = Math.floor(show.t / 4.2), ph = show.t % 4.2
+      if (show.swap < 1) {
+        show.swap = Math.min(1, show.swap + dt / 0.6)
+        if (show.mode === 'in') tilesIn(show, smooth(show.swap))
+        else { show.tiles(1); show.solo(cyc, smooth(show.swap)) }
+        show.tex.needsUpdate = true; dirty = true
+      } else if (show.mode === 'out') {
+        show.t += dt
+        if (show.t > 4.2 && ph < 0.8) { show.solo(cyc - 1, 1); show.solo(cyc, smooth(ph / 0.8)); show.tex.needsUpdate = true; dirty = true }
+      }
+    }
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
     if (f !== front) { front = f; opts.onFront(f) }
   }
@@ -813,10 +847,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     renders only when something moved ───
   const frames: number[] = []
   let last = performance.now(), raf = 0, running = true, signDone = false
+  // the street screen ignites a beat after everything has loaded
+  let screenOn = false
   const tick = (now: number) => {
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
+    // the kick wakes the render loop so the switch-on plays even at rest
+    if (!screenOn && readyAt >= 0 && now - readyAt > 1800) { screenOn = true; dirty = true }
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     let signRising = false
