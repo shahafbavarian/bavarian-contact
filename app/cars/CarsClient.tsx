@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { CarSummary } from '@/lib/scraper'
@@ -112,46 +112,12 @@ function CarInfo({ car }: { car: CarSummary }) {
   )
 }
 
-// Fling the page and the showroom leans with the momentum — a whisper of
-// physicality, transform-only, settles instantly. Skipped on reduced motion.
-function useVelocityLean(ref: React.RefObject<HTMLElement>) {
-  useEffect(() => {
-    const el = ref.current
-    if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let lastY = window.scrollY, lastT = performance.now()
-    let skew = 0, target = 0, raf = 0, running = false
-    const loop = () => {
-      skew += (target - skew) * 0.12
-      target *= 0.86 // decay toward rest
-      if (Math.abs(skew) < 0.01 && Math.abs(target) < 0.01) {
-        el.style.transform = ''
-        running = false
-        return
-      }
-      el.style.transform = `skewY(${skew.toFixed(3)}deg)`
-      raf = requestAnimationFrame(loop)
-    }
-    const onScroll = () => {
-      const now = performance.now()
-      const dt = Math.max(8, now - lastT)
-      const v = (window.scrollY - lastY) / dt // px per ms
-      lastY = window.scrollY; lastT = now
-      target = Math.max(-1.1, Math.min(1.1, v * 0.35))
-      if (!running) { running = true; raf = requestAnimationFrame(loop) }
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [ref])
-}
-
 export default function CarsClient({ initialCars }: { initialCars: CarSummary[] }) {
   const [cars, setCars]               = useState<CarSummary[]>(initialCars)
   const [loading, setLoading]         = useState(initialCars.length === 0)
   const [search, setSearch]           = useState('')
   const [activeMake, setActiveMake]   = useState('הכל')
   const [stockFilter, setStockFilter] = useState<StockFilter>('all')
-  const gridWrap = useRef<HTMLDivElement>(null)
-  useVelocityLean(gridWrap)
 
   // Fill in `yad` from the local cache on mount — instant, no network.
   useEffect(() => {
@@ -198,6 +164,10 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
   const railCars = useMemo(() => cars.filter(inStock).slice(0, 6), [cars])
   const showRail = railCars.length >= 3 && !search.trim() && activeMake === 'הכל' && stockFilter === 'all'
   const gridCars = showRail ? filtered.filter(c => !railCars.some(r => r.recNo === c.recNo)) : filtered
+
+  // Reveal registers its cards once, on mount. Remount it whenever the set of
+  // cards changes so newly shown cards are observed instead of staying hidden.
+  const revealKey = `${search.trim()}|${activeMake}|${stockFilter}|${gridCars.length}`
 
   const clearFilters = () => { setSearch(''); setActiveMake('הכל'); setStockFilter('all') }
 
@@ -283,22 +253,20 @@ export default function CarsClient({ initialCars }: { initialCars: CarSummary[] 
             )}
 
             {/* ─── The full collection ─── */}
-            <div ref={gridWrap} className="bm-lean">
-              <Reveal className="bm-grid bm-cars-grid">
+            <Reveal key={revealKey} className="bm-grid bm-cars-grid">
                 {gridCars.map((car, i) => (
-                  <li key={car.recNo} data-reveal>
-                    <Link href={`/car/${car.recNo}`} className="bm-car-card">
-                      <div className="bm-car-photo">
-                        <Image src={car.imageUrl} alt={car.name} fill
-                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          priority={!showRail && i < 2} quality={85} />
-                      </div>
-                      <CarInfo car={car} />
-                    </Link>
-                  </li>
+                <li key={car.recNo} data-reveal>
+                  <Link href={`/car/${car.recNo}`} className="bm-car-card">
+                    <div className="bm-car-photo">
+                      <Image src={car.imageUrl} alt={car.name} fill
+                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                        priority={!showRail && i < 2} quality={85} />
+                    </div>
+                    <CarInfo car={car} />
+                  </Link>
+                </li>
                 ))}
-              </Reveal>
-            </div>
+            </Reveal>
           </>
         )}
       </main>
