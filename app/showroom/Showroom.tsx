@@ -283,6 +283,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
               {card.external
                 ? <a href={card.href} className="sr-name" target="_blank" rel="noopener noreferrer">{card.title}</a>
                 : <Link href={card.href} className="sr-name">{card.title}</Link>}
+              {/* the rest of the car under the maker: model, year, price, status */}
+              {card.sub && <p className="sr-price"><bdi>{card.sub}</bdi></p>}
               </div>
             </div>
           )}
