@@ -1172,9 +1172,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const sb = 1 - 0.72 * slotDim[sl]
         bright = sb + (bright - sb) * fe
         strip = fit(fe, 0.45, 1)
+        // the card's shadow halo dies away before it lands on the screen, and
+        // goes out with the hall's lights on the way to the street — a screen
+        // never carries a shadow, and nothing lingers after dark
+        u.uShade.value = 0.4 * fit(fe, 0.25, 0.9) * smooth(fit(progress, 0.1, 0.35))
         if (fe <= 0) a = 0
       } else {
         m.position.copy(tmpV); m.quaternion.copy(tmpQ)
+        u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
         a = calm ? throwK : fit(throwK, 0.8, 1)   // the rest of the stock comes in once the screens have landed
       }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
