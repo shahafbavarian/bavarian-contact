@@ -230,7 +230,7 @@ html:has(.bm) body { overflow: visible; }
   margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
 }
 .bm-rail::-webkit-scrollbar { display: none; }
-.bm-rail > li { flex: 0 0 min(82vw, 560px); scroll-snap-align: center; }
+.bm-rail > li { flex: 0 0 min(82vw, 560px); min-width: 0; scroll-snap-align: center; }
 @media (min-width: 900px) { .bm-rail > li { scroll-snap-align: start; } }
 .bm-rail-card {
   display: block; border-radius: 20px; overflow: hidden; background: var(--surface);
@@ -242,7 +242,7 @@ html:has(.bm) body { overflow: visible; }
 .bm-rail-hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
 
 /* Grid cards: one surface, photo above, info below — like the rail */
-.bm-cars-grid { margin-top: 28px; grid-template-columns: 1fr; gap: 24px; }
+.bm-cars-grid { margin-top: 28px; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 @media (min-width: 640px) { .bm-cars-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 20px; margin-top: 40px; } }
 @media (min-width: 1024px) { .bm-cars-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 24px; } }
 .bm-car-card {
@@ -262,14 +262,14 @@ html:has(.bm) body { overflow: visible; }
 /* Card info — the English make and model read left, in LTR; price, specs and
    availability read right, in Hebrew. Every line is exactly one row (ellipsis
    when long, kept when empty) so all cards share one height. */
-.bm-cars-grid > li { display: flex; }
+.bm-cars-grid > li { display: flex; min-width: 0; }
 .bm-cars-grid .bm-car-card { display: flex; flex-direction: column; width: 100%; }
 .bm-cars-grid .bm-car-photo { flex-shrink: 0; }
 .bm-car-info {
   display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: flex-start;
   gap: 12px; padding: 14px 16px 16px;
 }
-.bm-car-en { min-width: 0; flex: 1 1 auto; }
+.bm-car-en { min-width: 0; flex: 1 1 0; }
 .bm-car-he { flex: 0 0 auto; max-width: 55%; min-width: 0; }
 .bm-car-info p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bm-car-make { margin: 0; font-size: clamp(17px, 2vw, 20px); font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
@@ -284,9 +284,6 @@ html:has(.bm) body { overflow: visible; }
 .bm-avail.is-stock { color: var(--green); }
 .bm-avail.is-transit { color: #6B5520; }
 .bm-avail.is-transit i { background: #A8862F; }
-
-/* Momentum lean wrapper */
-.bm-lean { will-change: transform; }
 
 /* Loading + empty */
 .bm-loading { display: flex; gap: 6px; justify-content: center; padding: 72px 0; }
