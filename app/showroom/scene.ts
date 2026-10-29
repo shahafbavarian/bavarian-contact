@@ -1053,10 +1053,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (opts.light) {
       // the hall brightens over the walk's last stretch — gradual, never a
       // snap — and only part way: the hall stays clearly itself, just light
+      // the hall rides the very same window as the page and the sheets (see
+      // Showroom): one factor, no chasing clock, nothing drifts apart
       const b0 = briK
-      const want = calm ? (full ? 1 : 0) : smooth(fit(throwK, 0.55, 1))
-      briK += (want - briK) * (1 - Math.exp(-dt * 2.2))
-      if (Math.abs(want - briK) < 1e-3) briK = want
+      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.8, 0.97))
       if (briK !== b0) dirty = true
       const k = briK
       renderer.toneMappingExposure *= 1 + 0.85 * k

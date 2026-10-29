@@ -407,13 +407,13 @@ html:has(.sr) { overflow: auto; }
 .sr[data-theme="light"] .sr-logo { position: relative; }
 .sr[data-theme="light"] .sr-logo .sr-logo-ink {
   display: block; position: absolute; inset-inline-start: 0; top: 50%; transform: translateY(-50%);
-  height: clamp(30px, 3vw, 38px); width: auto; opacity: 0; transition: opacity 650ms cubic-bezier(.4,0,.2,1);
+  height: clamp(30px, 3vw, 38px); width: auto; opacity: var(--br, 0);
 }
-.sr[data-theme="light"] .sr-logo > img:first-of-type { transition: opacity 650ms cubic-bezier(.4,0,.2,1); }
-.sr[data-theme="light"][data-bright] .sr-logo > img:first-of-type { opacity: 0; }
-.sr[data-theme="light"][data-bright] .sr-logo .sr-logo-ink { opacity: 1; }
-.sr[data-theme="light"] .sr-burger { transition: color 650ms cubic-bezier(.4,0,.2,1); }
-.sr[data-theme="light"][data-bright] .sr-burger { color: #14171A; }
+.sr[data-theme="light"] .sr-logo > img:first-of-type { opacity: calc(1 - var(--br, 0)); }
+.sr[data-theme="light"] .sr-burger { color: color-mix(in srgb, #14171A calc(var(--br, 0) * 100%), #ffffff); }
+/* the row's content carries no clocks of its own in the trial: everything
+   under the foot rides the cap and the one factor */
+.sr[data-theme="light"] .sr-word, .sr[data-theme="light"] .sr-cap-in, .sr[data-theme="light"] .sr-chip { animation: none; }
 /* the foot: a sheet in the page's colour behind the search, on the same move */
 .sr[data-theme="light"] .sr-cap::before {
   content: ''; position: absolute; z-index: -1; inset: -12px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;

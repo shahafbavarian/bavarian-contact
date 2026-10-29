@@ -210,7 +210,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       // the same factor
       if (light) {
         const sm = (x: number) => x * x * (3 - 2 * x)
-        const k = sm(fit(current, 0.78, 1))
+        const k = sm(fit(current, 0.8, 0.97))   // the one factor: hall, page, sheets, bars, logo — all of it
         if (Math.abs(k - lastK) > 0.004 || ((k === 0 || k === 1) && k !== lastK)) {
           lastK = k
           const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
@@ -219,7 +219,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           document.body.style.backgroundColor = col
           root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
         }
-        if (Math.abs(k - stripK) > 0.18 || ((k === 0 || k === 1) && k !== stripK)) {
+        if (Math.abs(k - stripK) > 0.26 || ((k === 0 || k === 1) && k !== stripK)) {
           stripK = k
           const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
           const col = `rgb(${ch(6, 245)}, ${ch(8, 246)}, ${ch(12, 247)})`
@@ -227,7 +227,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           strips.forEach(el => { el.style.display = 'none' })
           requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
         }
-        const bright = current > 0.88
+        const bright = current > 0.97   // the few binary styles (menu, pull) flip once the cross is done
         if (bright !== wasBright) { wasBright = bright; root.current?.toggleAttribute('data-bright', bright) }
       }
       // the street's buttons give way as soon as you step in
