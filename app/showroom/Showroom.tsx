@@ -206,7 +206,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         const vv = visualViewport
         if (vv) {
           const vb = Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop))
-          if (Math.abs(vb - lastVb) > 1) { lastVb = vb; c.style.bottom = `${vb + 10}px`; insets() }
+          if (Math.abs(vb - lastVb) > 1) { lastVb = vb; c.style.bottom = `${vb + 4}px`; insets() }
         }
         c.style.transform = `translateY(${(1 - s) * 14}px)`
         if (target === 1 && !dur && current > 0.97) {
@@ -244,10 +244,14 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         // answers a strip change with an animation of its own, on its own
         // clock, so the order goes out at the first step of the move and both
         // land together — fired at the end or the middle, the edges trailed
+        // Safari applies a strip change with a lag of its own, so the order
+        // compensates in each direction: walking in it goes out mid-walk,
+        // well before the content whitens; walking out it waits until the
+        // content is already dark — measured against his device's timing
         let want = stripK
-        if (k > prevK + 1e-4 && k > 0.12) want = 1
-        if (k < prevK - 1e-4 && k < 0.88) want = 0
-        prevK = k
+        if (current > prevK + 1e-4 && current > 0.68) want = 1
+        if (current < prevK - 1e-4 && current < 0.8) want = 0
+        prevK = current
         if (want !== stripK) {
           stripK = want
           const col = want ? '#f5f6f7' : '#06080c'

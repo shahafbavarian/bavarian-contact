@@ -543,7 +543,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // outside, the screens carry the history gallery (indices past the stock)
   const S = opts.street?.length ?? 0
   const sAt = (k: number) => TOTAL + (((k % S) + S) % S)
-  let onStreet = S > 0, mixArm = false, deckMix = 0
+  const onStreet = S > 0
   // a new set comes on like a change of channel: the screens dim, re-dress, light up
   let pendingView: number[] | null = null, swap = 0
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
@@ -727,7 +727,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   let STRIP = 0.26                      // its info band, as a share of its width (set by layout)
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
-    uniform sampler2D map; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
+    uniform sampler2D map; uniform sampler2D map2; uniform float uMix2; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
     uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; uniform vec3 uBase; uniform vec3 uEdgeC; uniform float uEdgeK; uniform float uShade; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     vec3 odtInv(vec3 y){
@@ -750,7 +750,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
-      vec3 col = mix(uBase, texture2D(map, uv).rgb, uReady) * uBright;
+      // flying out of a screen, the face still carries that screen's photo
+      // and dissolves to the car on the way (uMix2: how much remains)
+      vec3 ph = mix(texture2D(map, uv).rgb, texture2D(map2, uv).rgb, uMix2);
+      vec3 col = mix(uBase, ph, uReady) * uBright;
       // a hairline of light at the edge, like the screens' (brighter under the hand)
       col = mix(col, uEdgeC, (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (uEdgeK + .16 * uLift));
       col = acesInv(max(col, vec3(0.)));   // the photo exactly as it is (the frame is tone-mapped after)
@@ -785,7 +788,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (f) return f
     const m = new THREE.Mesh(wallGeo, new THREE.ShaderMaterial({
       uniforms: {
-        map: { value: null }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
+        map: { value: null }, map2: { value: null }, uMix2: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
         uSize: { value: new THREE.Vector2(1, 1) }, uPad: { value: 0.05 }, uStrip: { value: 1 }, uStripH: { value: 0.3 },
         uBright: { value: 1 }, uClip: { value: new THREE.Vector3(0, 1e5, 1) }, uClipOn: { value: 1 },
         uBase: { value: new THREE.Color(opts.light ? '#e9ecef' : '#0d0e11') }, uEdgeC: { value: new THREE.Color(opts.light ? '#000000' : '#ffffff') },
@@ -806,7 +809,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pr: number; pc: number; vis: number; live: boolean }
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
-  let throwK = 0, growAt = -1, viewChanged = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
+  let throwK = 0, growAt = -1, viewChanged = false, exitRide = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
   const layCam = new THREE.PerspectiveCamera()
@@ -826,6 +829,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     return easeInOut(fit(throwK, o, o + 0.6))
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
+  const sIdxK = (sIdx: number) => { const pos = angle / STEP; return sIdx + SLOTS * Math.round((pos - sIdx) / SLOTS) }
   const facingReady = () => {
     const r0 = Math.round(angle / STEP)
     for (let rel = -1; rel <= 1; rel++) { const c = cardMeshes[mod(r0 + rel, SLOTS)]?.userData.car; if (c >= 0 && !texCache.get(c)?.ready) return false }
@@ -1064,7 +1068,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the first row in view goes back to the screens facing you
       const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
       anchor = Math.min(N - 1, i0 + 1); base = r0m - listStart - anchor; dirty = true
+      // walking out: each landing card will leave its photo on its screen —
+      // the ring faces of those cars are made ready now, in one quiet step
+      exitRide = true
+      for (let rel = -1; rel <= SLOTS - 2; rel++) { const i = anchor + rel; if (i >= 0 && i < N) ensureTex(listCar(i)) }
     }
+    if (full) exitRide = false
     wasFull = full
     if (opts.light) {
       // the hall brightens over the walk's last stretch — gradual, never a
@@ -1188,6 +1197,21 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const sb = 1 - 0.72 * slotDim[sl]
         bright = sb + (bright - sb) * fe
         strip = fit(fe, 0.45, 1)
+        // Walking in, the card leaves its screen wearing the screen's photo
+        // (history, or an earlier guest) and dissolves to the car along its
+        // own flight. Walking out there is no dissolve back: the card lands
+        // still wearing the car and leaves that photo on the screen as a
+        // guest of the gallery — the ring's turning retires it in a few
+        // seconds, exactly as a gallery picture goes
+        if (S > 0 && !exitRide) {
+          const srcCar = cardMeshes[sl].userData.car as number
+          if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
+          u.uMix2.value = 1 - smooth(fit(fe, 0.05, 0.6))
+        } else u.uMix2.value = 0
+        if (exitRide && fe <= 0 && hd.car >= 0) {
+          const sm = cardMeshes[sl], ku = sm.userData
+          if (ku.car !== hd.car) { ku.guestK = sIdxK(sl); ku.car = hd.car; sm.material.uniforms.map.value = ensureTex(hd.car).tex }
+        }
         // the card's shadow halo dies away before it lands on the screen, and
         // goes out with the hall's lights on the way to the street — a screen
         // never carries a shadow, and nothing lingers after dark
@@ -1327,25 +1351,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // browsing runs through the whole stock, newest to oldest, in a loop
     // a new set of cars: dark first, then the screens are re-dressed with it,
     // the first match at the front, and light up again
-    // the hand-off between the history gallery and the stock: each screen's
-    // face dissolves to its other deck, rippling across the screens — never
-    // a blackout. Armed the moment you cross either way
-    const wantStreet = S > 0 && p < 0.02
-    if (wantStreet !== onStreet && deckMix === 0 && !mixArm) { mixArm = true; dirty = true }
-    if (deckMix > 0) {
-      deckMix = Math.min(1.4, deckMix + dt / 0.35); dirty = true
-      cardMeshes.forEach((m, sIdx) => { m.material.uniforms.uMix.value = smooth(fit(deckMix, sIdx * 0.04, sIdx * 0.04 + 0.85)) })
-
-      if (deckMix >= 1.4) {
-        onStreet = wantStreet
-        cardMeshes.forEach(m => {
-          const u = m.material.uniforms
-          m.userData.car = m.userData.car2 ?? m.userData.car
-          u.map.value = u.map2.value ?? u.map.value; u.uMix.value = 0
-        })
-        deckMix = 0
-      }
-    }
     if (pendingView) {
       swap = Math.min(1, swap + dt / 0.16); dirty = true
       if (swap >= 1) {
@@ -1369,11 +1374,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const show = CNT > 0 && (CNT >= SLOTS || (k - r0 >= lo && k - r0 <= hi))
       const car = show ? (onStreet ? sAt(k) : carAt(k)) : -1
       const u = m.material.uniforms
-      // mid-dissolve the source face stands still; the target rides on map2
-      if (mixArm) {
-        const tc = show ? (wantStreet ? sAt(k) : carAt(k)) : -1
-        if (tc >= 0) { m.userData.car2 = tc; u.map2.value = ensureTex(tc).tex }
-      } else if (deckMix === 0 && car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
+      // a guest face (a stock photo a landing card left behind) keeps its
+      // screen until the ring's own turning would replace it anyway
+      if (m.userData.guestK === k) { /* the guest stays on */ }
+      else {
+        if (m.userData.guestK !== undefined) delete m.userData.guestK
+        if (car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
+      }
       m.userData.shown = show
       const a0 = u.uAlpha.value
       u.uAlpha.value = Math.min(1, Math.max(0, a0 + (show ? dt / 0.3 : -dt / 0.2)))
@@ -1386,7 +1393,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       u.uFill.value = 1   // the photo fills the whole screen, both views
       u.uExp.value = renderer.toneMappingExposure
     })
-    if (mixArm) { mixArm = false; deckMix = 0.001; dirty = true }
     const f = onStreet ? -1 : carAt(Math.round(angle / STEP))
     if (f !== front) { front = f; opts.onFront(f) }
     placeWall(p, dt); placeShow(dt); placeCards(dt)

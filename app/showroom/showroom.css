@@ -198,7 +198,7 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 
 /* The front card's name, large and centred over the floor */
 .sr-cap {
-  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(14px + env(safe-area-inset-bottom));
+  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(10px + min(env(safe-area-inset-bottom, 0px), 34px));
   display: flex; flex-direction: column; align-items: center; text-align: center;
   opacity: 0; visibility: hidden; font-variant-numeric: tabular-nums; pointer-events: none;
 }
