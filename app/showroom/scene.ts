@@ -750,11 +750,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
-      // mid-flight the card is a turning screen: its front face carries the
-      // screen's own photo, its back face the car (mirrored back to true) —
-      // the physical turn is what changes the picture, nothing dissolves
-      vec2 fuv = (uFlip > .5 && !gl_FrontFacing) ? vec2(1. - uv.x, uv.y) : uv;
-      vec3 ph = (uFlip > .5 && gl_FrontFacing) ? texture2D(map2, fuv).rgb : texture2D(map, fuv).rgb;
+      // mid-flight the card is a turning screen: before the half-way it
+      // shows its screen's photo (map2), after it the car — the turn itself
+      // is a flat cosine squash, so nothing smears in perspective
+      vec3 ph = (uFlip > .5) ? texture2D(map2, uv).rgb : texture2D(map, uv).rgb;
       vec3 col = mix(uBase, ph, uReady) * uBright;
       // a hairline of light at the edge, like the screens' (brighter under the hand)
       col = mix(col, uEdgeC, (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (uEdgeK + .16 * uLift));
@@ -1059,7 +1058,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     }
     // on the street: the faces of the cards about to fly, and the ring faces
     // the screens will dissolve to, are drawn and uploaded ahead, in idle time
-    if (!mapped && N && screenOn) {
+    if (!mapped && N && screenOn && readyAt >= 0 && performance.now() - readyAt > 2500) {
       const r0 = Math.round(drag / STEP)
       for (let d = -1; d <= 4; d++) { const ci = view[mod(r0 - base + d, N)]; ensureCard(ci); ensureTex(ci) }
     }
@@ -1097,10 +1096,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (fling) {
         // the throw runs on, braking smoothly; past either end it stops and
         // springs back; once slow, it eases onto the nearest row
-        scrollPos += vy * dt; vy *= Math.exp(-dt * 2.4)
+        scrollPos += vy * dt; vy *= Math.exp(-dt * 2.1)
         const max = maxScroll()
         if (scrollPos < 0 || scrollPos > max) { vy = 0 }
-        if (Math.abs(vy) < 0.9) { fling = false; scrollTarget = Math.min(max, Math.max(0, Math.round(scrollPos))) }
+        if (Math.abs(vy) < 0.15) { fling = false; scrollTarget = Math.min(max, Math.max(0, scrollPos)) }
         dirty = true
       } else {
         const sp = scrollPos
@@ -1185,7 +1184,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       gridPlace(hd.pr, hd.pc, scrollPos, tmpV, tmpQ)
       const off = hd.pr - scrollPos
       let bright = 1
-      let sc = 1, a = 1, strip = 1
+      let sc = 1, sx = 1, a = 1, strip = 1
       const rel = hd.i - anchor
       if (mapped && rel >= -1 && rel <= SLOTS - 2 && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
@@ -1209,13 +1208,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         if (S > 0 && !(exitRide && rel === 0)) {
           const srcCar = cardMeshes[sl].userData.car as number
           if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
-          u.uFlip.value = 1
-          // a slow start read as warping at close range: the half-turn now
-          // happens decisively through the flight's middle, with a small
-          // breath of scale at the edge-on moment that sells it as a turn
+          // the turn, the native way: a cosine squash of the width with the
+          // face swapped at the zero crossing — a 3D turn of a near-full
+          // screen smeared in perspective ("stretches, then straightens");
+          // the flat flip reads clean at any distance, like iOS's own
           const fl = smooth(fit(fe, 0.3, 0.62))
-          m.quaternion.multiply(tmpQ2.setFromAxisAngle(yUp, Math.PI * fl))
-          sc *= 1 - 0.05 * Math.sin(Math.PI * fl)
+          sx = Math.max(0.015, Math.abs(Math.cos(Math.PI * fl)))
+          u.uFlip.value = fl < 0.5 ? 1 : 0
         } else u.uFlip.value = 0
         if (exitRide && rel === 0 && fe <= 0 && hd.car >= 0) {
           const sm = cardMeshes[sl], ku = sm.userData
@@ -1255,7 +1254,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       u.uAlpha.value = a; u.uBright.value = bright; u.uStrip.value = strip
       m.visible = a > 0.002
       const pad = cardW * 0.07
-      m.scale.set((cardW + pad * 2) * sc, (cardH + pad * 2) * sc, 1)
+      m.scale.set((cardW + pad * 2) * sc * sx, (cardH + pad * 2) * sc, 1)
     })
   }
   const wallHit = (e: PointerEvent) => {
@@ -1465,8 +1464,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const raw = scroll0 - dy / pitchPx, max = maxScroll()
     scrollPos = raw < 0 ? raw * 0.35 : raw > max ? max + (raw - max) * 0.35 : raw
     scrollTarget = scrollPos
-    pullPx = topStart ? Math.max(0, dy) : 0
-    opts.onPull?.(Math.min(1, pullPx / PULL))
     const now = performance.now(), dtm = Math.max(8, now - lastMt)
     vy = vy * 0.5 + ((-(e.clientY - lastMy) / pitchPx) / (dtm / 1000)) * 0.5   // cards a second
     lastMy = e.clientY; lastMt = now; dirty = true
@@ -1474,12 +1471,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const release = (exit: boolean) => {
     holding = false
     opts.onPull?.(0)
-    if (exit && topStart && pullPx >= PULL) { fling = false; scrollTarget = 0; dirty = true; opts.onExit?.(); return }
     if (performance.now() - lastMt > 120) vy = 0
-    // let go with the finger's speed: the list runs on and slows by itself
-    // (a slow release just settles on the nearest row)
-    if (Math.abs(vy) > 1.2) fling = true
-    else { fling = false; scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollPos))) }
+    // let go with the finger's speed: the list runs on and slows by itself,
+    // and rests WHERE IT STOPS — free, like a page, never snapped to a row
+    if (Math.abs(vy) > 0.4) fling = true
+    else { fling = false; scrollTarget = Math.min(maxScroll(), Math.max(0, scrollPos)) }
     dirty = true
   }
   const onUp = (e: PointerEvent) => {
@@ -1568,21 +1564,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (!wallOn) return false
       const now = performance.now(), gap = now - lastWheelAt
       lastWheelAt = now
-      if (dy < 0 && scrollTarget <= 0.001) {
-        // at the top: a fresh turn up (after a pause — not a scroll's tail) leads out
-        if (gap > 280) { wheelArmed = true; wheelAcc = 0 }
-        if (wheelArmed) {
-          wheelAcc -= dy
-          opts.onPull?.(Math.min(1, wheelAcc / 160))
-          clearTimeout(pullOff); pullOff = window.setTimeout(() => opts.onPull?.(0), 320)
-          if (wheelAcc >= 160) { wheelArmed = false; wheelAcc = 0; opts.onPull?.(0); return false }
-        }
-        return true
-      }
-      wheelArmed = false
+      // the top only holds: leaving the hall is the logo's job now
+      if (dy < 0 && scrollTarget <= 0.001) return true
       fling = false
       scrollTarget = Math.min(maxScroll(), Math.max(0, scrollTarget + dy / pitchPx))
-      clearTimeout(snapT); snapT = window.setTimeout(() => { scrollTarget = Math.round(scrollTarget); dirty = true }, 160)
       dirty = true
       return true
     },

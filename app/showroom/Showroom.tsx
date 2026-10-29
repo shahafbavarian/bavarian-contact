@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
+
+// the 3D module starts downloading the moment this file is parsed, in
+// parallel with hydration — not only once the effect runs
+const scenePromise = typeof window !== 'undefined' ? import('./scene') : null
 import { INSTAGRAM_URL } from '@/lib/agent-format'
 import { AVAIL, PRICES, SORTS, carsWord, haystack, lineOf, makesOf, matches, modelsOf, norm, priceNum, rank, type Avail, type Option, type Ranked, type Sort } from './search'
 
@@ -37,6 +41,12 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
   // a fresh random order on every refresh: stock and on-the-way, mixed
   const [deck] = useState(() => {
     const d = [...cards]
+    for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); ;[d[i], d[j]] = [d[j], d[i]] }
+    return d
+  })
+  // and the history gallery too, in an order of its own
+  const [streetDeck] = useState(() => {
+    const d = [...(street ?? [])]
     for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); ;[d[i], d[j]] = [d[j], d[i]] }
     return d
   })
@@ -291,7 +301,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     let gridMid = 0
     const insets = () => {
       const n = nav.current, c = cap.current
-      const top = (n ? n.offsetTop + n.offsetHeight : 64) + 14
+      const top = (n ? n.offsetTop + n.offsetHeight : 64) + 8
       // from the screen's bottom edge to the foot's top, plus a breath
       const bottom = c ? cv.clientHeight - c.offsetTop + 12 : 150
       gridMid = (top + cv.clientHeight - bottom) / 2
@@ -349,11 +359,11 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       if (current < 0.05 && e.key === 'ArrowRight') handle.current?.step(-1)
     }
 
-    import('./scene').then(({ createShowroom }) => {
+    ;(scenePromise ?? import('./scene')).then(({ createShowroom }) => {
       if (!alive) return
       try {
         handle.current = createShowroom(cv, {
-          mobile, cards: deck, street, light, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
+          mobile, cards: deck, street: streetDeck, light, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {
@@ -424,7 +434,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       }
       handle.current?.dispose(); handle.current = null
     }
-  }, [deck, router])
+  }, [deck, streetDeck, router])
 
   return (
     <div ref={root} className="sr" data-state={state}>
@@ -452,7 +462,8 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
                   : <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />}
               </svg>
             </button>
-            <Link href="/" className="sr-logo" aria-label="בוואריאן מוטורס">
+            {/* inside, the logo IS the way home: it plays the walk out */}
+            <Link href="/" className="sr-logo" aria-label="חזרה לדף הבית" onClick={e => { e.preventDefault(); goRef.current(0) }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/logo-wide-light.png" alt="" width={1283} height={232} />
               {/* the bright trial: the same mark in ink */}

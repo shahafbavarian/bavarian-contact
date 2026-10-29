@@ -400,6 +400,12 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
    iPhone's own strips included, so no edge is ever stuck on the wrong
    colour between black and white ─── */
 .sr[data-theme="light"][data-bright] .sr-safari-strip { background: #f5f6f7; }
+/* inside, on the white ground, the canvas's street fade only wasted the top
+   of the screen: the cards run up close under the bar, matching the bottom */
+.sr[data-theme="light"][data-bright] .sr-canvas {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 36px, #000 96%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 36px, #000 96%, transparent 100%);
+}
 /* the bar: a sheet in the page's own colour under its content (opaque, and
    the bar's dark gradient goes, so bar and clock area read as one); the two
    logos crossfade. The sheets ride the same per-frame factor as the page's
