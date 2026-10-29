@@ -134,7 +134,7 @@ html:has(.sr) { overflow: auto; }
   .sr-social::before { display: none; }
 }
 /* the hairline comes on with the icons, not before them */
-.sr[data-state="ready"] .sr-social::before { animation: sr-sep 360ms cubic-bezier(.23,1,.32,1) 690ms both; }
+.sr[data-state="ready"] .sr-social::before { animation: sr-sep 320ms cubic-bezier(.23,1,.32,1) 580ms both; }
 @keyframes sr-sep { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: none; } }
 .sr-social a {
   display: grid; place-items: center; width: 40px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
@@ -145,9 +145,9 @@ html:has(.sr) { overflow: auto; }
 .sr-social a:active { transform: scale(.94); }
 .sr-social a { opacity: 0; }
 .sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-word 420ms cubic-bezier(.23,1,.32,1) backwards; }
-.sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 720ms; }
-.sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 780ms; }
-.sr[data-state="ready"] .sr-social a:nth-child(3) { animation-delay: 840ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 620ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 680ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(3) { animation-delay: 740ms; }
 @media (hover: hover) and (pointer: fine) {
   .sr-enter:hover { background: rgba(255,255,255,.12); }
   .sr-doors a:hover { color: #fff; }
@@ -157,22 +157,19 @@ html:has(.sr) { overflow: auto; }
 /* The strip comes on as one sweep, in reading order, on the hall's own beat:
    the way in ignites like a lamp — a dim pre-glow, one soft flutter, full —
    then word after word, the hairline, and the three marks */
-.sr[data-state="ready"] .sr-enter { opacity: 1; animation: sr-ignite 760ms cubic-bezier(.23,1,.32,1) 260ms backwards; }
+.sr[data-state="ready"] .sr-enter { opacity: 1; animation: sr-ignite 560ms cubic-bezier(.23,1,.32,1) 200ms backwards; }
 .sr[data-state="ready"] .sr-doors a { opacity: 1; animation: sr-word 420ms cubic-bezier(.23,1,.32,1) backwards; }
-.sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 520ms; }
-.sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 580ms; }
-.sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 640ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 420ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 480ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 540ms; }
+/* clean rises, no flutter: the dips read as a glitch, not as a lamp */
 @keyframes sr-ignite {
-  0% { opacity: 0; transform: translateY(12px) scale(.97); }
-  36% { opacity: .4; transform: translateY(3px) scale(.995); }
-  48% { opacity: .18; }
-  72% { opacity: 1; }
-  100% { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes sr-word {
-  0% { opacity: 0; transform: translateY(7px); }
-  55% { opacity: .5; }
-  100% { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 /* then the way in hovers, gently: a few pixels up and down */
 .sr-hover { display: flex; justify-content: center; }

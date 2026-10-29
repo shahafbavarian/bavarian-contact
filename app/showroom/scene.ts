@@ -295,7 +295,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (Math.abs(x) < 0.01) continue   // the doors open here: nothing to walk through
     box(0.09, glassH, 0.14, mats.metal, x, glassH / 2, FRONT)
   }
-  box(W, 0.12, 0.16, mats.metal, 0, glassH - 0.06, FRONT)
+  // (no top rail across the glass: it cut the view as a line at ceiling height)
   box(W, 0.06, 0.16, mats.metal, 0, 0.03, FRONT)
   for (let x = -half + 1.25; x < half; x += 2.5) {
     if (Math.abs(x) < 1.3) continue // door bay
@@ -315,10 +315,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const frame = box(0.05, 2.7, 0.06, mats.metal, s * 1.2, 1.35, FRONT + 0.04)
     d.userData.frame = frame
   }
-  // the door header spans the whole track (5 m, like the transom above it):
-  // the sliding leaves' posts stay under it through their full travel,
-  // instead of sliding out past a short 2.5 m beam and standing detached
-  box(5, 0.1, 0.16, mats.metal, 0, 2.75, FRONT + 0.02)
+  // (no lintel over the doors either: the leaves slide frameless)
 
   // ─── The sign on the stone over the canopy. The letters are the page's own
   //     logo image (with the lit look approved on the live page), placed every
