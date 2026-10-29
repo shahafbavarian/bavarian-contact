@@ -285,7 +285,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // matte and without reflections: seen from below at a grazing angle, the studio
   // environment's glare on it showed as a white haze over the doors
   const soffit = new THREE.Mesh(new THREE.PlaneGeometry(W + 16, CANOPY), new THREE.MeshStandardMaterial({ map: soffitTex, roughness: 0.95, envMap: env, envMapIntensity: 0 }))
-  soffit.rotation.x = Math.PI / 2 - 0.03; soffit.position.set(0, H + 0.04, FRONT + CANOPY / 2); scene.add(soffit)
+  // THE LINE: the soffit floated 4 cm above the glass head, leaving an open
+  // slit across the whole front; through it the bright ceiling showed untinted.
+  // Flat and 1 cm below the glass head, it seals the junction
+  soffit.rotation.x = Math.PI / 2; soffit.position.set(0, H - 0.01, FRONT + CANOPY / 2); scene.add(soffit)
   box(4, H, 0.6, mats.metal, -half - 2, H / 2, FRONT - 0.3)
   box(4, H, 0.6, mats.metal, half + 2, H / 2, FRONT - 0.3)
 
@@ -304,10 +307,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   // fixed panes beside the sliding leaves (the leaves park over them)
   for (const sx of [-1, 1]) {
-    const fp = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 2.7), mats.glass)
-    fp.position.set(sx * 1.85, 1.35, FRONT); scene.add(fp)
+    // full height: a pane topping out at 2.7 left its edge as a faint line
+    // beside the header, all the way to the mullions
+    const fp = new THREE.Mesh(new THREE.PlaneGeometry(1.3, glassH), mats.glass)
+    fp.position.set(sx * 1.85, glassH / 2, FRONT); scene.add(fp)
   }
-  box(5, glassH - 2.75, 0.02, mats.glass, 0, 2.75 + (glassH - 2.75) / 2, FRONT)   // transom glass over the doors
+  // transom glass only over the door gap, its bottom edge hidden inside the header
+  box(2.4, glassH - 2.78, 0.02, mats.glass, 0, 2.78 + (glassH - 2.78) / 2, FRONT)
   const doors: THREE.Mesh[] = []
   for (const s of [-1, 1]) {
     const d = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.7), mats.glass)
@@ -315,7 +321,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const frame = box(0.05, 2.7, 0.06, mats.metal, s * 1.2, 1.35, FRONT + 0.04)
     d.userData.frame = frame
   }
-  // (no lintel over the doors either: the leaves slide frameless)
+  box(2.5, 0.1, 0.16, mats.metal, 0, 2.75, FRONT + 0.02)   // the doors' own header, as it was
 
   // ─── The sign on the stone over the canopy. The letters are the page's own
   //     logo image (with the lit look approved on the live page), placed every
