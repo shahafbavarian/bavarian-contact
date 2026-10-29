@@ -452,8 +452,9 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 .sr[data-theme="light"] .sr-find, .sr[data-theme="light"] .sr-tool { background: #ffffff; box-shadow: 0 1px 3px rgba(20,23,26,.07); }
 .sr[data-theme="light"] .sr-words { -webkit-mask-image: none; mask-image: none; }
 /* the pull hint sits on the brightened hall: ink */
-/* the menu over the bright hall: a light sheet, ink links */
-.sr[data-theme="light"][data-bright] .sr-menu { background: rgba(243,244,246,.92); }
+/* the menu over the bright hall: the hall itself, frosted — not a white
+   sheet; a light wash over the blur the menu already carries */
+.sr[data-theme="light"][data-bright] .sr-menu { background: rgba(245,246,247,.5); -webkit-backdrop-filter: blur(24px) saturate(1.15); backdrop-filter: blur(24px) saturate(1.15); }
 .sr[data-theme="light"][data-bright] .sr-menu a { color: #14171A; }
 .sr[data-theme="light"][data-bright] .sr-pull { color: #14171A; text-shadow: none; }
 .sr[data-theme="light"][data-bright] .sr-pull svg { filter: none; }

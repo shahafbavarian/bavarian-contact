@@ -543,7 +543,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // outside, the screens carry the history gallery (indices past the stock)
   const S = opts.street?.length ?? 0
   const sAt = (k: number) => TOTAL + (((k % S) + S) % S)
-  let onStreet = S > 0, deckSwap = false
+  let onStreet = S > 0, mixArm = false, deckMix = 0
   // a new set comes on like a change of channel: the screens dim, re-dress, light up
   let pendingView: number[] | null = null, swap = 0
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
@@ -602,7 +602,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform float uSwap; uniform float uFade; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform float uSwap; uniform float uFade; uniform sampler2D map2; uniform float uMix; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     // exact inverse of three's ACES filmic fit: the composer tone-maps the
     // whole frame at the end, so the screen pixels are pre-inverted here and
@@ -625,7 +625,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // uFill < 1 leaves a bezel of dark screen around the photo
       vec2 mu = (vUv - .5) / uFill + .5;
       float inPic = step(0., mu.x) * step(mu.x, 1.) * step(0., mu.y) * step(mu.y, 1.);
-      vec3 col = mix(vec3(.075, .078, .085), texture2D(map, clamp(mu, 0., 1.)).rgb, uReady * inPic);
+      vec3 ph = mix(texture2D(map, clamp(mu, 0., 1.)).rgb, texture2D(map2, clamp(mu, 0., 1.)).rgb, uMix);
+      vec3 col = mix(vec3(.075, .078, .085), ph, uReady * inPic);
       // switched on like a screen: the picture opens out of a bright line
       // across the middle, with a flash, then settles
       float open = smoothstep(0., .55, uPower);
@@ -644,7 +645,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   for (let i = 0; i < SLOTS; i++) {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uSwap: { value: 0 }, uFade: { value: 1 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uSwap: { value: 0 }, uFade: { value: 1 }, map2: { value: null }, uMix: { value: 0 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
@@ -694,7 +695,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const lg = im as HTMLImageElement | null
       if (lg) { const w = 520, h = w * (lg.naturalHeight / lg.naturalWidth); c.globalAlpha = 0.5; c.drawImage(lg, (1280 - w) / 2, (853 - h) / 2, w, h); c.globalAlpha = 1; tex.needsUpdate = true }
     })
-    if (texCache.size > 12) {   // drop the car shown longest ago (never one on a screen)
+    if (texCache.size > 14) {   // drop the car shown longest ago (never one on a screen)
       let worst = -1, wd = Infinity
       const onScreen = new Set(cardMeshes.map(m => m.userData.car as number))
       texCache.forEach((v, k) => { if (k !== ci && !onScreen.has(k) && v.used < wd) { wd = v.used; worst = k } })
@@ -1050,10 +1051,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       listStart = r0m - 1 - base; anchor = N > 1 ? 1 : 0
       scrollPos = scrollTarget = 0; mapped = true
     }
-    // on the street: the faces of the cards about to fly are drawn ahead
+    // on the street: the faces of the cards about to fly, and the ring faces
+    // the screens will dissolve to, are drawn and uploaded ahead, in idle time
     if (!mapped && N && screenOn) {
       const r0 = Math.round(drag / STEP)
-      for (let d = -1; d <= 4; d++) ensureCard(view[mod(r0 - base + d, N)])
+      for (let d = -1; d <= 4; d++) { const ci = view[mod(r0 - base + d, N)]; ensureCard(ci); ensureTex(ci) }
     }
     if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
     const full = throwK >= 1
@@ -1325,19 +1327,31 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // browsing runs through the whole stock, newest to oldest, in a loop
     // a new set of cars: dark first, then the screens are re-dressed with it,
     // the first match at the front, and light up again
-    // the street's screens show the gallery; crossing the doors they blink
-    // to the stock (the ring's own channel change), and back on the way out
+    // the hand-off between the history gallery and the stock: each screen's
+    // face dissolves to its other deck, rippling across the screens — never
+    // a blackout. Armed the moment you cross either way
     const wantStreet = S > 0 && p < 0.02
-    if (wantStreet !== onStreet && !deckSwap && !pendingView) { deckSwap = true; dirty = true }
-    if (pendingView || deckSwap) {
+    if (wantStreet !== onStreet && deckMix === 0 && !mixArm) { mixArm = true; dirty = true }
+    if (deckMix > 0) {
+      deckMix = Math.min(1.4, deckMix + dt / 0.35); dirty = true
+      cardMeshes.forEach((m, sIdx) => { m.material.uniforms.uMix.value = smooth(fit(deckMix, sIdx * 0.04, sIdx * 0.04 + 0.85)) })
+
+      if (deckMix >= 1.4) {
+        onStreet = wantStreet
+        cardMeshes.forEach(m => {
+          const u = m.material.uniforms
+          m.userData.car = m.userData.car2 ?? m.userData.car
+          u.map.value = u.map2.value ?? u.map.value; u.uMix.value = 0
+        })
+        deckMix = 0
+      }
+    }
+    if (pendingView) {
       swap = Math.min(1, swap + dt / 0.16); dirty = true
       if (swap >= 1) {
-        if (pendingView) {
-          view = pendingView; pendingView = null; N = view.length
-          drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
-          listStart = 0; scrollTarget = 0; viewChanged = true
-        }
-        if (deckSwap) { onStreet = wantStreet; deckSwap = false }
+        view = pendingView; pendingView = null; N = view.length
+        drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
+        listStart = 0; scrollTarget = 0; viewChanged = true
       }
     } else if (swap > 0) {
       // hold the dark a moment for the front photo, never long
@@ -1355,7 +1369,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const show = CNT > 0 && (CNT >= SLOTS || (k - r0 >= lo && k - r0 <= hi))
       const car = show ? (onStreet ? sAt(k) : carAt(k)) : -1
       const u = m.material.uniforms
-      if (car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
+      // mid-dissolve the source face stands still; the target rides on map2
+      if (mixArm) {
+        const tc = show ? (wantStreet ? sAt(k) : carAt(k)) : -1
+        if (tc >= 0) { m.userData.car2 = tc; u.map2.value = ensureTex(tc).tex }
+      } else if (deckMix === 0 && car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
       m.userData.shown = show
       const a0 = u.uAlpha.value
       u.uAlpha.value = Math.min(1, Math.max(0, a0 + (show ? dt / 0.3 : -dt / 0.2)))
@@ -1368,6 +1386,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       u.uFill.value = 1   // the photo fills the whole screen, both views
       u.uExp.value = renderer.toneMappingExposure
     })
+    if (mixArm) { mixArm = false; deckMix = 0.001; dirty = true }
     const f = onStreet ? -1 : carAt(Math.round(angle / STEP))
     if (f !== front) { front = f; opts.onFront(f) }
     placeWall(p, dt); placeShow(dt); placeCards(dt)

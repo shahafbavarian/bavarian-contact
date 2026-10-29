@@ -175,7 +175,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0, prevK = bornBright ? 1 : 0
+    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0, prevK = bornBright ? 1 : 0, lastVb = -1
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -200,11 +200,17 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         const on = s > 0.5
         if (on !== capIn) { capIn = on; c.toggleAttribute('data-in', on) }
         // the phone's keyboard: the row rides just above it
-        const vv = visualViewport, inp = input.current
-        const lift = vv && inp && document.activeElement === inp ? Math.max(0, document.documentElement.clientHeight - vv.height - vv.offsetTop) : 0
-        c.style.transform = `translateY(${(1 - s) * 14 - lift}px)`
+        // pinned just over Safari's visible bottom edge, wherever its bar is
+        // (the safe-area inset over-reports under viewport-fit=cover and left
+        // a dead band); the same anchoring rides above the keyboard too
+        const vv = visualViewport
+        if (vv) {
+          const vb = Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop))
+          if (Math.abs(vb - lastVb) > 1) { lastVb = vb; c.style.bottom = `${vb + 10}px`; insets() }
+        }
+        c.style.transform = `translateY(${(1 - s) * 14}px)`
         if (target === 1 && !dur && current > 0.97) {
-          if (!arrived) { arrived = true; if (!mobile) inp?.focus({ preventScroll: true }) }
+          if (!arrived) { arrived = true; if (!mobile) input.current?.focus({ preventScroll: true }) }
         } else if (target === 0) arrived = false
         const a = arrows.current
         if (a) { a.style.opacity = String(s); a.style.visibility = s > 0.01 ? 'visible' : 'hidden' }
