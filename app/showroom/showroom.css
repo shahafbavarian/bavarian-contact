@@ -149,21 +149,27 @@ html:has(.sr) { overflow: auto; }
 /* The strip comes on as one sweep, in reading order, on the hall's own beat:
    the way in ignites like a lamp — a dim pre-glow, one soft flutter, full —
    then word after word, the hairline, and the three marks */
-/* Element by element, but as one overlapping wave on the sign's beat:
-   40 ms steps, short rises — it reads as a sweep, never as a queue */
+/* One liquid sweep: every element shares the same long, soft move (640 ms,
+   small rise, a breath of blur that sharpens), starts just 35 ms apart, so
+   with many buttons it reads as one pour, not as pops */
 .sr-enter, .sr-doors a, .sr-social a, .sr-social::before { opacity: 0; }
-.sr[data-state="ready"] .sr-enter { opacity: 1; animation: sr-rise 460ms cubic-bezier(.23,1,.32,1) 260ms backwards; }
-.sr[data-state="ready"] .sr-doors a { opacity: 1; animation: sr-step 380ms cubic-bezier(.23,1,.32,1) backwards; }
-.sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 440ms; }
-.sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 480ms; }
-.sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 520ms; }
-.sr[data-state="ready"] .sr-social::before { opacity: 1; animation: sr-step 380ms cubic-bezier(.23,1,.32,1) 560ms backwards; }
-.sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-step 380ms cubic-bezier(.23,1,.32,1) backwards; }
-.sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 560ms; }
-.sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 600ms; }
-.sr[data-state="ready"] .sr-social a:nth-child(3) { animation-delay: 640ms; }
-@keyframes sr-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes sr-step { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.sr[data-state="ready"] .sr-enter,
+.sr[data-state="ready"] .sr-doors a,
+.sr[data-state="ready"] .sr-social a,
+.sr[data-state="ready"] .sr-social::before { opacity: 1; animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) backwards; }
+.sr[data-state="ready"] .sr-enter { animation-delay: 240ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 400ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(2) { animation-delay: 435ms; }
+.sr[data-state="ready"] .sr-doors a:nth-child(3) { animation-delay: 470ms; }
+.sr[data-state="ready"] .sr-social::before { animation-delay: 505ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 505ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 540ms; }
+.sr[data-state="ready"] .sr-social a:nth-child(3) { animation-delay: 575ms; }
+@keyframes sr-pour {
+  from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+  60% { filter: blur(0); }
+  to { opacity: 1; transform: none; filter: none; }
+}
 /* then the way in hovers, gently: a few pixels up and down */
 .sr-hover { display: flex; justify-content: center; }
 .sr[data-state="ready"] .sr-hover { animation: sr-float 5.2s ease-in-out 1s infinite; }
