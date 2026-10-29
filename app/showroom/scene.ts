@@ -52,7 +52,7 @@ type Opts = {
   onPull?: (k: number) => void
   /** the pull at the top was let go past its mark: walk out */
   onExit?: () => void
-  /** a trial: the hall inside in a bright theme (a light veil over the hall, white cards); veil: its strength */
+  /** a trial: inside, a bright theme over the hall as it is (white cards; veil: an optional light wash) */
   light?: boolean
   veil?: number
   onOpen: (i: number) => void
@@ -779,7 +779,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         uSize: { value: new THREE.Vector2(1, 1) }, uPad: { value: 0.05 }, uStrip: { value: 1 }, uStripH: { value: 0.3 },
         uBright: { value: 1 }, uClip: { value: new THREE.Vector3(0, 1e5, 1) }, uClipOn: { value: 1 },
         uBase: { value: new THREE.Color(opts.light ? '#e9ecef' : '#0d0e11') }, uEdgeC: { value: new THREE.Color(opts.light ? '#000000' : '#ffffff') },
-        uEdgeK: { value: opts.light ? 0.06 : 0.14 }, uShade: { value: opts.light ? 0.16 : 0.4 },
+        uEdgeK: { value: opts.light ? 0.06 : 0.14 }, uShade: { value: 0.4 },
       },
       vertexShader: cardVert, fragmentShader: wallFrag, transparent: true, depthTest: false, depthWrite: false,
     }))
@@ -1068,7 +1068,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   if (opts.light) wallScene.add(veil)
   const placeCards = (dt: number) => {
     if (opts.light) {
-      const va = (opts.veil ?? 0.86) * smooth(fit(throwK, 0.25, 1))
+      const va = (opts.veil ?? 0) * smooth(fit(throwK, 0.25, 1))
       veil.material.uniforms.uA.value = va; veil.material.uniforms.uExp.value = renderer.toneMappingExposure; veil.visible = va > 0.002
     }
     const want = new Map<number, number>()   // car → its place in the list

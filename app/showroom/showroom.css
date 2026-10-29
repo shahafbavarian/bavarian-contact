@@ -406,3 +406,15 @@ html:has(.sr) { overflow: auto; }
 .sr[data-theme="light"] .sr-word small, .sr[data-theme="light"] .sr-word .sr-dir { color: #8a9098; }
 .sr[data-theme="light"] .sr-pull { color: #14171A; text-shadow: none; }
 .sr[data-theme="light"] .sr-pull svg { filter: none; }
+
+/* the bright trial over the dark hall: the bar above and the search below
+   sit on white, as on the site's pages; the hall stays as it is between them */
+.sr[data-theme="light"] .sr-top[data-bright] { background: rgba(255,255,255,.96); box-shadow: 0 8px 28px rgba(0,0,0,.28); }
+.sr[data-theme="light"] .sr-cap::before {
+  content: ''; position: absolute; z-index: -1; inset: -12px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
+  background: rgba(255,255,255,.96); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgba(0,0,0,.28);
+}
+.sr[data-theme="light"] .sr-find, .sr[data-theme="light"] .sr-tool { background: #f3f4f6; box-shadow: none; }
+.sr[data-theme="light"] .sr-words { -webkit-mask-image: none; mask-image: none; }
+/* the pull hint is on the hall itself: it stays light */
+.sr[data-theme="light"] .sr-pull { color: rgba(255,255,255,.82); text-shadow: 0 0 8px rgba(255,255,255,.35); }
