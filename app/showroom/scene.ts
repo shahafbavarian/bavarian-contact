@@ -1083,7 +1083,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the hall rides the very same window as the page and the sheets (see
       // Showroom): one factor, no chasing clock, nothing drifts apart
       const b0 = briK
-      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.8, 0.97))
+      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.86, 0.96))   // the hall rides the same short cross as the page
       if (briK !== b0) dirty = true
       const k = briK
       renderer.toneMappingExposure *= 1 + 0.85 * k
@@ -1210,7 +1210,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           const srcCar = cardMeshes[sl].userData.car as number
           if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
           u.uFlip.value = 1
-          m.quaternion.multiply(tmpQ2.setFromAxisAngle(yUp, Math.PI * smooth(fit(fe, 0.08, 0.8))))
+          // a slow start read as warping at close range: the half-turn now
+          // happens decisively through the flight's middle, with a small
+          // breath of scale at the edge-on moment that sells it as a turn
+          const fl = smooth(fit(fe, 0.3, 0.62))
+          m.quaternion.multiply(tmpQ2.setFromAxisAngle(yUp, Math.PI * fl))
+          sc *= 1 - 0.05 * Math.sin(Math.PI * fl)
         } else u.uFlip.value = 0
         if (exitRide && rel === 0 && fe <= 0 && hd.car >= 0) {
           const sm = cardMeshes[sl], ku = sm.userData

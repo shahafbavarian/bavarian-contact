@@ -145,8 +145,10 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     if (!cv.getContext('webgl2')) { setState('fallback'); return }
 
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 900
-    // a trial, not on the site: ?theme=light (and &veil=0..1) shows the hall inside in a bright theme
-    const qs = new URLSearchParams(location.search), light = qs.get('theme') === 'light'
+    // The inside is the site's cars page, and it is BRIGHT by default —
+    // the hall is the way in, the stock reads like the site. ?theme=dark
+    // keeps the old dark inside for comparison
+    const qs = new URLSearchParams(location.search), light = qs.get('theme') !== 'dark'
     if (light) {
       root.current!.dataset.theme = 'light'
       document.documentElement.style.transition = 'background-color 0s'
@@ -230,7 +232,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       // the same factor
       if (light) {
         const sm = (x: number) => x * x * (3 - 2 * x)
-        const k = sm(fit(current, 0.8, 0.97))   // the one factor: hall, page, sheets, bars, logo — all of it
+        const k = sm(fit(current, 0.86, 0.96))   // the one factor — a SHORT cross (see below)
         if (Math.abs(k - lastK) > 0.004 || ((k === 0 || k === 1) && k !== lastK)) {
           lastK = k
           const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
@@ -244,13 +246,13 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         // answers a strip change with an animation of its own, on its own
         // clock, so the order goes out at the first step of the move and both
         // land together — fired at the end or the middle, the edges trailed
-        // Safari applies a strip change with a lag of its own; the fire
-        // points are CALIBRATED from device screenshots, not guessed (see
-        // CLAUDE.md rule 5): fired at 0.815 the edges trailed the content,
-        // fired at 0.68 they led it — 0.76 is the measured midpoint. Out:
-        // fired the instant the exit began they led; they now wait for the
-        // content to darken (it does so in the exit's first stretch)
-        const STRIP_IN = 0.76, STRIP_OUT = 0.8
+        // Safari's strip lag proved VARIABLE (0.3-0.7s by load), so no fixed
+        // fire point can match a long cross. The deep fix: the content cross
+        // itself is SHORT (0.86→0.96, under half a second) and the strips
+        // fire the moment it starts, each direction — the edges can then
+        // never lead the page, and at most follow it by a breath, the way
+        // native bars follow content. (CLAUDE.md rule 5.)
+        const STRIP_IN = 0.87, STRIP_OUT = 0.93
         let want = stripK
         if (current > prevK + 1e-4 && current > STRIP_IN) want = 1
         if (current < prevK - 1e-4 && current < STRIP_OUT) want = 0
