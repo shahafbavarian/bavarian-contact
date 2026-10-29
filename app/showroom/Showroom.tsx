@@ -157,7 +157,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false
+    let capIn = false, arrived = false, wasBright = false
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -198,8 +198,21 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
-      // the bright trial: the page's chrome follows the hall's own brightening
-      if (light) root.current?.toggleAttribute('data-bright', current > 0.9)
+      // The bright trial: the page's chrome follows the hall's own
+      // brightening. Safari colours the phone's top and bottom from the
+      // page background AND the theme-color meta, and a CSS :has rule alone
+      // did not move them — so all three are set directly, on the change
+      if (light) {
+        const bright = current > 0.9
+        if (bright !== wasBright) {
+          wasBright = bright
+          root.current?.toggleAttribute('data-bright', bright)
+          const col = bright ? '#f5f6f7' : '#06080c'
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', col)
+          document.documentElement.style.backgroundColor = col
+          document.body.style.backgroundColor = col
+        }
+      }
       // the street's buttons give way as soon as you step in
       if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
     }
@@ -336,6 +349,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
+      if (light) {
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#000000')
+        document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
+      }
       handle.current?.dispose(); handle.current = null
     }
   }, [deck, router])
