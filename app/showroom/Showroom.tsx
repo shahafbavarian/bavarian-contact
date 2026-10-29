@@ -244,13 +244,16 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         // answers a strip change with an animation of its own, on its own
         // clock, so the order goes out at the first step of the move and both
         // land together — fired at the end or the middle, the edges trailed
-        // Safari applies a strip change with a lag of its own, so the order
-        // compensates in each direction: walking in it goes out mid-walk,
-        // well before the content whitens; walking out it waits until the
-        // content is already dark — measured against his device's timing
+        // Safari applies a strip change with a lag of its own; the fire
+        // points are CALIBRATED from device screenshots, not guessed (see
+        // CLAUDE.md rule 5): fired at 0.815 the edges trailed the content,
+        // fired at 0.68 they led it — 0.76 is the measured midpoint. Out:
+        // fired the instant the exit began they led; they now wait for the
+        // content to darken (it does so in the exit's first stretch)
+        const STRIP_IN = 0.76, STRIP_OUT = 0.8
         let want = stripK
-        if (current > prevK + 1e-4 && current > 0.68) want = 1
-        if (current < prevK - 1e-4 && current < 0.8) want = 0
+        if (current > prevK + 1e-4 && current > STRIP_IN) want = 1
+        if (current < prevK - 1e-4 && current < STRIP_OUT) want = 0
         prevK = current
         if (want !== stripK) {
           stripK = want

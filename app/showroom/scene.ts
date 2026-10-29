@@ -1197,18 +1197,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const sb = 1 - 0.72 * slotDim[sl]
         bright = sb + (bright - sb) * fe
         strip = fit(fe, 0.45, 1)
-        // Walking in, the card leaves its screen wearing the screen's photo
-        // (history, or an earlier guest) and dissolves to the car along its
-        // own flight. Walking out there is no dissolve back: the card lands
-        // still wearing the car and leaves that photo on the screen as a
-        // guest of the gallery — the ring's turning retires it in a few
-        // seconds, exactly as a gallery picture goes
-        if (S > 0 && !exitRide) {
+        // The card and its screen trade faces along the flight itself.
+        // Walking in: the card leaves wearing the screen's photo and
+        // dissolves to its car on the way. Walking out, the side cards
+        // dissolve back to their screens' history photos mid-flight and
+        // land seamless; ONLY the middle card lands still wearing its car
+        // and leaves that photo on the main screen — one guest in the
+        // gallery, gone the moment it slides off the front
+        if (S > 0 && !(exitRide && rel === 0)) {
           const srcCar = cardMeshes[sl].userData.car as number
           if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
           u.uMix2.value = 1 - smooth(fit(fe, 0.05, 0.6))
         } else u.uMix2.value = 0
-        if (exitRide && fe <= 0 && hd.car >= 0) {
+        if (exitRide && rel === 0 && fe <= 0 && hd.car >= 0) {
           const sm = cardMeshes[sl], ku = sm.userData
           if (ku.car !== hd.car) { ku.guestK = sIdxK(sl); ku.car = hd.car; sm.material.uniforms.map.value = ensureTex(hd.car).tex }
         }
@@ -1374,9 +1375,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const show = CNT > 0 && (CNT >= SLOTS || (k - r0 >= lo && k - r0 <= hi))
       const car = show ? (onStreet ? sAt(k) : carAt(k)) : -1
       const u = m.material.uniforms
-      // a guest face (a stock photo a landing card left behind) keeps its
-      // screen until the ring's own turning would replace it anyway
-      if (m.userData.guestK === k) { /* the guest stays on */ }
+      // the one guest face (the stock photo the middle card left behind)
+      // lives only while its screen is the front one: the moment it slides
+      // or changes, the history photo is back
+      if (m.userData.guestK === k && k === r0) { /* the guest stays on */ }
       else {
         if (m.userData.guestK !== undefined) delete m.userData.guestK
         if (car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
