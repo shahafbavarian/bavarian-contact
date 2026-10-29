@@ -727,7 +727,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   let STRIP = 0.26                      // its info band, as a share of its width (set by layout)
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
-    uniform sampler2D map; uniform sampler2D map2; uniform float uMix2; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
+    uniform sampler2D map; uniform sampler2D map2; uniform float uFlip; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
     uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; uniform vec3 uBase; uniform vec3 uEdgeC; uniform float uEdgeK; uniform float uShade; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     vec3 odtInv(vec3 y){
@@ -750,9 +750,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
-      // flying out of a screen, the face still carries that screen's photo
-      // and dissolves to the car on the way (uMix2: how much remains)
-      vec3 ph = mix(texture2D(map, uv).rgb, texture2D(map2, uv).rgb, uMix2);
+      // mid-flight the card is a turning screen: its front face carries the
+      // screen's own photo, its back face the car (mirrored back to true) —
+      // the physical turn is what changes the picture, nothing dissolves
+      vec2 fuv = (uFlip > .5 && !gl_FrontFacing) ? vec2(1. - uv.x, uv.y) : uv;
+      vec3 ph = (uFlip > .5 && gl_FrontFacing) ? texture2D(map2, fuv).rgb : texture2D(map, fuv).rgb;
       vec3 col = mix(uBase, ph, uReady) * uBright;
       // a hairline of light at the edge, like the screens' (brighter under the hand)
       col = mix(col, uEdgeC, (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (uEdgeK + .16 * uLift));
@@ -788,13 +790,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (f) return f
     const m = new THREE.Mesh(wallGeo, new THREE.ShaderMaterial({
       uniforms: {
-        map: { value: null }, map2: { value: null }, uMix2: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
+        map: { value: null }, map2: { value: null }, uFlip: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
         uSize: { value: new THREE.Vector2(1, 1) }, uPad: { value: 0.05 }, uStrip: { value: 1 }, uStripH: { value: 0.3 },
         uBright: { value: 1 }, uClip: { value: new THREE.Vector3(0, 1e5, 1) }, uClipOn: { value: 1 },
         uBase: { value: new THREE.Color(opts.light ? '#e9ecef' : '#0d0e11') }, uEdgeC: { value: new THREE.Color(opts.light ? '#000000' : '#ffffff') },
         uEdgeK: { value: opts.light ? 0.06 : 0.14 }, uShade: { value: 0.4 },
       },
-      vertexShader: cardVert, fragmentShader: wallFrag, transparent: true, depthTest: false, depthWrite: false,
+      vertexShader: cardVert, fragmentShader: wallFrag, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
     }))
     m.visible = false; m.userData.car = -1
     dress(m); wallScene.add(m); allMeshes.push(m)
@@ -813,7 +815,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
   const layCam = new THREE.PerspectiveCamera()
-  const invLay = new THREE.Matrix4(), layQi = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0)
+  const invLay = new THREE.Matrix4(), layQi = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0), yUp = new THREE.Vector3(0, 1, 0)
   const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion()
   const srcP = new THREE.Vector3(), srcQ = new THREE.Quaternion(), endP = new THREE.Vector3(), endQ = new THREE.Quaternion()
   const GROW_MS = 900
@@ -1197,18 +1199,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const sb = 1 - 0.72 * slotDim[sl]
         bright = sb + (bright - sb) * fe
         strip = fit(fe, 0.45, 1)
-        // The card and its screen trade faces along the flight itself.
-        // Walking in: the card leaves wearing the screen's photo and
-        // dissolves to its car on the way. Walking out, the side cards
-        // dissolve back to their screens' history photos mid-flight and
-        // land seamless; ONLY the middle card lands still wearing its car
-        // and leaves that photo on the main screen — one guest in the
-        // gallery, gone the moment it slides off the front
+        // The screen TURNS OVER in flight — his own idea, and the right
+        // one: the front face wears the screen's photo, the back face the
+        // car, and the half-turn is what changes the picture. Walking out
+        // it turns home the same way (fe runs back), so the sides land as
+        // history seamlessly; ONLY the middle card skips the turn on the
+        // way out, lands still wearing its car and leaves that photo on
+        // the main screen — one guest in the gallery
         if (S > 0 && !(exitRide && rel === 0)) {
           const srcCar = cardMeshes[sl].userData.car as number
           if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
-          u.uMix2.value = 1 - smooth(fit(fe, 0.05, 0.6))
-        } else u.uMix2.value = 0
+          u.uFlip.value = 1
+          m.quaternion.multiply(tmpQ2.setFromAxisAngle(yUp, Math.PI * smooth(fit(fe, 0.08, 0.8))))
+        } else u.uFlip.value = 0
         if (exitRide && rel === 0 && fe <= 0 && hd.car >= 0) {
           const sm = cardMeshes[sl], ku = sm.userData
           if (ku.car !== hd.car) { ku.guestK = sIdxK(sl); ku.car = hd.car; sm.material.uniforms.map.value = ensureTex(hd.car).tex }
@@ -1220,6 +1223,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         if (fe <= 0) a = 0
       } else {
         m.position.copy(tmpV); m.quaternion.copy(tmpQ)
+        u.uFlip.value = 0   // settled: the card shows its own face, no turn
         u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
         a = calm ? throwK : fit(throwK, 0.8, 1)   // the rest of the stock comes in once the screens have landed
       }
@@ -1376,9 +1380,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const car = show ? (onStreet ? sAt(k) : carAt(k)) : -1
       const u = m.material.uniforms
       // the one guest face (the stock photo the middle card left behind)
-      // lives only while its screen is the front one: the moment it slides
-      // or changes, the history photo is back
-      if (m.userData.guestK === k && k === r0) { /* the guest stays on */ }
+      // rides the gallery across the front AND side screens; only once its
+      // screen has slid out of view does the history photo return
+      if (m.userData.guestK === k && Math.abs(k - r0) <= 1) { /* the guest rides on */ }
       else {
         if (m.userData.guestK !== undefined) delete m.userData.guestK
         if (car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
@@ -1527,9 +1531,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (progress > 0.5) { growAt = now - GROW_MS; dirty = true }
       else if (screenOn && now - readyAt > 780 && (facingReady() || now - readyAt > 1600)) { growAt = now; dirty = true }
     }
-    // the ring slides one screen on its own every three seconds: the middle
-    // car moves to the next screen and its neighbour takes the middle
-    if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
+    // the ring slides one screen on its own every five seconds: the middle
+    // picture moves on and its neighbour takes the middle
+    if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 5) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     let signRising = false
