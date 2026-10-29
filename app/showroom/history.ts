@@ -27,4 +27,5 @@ export const HISTORY = [
   '/showroom/history/h24.jpg',
   '/showroom/history/h25.jpg',
   '/showroom/history/h26.jpg',
+  '/showroom/history/h27.jpg',
 ]
