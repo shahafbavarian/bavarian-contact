@@ -7,6 +7,10 @@ html:has(.sr), html:has(.sr) body {
 /* the bright trial, inside: the page itself turns light — the iPhone's top
    and bottom areas take their colour from here, not only from the strips */
 html:has(.sr[data-theme="light"][data-bright]), html:has(.sr[data-theme="light"][data-bright]) body { background: #f5f6f7; }
+/* a refresh straight into the bright inside view: white from the very first
+   paint — the page and the strips are born light, nothing starts black */
+html[data-sr-bright], html[data-sr-bright] body { background: #f5f6f7; }
+html[data-sr-bright] .sr-safari-strip { background: #f5f6f7; }
 html:has(.sr) { overflow: auto; }
 
 .sr {

@@ -43,6 +43,11 @@ export default function TopBar({ title, watch, back }: { title: string; watch?: 
   }
 
   return (
+    <>
+    {/* the very top edge of the page: a silent catcher — a tap there goes to
+        the top, as the iPhone's clock tap would (and does even where Safari's
+        own gesture will not fire) */}
+    <button type="button" className="bm-totop" aria-hidden="true" tabIndex={-1} onClick={toTop} />
     <header ref={bar} className="bm-bar" data-scrolled="false" onClick={toTop}>
       {back ? (
         <>
@@ -67,5 +72,6 @@ export default function TopBar({ title, watch, back }: { title: string; watch?: 
         </>
       )}
     </header>
+    </>
   )
 }

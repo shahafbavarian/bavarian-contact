@@ -28,6 +28,16 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
+// Decided before the first paint (an inline script, no React): a refresh of
+// the bright inside view must not open on black edges and repaint — the
+// CLAUDE.md Safari rulebook, first-paint clause
+const FIRST_PAINT = `try{if(location.search.indexOf('theme=light')>-1&&sessionStorage.getItem('sr-view')==='in')document.documentElement.setAttribute('data-sr-bright','')}catch(e){}`
+
 export default function ShowroomLayout({ children }: { children: React.ReactNode }) {
-  return <div className={plex.variable}>{children}</div>
+  return (
+    <div className={plex.variable}>
+      <script dangerouslySetInnerHTML={{ __html: FIRST_PAINT }} />
+      {children}
+    </div>
+  )
 }

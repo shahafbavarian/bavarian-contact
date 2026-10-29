@@ -141,6 +141,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       document.documentElement.style.transition = 'background-color 0s'
       document.body.style.transition = 'background-color 0s'
     }
+    // born bright (the first-paint script saw a refresh into the inside view):
+    // the strips already carry white, no first re-toggle is wanted
+    const bornBright = document.documentElement.hasAttribute('data-sr-bright')
     // two remembered states: a refresh while inside opens inside
     let inside = false
     try { inside = sessionStorage.getItem('sr-view') === 'in' } catch {}
@@ -161,7 +164,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = -1
+    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : -1
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -228,7 +231,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
         }
         const bright = current > 0.97   // the few binary styles (menu, pull) flip once the cross is done
-        if (bright !== wasBright) { wasBright = bright; root.current?.toggleAttribute('data-bright', bright) }
+        if (bright !== wasBright) { wasBright = bright; root.current?.toggleAttribute('data-bright', bright); document.documentElement.toggleAttribute('data-sr-bright', bright) }
       }
       // the street's buttons give way as soon as you step in
       if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
@@ -367,6 +370,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
       if (light) {   // leaving the page: everything back as it was
+        document.documentElement.removeAttribute('data-sr-bright')
         document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = ''; el.style.backgroundColor = '' })
         document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
         document.documentElement.style.transition = ''; document.body.style.transition = ''
