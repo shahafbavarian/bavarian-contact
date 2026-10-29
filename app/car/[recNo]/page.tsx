@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { fetchCarDetail, fetchCarSummaryByRecNo, fetchCarList } from '@/lib/scraper'
-import { getCachedImageUrl } from '@/lib/image-sync'
+import { getCachedImageUrl, freshImage } from '@/lib/image-sync'
 import CarGallery from './CarGallery'
 import CarCTA from './CarCTA'
 import CarIndices from './CarIndices'
@@ -144,7 +144,7 @@ export default async function CarPage({ params }: { params: { recNo: string } })
   const detail      = detailRes.status   === 'fulfilled' ? detailRes.value   : null
   const videoUrls   = videosRes.status   === 'fulfilled' ? videosRes.value   : []
   const carOverride = overrideRes.status === 'fulfilled' ? overrideRes.value : null
-  const cdnUrl      = cdnRes.status      === 'fulfilled' ? cdnRes.value      : null
+  const cdnImage    = cdnRes.status      === 'fulfilled' ? cdnRes.value      : null
 
   // CarDetail is a superset of CarSummary, so when the list scrape fails but
   // the car's own page came through, that alone is enough to render.
@@ -213,8 +213,10 @@ export default async function CarPage({ params }: { params: { recNo: string } })
     )
   }
 
-  // Prefer Supabase CDN for the hero image — it's faster than the source site
-  const heroImage = cdnUrl ?? summary.imageUrl
+  // Prefer Supabase CDN for the hero image — it's faster than the source site —
+  // unless the photo was replaced there since. Only the list's photo is the one
+  // the copy was made from; without the list, keep the copy.
+  const heroImage = freshImage(listLoaded ? summaryRes.value?.imageUrl : undefined, cdnImage) || summary.imageUrl
   const allImages = [
     ...(heroImage ? [heroImage] : []),
     ...(detail?.images ?? []).filter(img => img !== summary.imageUrl && img !== heroImage),

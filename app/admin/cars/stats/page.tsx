@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { fetchCarList } from '@/lib/scraper'
-import { getCachedImageUrls } from '@/lib/image-sync'
+import { getCachedImageUrls, freshImage, type CachedImage } from '@/lib/image-sync'
 import FleetDashboard from './FleetDashboard'
 
 export const dynamic = 'force-dynamic'
@@ -78,11 +78,11 @@ export default async function FleetStatsPage() {
   try {
     const [cars, cdn] = await Promise.all([
       fetchCarList(),
-      getCachedImageUrls().catch(() => ({} as Record<string, string>)),
+      getCachedImageUrls().catch(() => ({} as Record<string, CachedImage>)),
     ])
     for (const c of cars) {
       carNames[c.recNo] = c.name
-      const img = cdn[c.recNo] ?? c.imageUrl
+      const img = freshImage(c.imageUrl, cdn[c.recNo])
       if (img) carImages[c.recNo] = img
     }
   } catch {}
