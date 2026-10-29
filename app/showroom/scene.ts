@@ -37,7 +37,7 @@ export type SceneHandle = {
   /** Offline rendering: place the camera at p and draw one frame now */
   renderFrame: (p: number) => void
   dispose: () => void
-  stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number }
+  stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number; born: number }
 }
 
 // A card on the floating gallery: one of the site's destinations. One image
@@ -672,6 +672,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // textures go to the GPU one per frame, off the showing path, so a burst
   // of births never lands in one frame
   const uploadQ: THREE.Texture[] = []
+  let born = 0
   const texCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
   const ensureTex = (ci: number) => {
     let e = texCache.get(ci)
@@ -681,7 +682,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.fillStyle = '#121316'; c.fillRect(0, 0, 1280, 853)
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
-    e = { tex, ready: false, used: time }; texCache.set(ci, e)
+    e = { tex, ready: false, used: time }; texCache.set(ci, e); born++
     const src = cards[ci]?.images[0]
     const done = (im: HTMLImageElement | null) => {
       if (im) cover(c, im, 0, 0, 1280, 853)
@@ -819,6 +820,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pr: number; pc: number; vis: number; live: boolean }
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
+  let walkDir = 1, lastP = 0, walkU = 0
   let throwK = 0, growAt = -1, viewChanged = false, exitRide = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
@@ -830,12 +832,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
   const mod = (a: number, n: number) => ((a % n) + n) % n
   const listCar = (i: number) => (N ? view[mod(listStart + i, N)] : -1)
-  // ALL six screens join the scatter, in list order: the middle first, its
-  // neighbours, then the back screens turning in one after another as the
-  // fourth, fifth and sixth cards — none arrives as a mere fade
+  // Two screens fly, each to its own place, on paths that never cross: the
+  // middle screen becomes the first card (top right, where reading starts),
+  // the screen on its left the second (top left). Everything else fades
+  const FLY = [0, 1]
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
-    const o = rel === 0 ? 0 : rel === -1 ? 0.1 : 0.14 + (rel - 1) * 0.08
+    const o = rel === 0 ? 0 : 0.08
     return easeInOut(fit(throwK, o, o + 0.6))
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
@@ -847,7 +850,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   const relOfSlot = (sIdx: number) => {
     if (!mapped) return null
-    for (let rel = -1; rel <= 1; rel++) {
+    for (const rel of FLY) {
       const li = anchor + rel
       if (li >= 0 && li < N && slotOf(rel) === sIdx) return rel
     }
@@ -954,7 +957,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.fillStyle = '#0d0f13'; c.fillRect(0, 0, cv.width, cv.height)
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4
-    const entry = { tex, ready: false, used: time }; e = entry; wallCache.set(ci, entry)
+    const entry = { tex, ready: false, used: time }; e = entry; wallCache.set(ci, entry); born++
     const card = cards[ci], ph = Math.round(CARD_PX * 2 / 3)
     const src = card?.images[0]
     Promise.all([src ? loadImg(src) : Promise.resolve(null), document.fonts?.ready]).then(([im]) => {
@@ -1047,20 +1050,34 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       showP[i].lerpVectors(tmpV, endP, g); showQ[i].slerpQuaternions(srcQ, endQ, g)
       sm.scale.setScalar(Math.min(1, s0) + (1 - Math.min(1, s0)) * g)
       sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i])
-      // the three facing you become cards (each hides as its card leaves);
-      // the others fade as you go in
+      // ONE set of screens on show at any moment. On the street the big
+      // twins are the screens; the three facing you each hand themselves to
+      // their own card the instant its glide begins, the others fade as you
+      // step in. The ring on the plinth never shows once the twins are out —
+      // it showed the very same cars behind the flying cards (the doubling)
       const rel = relOfSlot(i)
-      u.uFade.value = mapped && rel === null ? 1 - smooth(fit(throwK, 0, 0.45)) : 1
+      u.uFade.value = mapped && rel === null ? 1 - smooth(fit(throwK, 0, 0.3)) : 1
       const gone = rel !== null && flightE(rel) > 0
-      sm.visible = on && g > 0 && p < 0.45 && !gone && u.uFade.value > 0.002
-      m.visible = !(g > 0 && p < 0.42)   // twins own the street and the handoff; the ring is the hall's backdrop
+      sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
+      m.visible = g <= 0 && p <= 0.02   // the ring shows only before the grow, on the street
     })
   }
   const placeWall = (p: number, dt: number) => {
     // walking in: the screens go in with you and scatter as one move, in
     // step with the walk from its first step to its last
+    // The walk's progress is eased (fast off the mark, a long soft arrival),
+    // so anything keyed straight to it happened in the first fraction of a
+    // second and then crawled. The scatter runs on the walk's own TIME: the
+    // ease is undone per direction (in: p = 1-(1-x)^3; out: p = (1-x)^3),
+    // blended softly if the walk turns round mid-way
+    if (p > lastP + 1e-5) walkDir = 1
+    else if (p < lastP - 1e-5) walkDir = -1
+    lastP = p
+    const uTarget = walkDir > 0 ? 1 - Math.cbrt(Math.max(0, 1 - p)) : Math.cbrt(Math.max(0, p))
+    walkU += (uTarget - walkU) * (1 - Math.exp(-dt * 18))
+    if (p >= 1 || p <= 0) walkU = p
     const tk = throwK
-    throwK = fit(p, 0.1, 0.96)
+    throwK = fit(walkU, 0.04, 0.88)
     if (throwK !== tk) dirty = true
     wallOn = throwK >= 0.98
     // the screens facing you, frozen as the walk begins: their cars open the list
@@ -1068,14 +1085,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // (no snap: a screen still turning finishes its turn as it flies)
       drag = Math.round(angle / STEP) * STEP; autoT = 0
       r0m = Math.round(drag / STEP)
-      listStart = r0m - 1 - base; anchor = N > 1 ? 1 : 0
+      listStart = r0m - base; anchor = 0
       scrollPos = scrollTarget = 0; mapped = true
     }
     // on the street: the faces of the cards about to fly, and the ring faces
     // the screens will dissolve to, are drawn and uploaded ahead, in idle time
-    if (!mapped && N && screenOn && readyAt >= 0 && performance.now() - readyAt > 2500) {
+    if (!mapped && N && screenOn && readyAt >= 0 && performance.now() - readyAt > 1200) {
       const r0 = Math.round(drag / STEP)
-      for (let d = -1; d <= 4; d++) { const ci = view[mod(r0 - base + d, N)]; ensureCard(ci); ensureTex(ci) }
+      // every card the first view of the hall will hold, faces drawn ahead
+      const ahead = Math.min(N, (rowsFit + 2) * gcols)
+      for (let d = 0; d < ahead; d++) ensureCard(view[mod(r0 - base + d, N)])
       // and the gallery's own next photos, so a slide never starts a texture
       if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
     }
@@ -1085,13 +1104,21 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // walking out: the cards in front of you go back into the screens
       // the first row in view goes back to the screens facing you
       const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
-      anchor = Math.min(N - 1, i0 + 1); base = r0m - listStart - anchor; dirty = true
-      // walking out: each landing card will leave its photo on its screen —
-      // the ring faces of those cars are made ready now, in one quiet step
+      anchor = i0; base = r0m - listStart - anchor; dirty = true
+      // walking out, the first card in view grows back into the big screen
+      // still wearing its car: only that one face is needed, made ready now
       exitRide = true
-      for (let rel = -1; rel <= SLOTS - 2; rel++) { const i = anchor + rel; if (i >= 0 && i < N) ensureTex(listCar(i)) }
+      ensureTex(listCar(anchor))   // already made while browsing — a no-op
     }
-    if (full) exitRide = false
+    if (full) {
+      exitRide = false
+      // while browsing, the face the first card in view would leave on the
+      // big screen is made ready in idle time, so the walk out births nothing
+      if (p >= 1 && !holding && !fling && Math.abs(scrollTarget - scrollPos) < 1e-3 && N) {   // only once the walk has fully come to rest
+        const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
+        if (!texCache.has(listCar(i0))) ensureTex(listCar(i0))
+      }
+    }
     wasFull = full
     if (opts.light) {
       // the hall brightens over the walk's last stretch — gradual, never a
@@ -1159,7 +1186,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
-      if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
+      if (throwK < 1) for (const rel of FLY) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
     const ease = 1 - Math.exp(-dt * 9)
@@ -1203,7 +1230,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       let bright = 1
       let sc = 1, sx = 1, a = 1, strip = 1
       const rel = hd.i - anchor
-      if (mapped && rel >= -1 && rel <= 1 && throwK < 1) {
+      if (mapped && (rel === 0 || rel === 1) && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
@@ -1235,7 +1262,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           sx = Math.max(0.015, Math.abs(Math.cos(Math.PI * fl)))
           u.uFlip.value = fl < 0.5 ? 1 : 0
         } else u.uFlip.value = 0
-        if (exitRide && rel === 0 && fe <= 0 && hd.car >= 0) {
+        // the guest is handed to the screen as the card is all but home (the
+        // screen stays hidden under the card until it lands, so the hand-off
+        // is invisible) — at exactly 0 the walk's last frame also unmaps
+        if (exitRide && rel === 0 && fe < 0.03 && hd.car >= 0) {
           const sm = cardMeshes[sl], ku = sm.userData
           if (ku.car !== hd.car) { ku.guestK = sIdxK(sl); ku.car = hd.car; sm.material.uniforms.map.value = ensureTex(hd.car).tex }
         }
@@ -1248,7 +1278,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         m.position.copy(tmpV); m.quaternion.copy(tmpQ)
         u.uFlip.value = 0   // settled: the card shows its own face, no turn
         u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
-        a = calm ? throwK : fit(throwK, 0.45 + Math.min(hd.i, 8) * 0.04, 0.78 + Math.min(hd.i, 8) * 0.04)   // the rest rises in place, one beat apart, among the landings
+        a = calm ? throwK : smooth(fit(throwK, 0.5 + Math.min(hd.i, 8) * 0.022, 0.8 + Math.min(hd.i, 8) * 0.022))   // the rest rises in place as one soft group, a breath apart — and leaves the same way
+        if (!calm && a < 1) m.position.addScaledVector(tmpV2.set(0, -1, 0).applyQuaternion(camera.quaternion), (1 - a) * cardH * 0.12)
       }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
       if (Math.abs(lift - u.uLift.value) > 1e-3) dirty = true
@@ -1603,7 +1634,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     stats() {
       const s = [...frames].sort((a, b) => a - b)
       return {
-        frames: s.length, avg: s.reduce((a, b) => a + b, 0) / (s.length || 1), p95: s[Math.floor(s.length * 0.95)] ?? 0,
+        born, frames: s.length, avg: s.reduce((a, b) => a + b, 0) / (s.length || 1), p95: s[Math.floor(s.length * 0.95)] ?? 0,
         calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr,
         angle: angle / STEP, drag: drag / STEP, progress, front,
       }

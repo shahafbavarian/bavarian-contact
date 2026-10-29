@@ -245,11 +245,10 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         const k = sm(fit(current, 0.86, 0.96))   // the one factor — a SHORT cross (see below)
         if (Math.abs(k - lastK) > 0.004 || ((k === 0 || k === 1) && k !== lastK)) {
           lastK = k
-          const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
-          const col = `rgb(${ch(6, 245)}, ${ch(8, 246)}, ${ch(12, 247)})`
-          document.documentElement.style.backgroundColor = col
-          document.body.style.backgroundColor = col
-          root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
+          // set only on the two blocks that read it: a root-wide custom
+          // property restyled the whole page (~400 nodes) every frame
+          const v = k.toFixed(3)
+          nav.current?.style.setProperty('--br', v); cap.current?.style.setProperty('--br', v)
         }
         // the strips change ONCE per cross (every re-toggle makes Safari's
         // bottom glass pulse) and right as it SETS OFF, by direction: Safari
@@ -270,6 +269,10 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         if (want !== stripK) {
           stripK = want
           const col = want ? '#f5f6f7' : '#06080c'
+          // the page background moves with the strips, once (rule 5) — the
+          // canvas covers the page, so a per-frame repaint bought nothing
+          document.documentElement.style.backgroundColor = col
+          document.body.style.backgroundColor = col
           const strips = document.querySelectorAll<HTMLElement>('.sr-safari-strip')
           strips.forEach(el => { el.style.display = 'none' })
           requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
