@@ -47,6 +47,13 @@ const aliasesOf = (name: string) => {
   return ALIASES.filter(([keys]) => keys.some(k => n.includes(k))).flatMap(([, he]) => he)
 }
 
+// free search: one line holding every word the car answers to — maker,
+// model and trim, year, price (with and without punctuation), availability,
+// and the maker's Hebrew names; every typed word must be found in it
+export const haystack = (c: Searchable) =>
+  norm([c.make, c.model, c.year, c.price, c.price.replace(/\D/g, ''), c.stock ? 'במלאי מלאי' : 'בדרך לארץ בדרך', ...aliasesOf(`${c.make} ${c.model}`)].join(' '))
+export const matches = (hay: string, q: string) => norm(q).split(' ').filter(Boolean).every(w => hay.includes(w))
+
 // a model's line: its first word ("911", "Cayenne", "G63")
 export const lineOf = (model: string) => model.trim().split(/\s+/)[0] ?? ''
 

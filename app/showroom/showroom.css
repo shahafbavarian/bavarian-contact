@@ -15,7 +15,7 @@ html:has(.sr) { overflow: auto; }
 /* two real pixels of page scroll, resting at one: the iPhone's tap on the
    clock pulls the page to zero — the one signal Safari gives — and the hall
    turns it into the list's own ride to the top */
-html:has(.sr) body { min-height: calc(100svh + 2px); }
+html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2px); }
 
 .sr {
   /* pure white, the logo's own colour, so the bar's mark and every text match */
@@ -198,7 +198,7 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
 
 /* The front card's name, large and centred over the floor */
 .sr-cap {
-  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(30px + env(safe-area-inset-bottom));
+  position: absolute; z-index: 3; inset-inline: 16px; bottom: calc(14px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; align-items: center; text-align: center;
   opacity: 0; visibility: hidden; font-variant-numeric: tabular-nums; pointer-events: none;
 }
@@ -225,19 +225,19 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
 /* ─── The search, at the foot of the hall. Fine, like the street's line of
    doors: hairlines of light, lit words, no surfaces — nothing covers the
    cards or the hall ─── */
-.sr-row { display: flex; align-items: center; gap: 8px; width: min(100%, 560px); }
+.sr-row { display: flex; align-items: center; gap: 7px; width: min(100%, 560px); }
 .sr-find {
-  position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 46px; border-radius: 999px;
+  position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 40px; border-radius: 999px;
   border: 1px solid rgba(255,255,255,.34); background: rgba(255,255,255,.035); cursor: text;
   box-shadow: 0 0 14px rgba(255,255,255,.07);
   transition: border-color 220ms ease, box-shadow 260ms ease, background-color 220ms ease;
 }
 .sr-find:focus-within { border-color: rgba(255,255,255,.82); background: rgba(255,255,255,.06); box-shadow: 0 0 20px rgba(255,255,255,.16); }
-.sr-find > svg { flex: none; margin-inline: 16px 8px; color: rgba(255,255,255,.9); filter: drop-shadow(0 0 5px rgba(255,255,255,.4)); pointer-events: none; }
+.sr-find > svg { flex: none; margin-inline: 14px 7px; color: rgba(255,255,255,.9); filter: drop-shadow(0 0 5px rgba(255,255,255,.4)); pointer-events: none; }
 /* what has been picked: a quiet chip each, a cross to take it back */
 .sr-chip {
   flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
-  height: 30px; margin-inline-end: 6px; padding-inline: 11px 9px; border: 0; border-radius: 999px;
+  height: 28px; margin-inline-end: 6px; padding-inline: 10px 8px; border: 0; border-radius: 999px;
   background: rgba(255,255,255,.11); color: #fff; font: inherit; font-size: 14px; font-weight: 500;
   cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   animation: sr-cap-in 280ms cubic-bezier(.23,1,.32,1) backwards;
@@ -261,7 +261,7 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
 .sr-q::-webkit-search-cancel-button, .sr-q::-webkit-search-decoration { -webkit-appearance: none; display: none; }
 /* waiting for the first letter: a lit caret just before the hint */
 .sr-caret {
-  display: none; position: absolute; inset-inline-start: 0; top: 50%; width: 1.5px; height: 19px; margin-top: -9.5px;
+  display: none; position: absolute; inset-inline-start: 0; top: 50%; width: 1.5px; height: 17px; margin-top: -8.5px;
   border-radius: 1px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8); pointer-events: none;
   animation: sr-blink 1.06s steps(1) infinite;
 }
@@ -271,7 +271,7 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
 .sr-n { flex: none; padding-inline: 4px 16px; font-size: 12.5px; white-space: nowrap; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; }
 /* filter and order: hairline circles; a lit dot when in use */
 .sr-tool {
-  position: relative; flex: none; display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border-radius: 50%;
+  position: relative; flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%;
   border: 1px solid rgba(255,255,255,.34); background: rgba(255,255,255,.035); color: rgba(255,255,255,.92);
   box-shadow: 0 0 14px rgba(255,255,255,.07);
   cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
@@ -296,15 +296,15 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
    the filter, the order. Hairlines between the words (the street's doors);
    a line too long slides sideways, its ends fading */
 .sr-words {
-  display: flex; align-items: center; width: min(100%, 560px); margin-bottom: 6px;
+  display: flex; align-items: center; width: min(100%, 560px); margin-top: 2px;
   overflow-x: auto; overscroll-behavior: contain; touch-action: pan-x; scrollbar-width: none;
   -webkit-mask-image: linear-gradient(to left, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
   mask-image: linear-gradient(to left, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
 }
 .sr-words::-webkit-scrollbar { display: none; }
 .sr-word {
-  position: relative; flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding-inline: 13px;
-  border: 0; background: none; color: rgba(255,255,255,.7); font: inherit; font-size: 15px; font-weight: 500; white-space: nowrap;
+  position: relative; flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 38px; padding-inline: 12px;
+  border: 0; background: none; color: rgba(255,255,255,.7); font: inherit; font-size: 14px; font-weight: 500; white-space: nowrap;
   text-shadow: 0 0 8px rgba(255,255,255,.3); cursor: pointer; touch-action: pan-x; -webkit-tap-highlight-color: transparent;
   animation: sr-cap-in 260ms cubic-bezier(.23,1,.32,1) backwards; animation-delay: calc(var(--i, 0) * 28ms);
   transition: color 160ms ease, text-shadow 160ms ease;
@@ -318,7 +318,7 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
 .sr-word[aria-selected="true"], .sr-word[aria-pressed="true"], .sr-word:active { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,.6); }
 /* chosen: a short line of light under the word */
 .sr-word[aria-pressed="true"]::after, .sr-word[aria-selected="true"]::after {
-  content: ''; position: absolute; inset-inline: 13px; bottom: 8px; height: 1px; border-radius: 1px;
+  content: ''; position: absolute; inset-inline: 12px; bottom: 5px; height: 1px; border-radius: 1px;
   background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8);
 }
 .sr-word-note { cursor: default; color: rgba(255,255,255,.55); }
@@ -418,6 +418,7 @@ html:has(.sr) body { min-height: calc(100svh + 2px); }
   height: clamp(30px, 3vw, 38px); width: auto; opacity: var(--br, 0);
 }
 .sr[data-theme="light"] .sr-logo > img:first-of-type { opacity: calc(1 - var(--br, 0)); }
+.sr[data-theme="light"][data-bright] .sr-burger { color: #14171A; }
 .sr[data-theme="light"] .sr-burger { color: color-mix(in srgb, #14171A calc(var(--br, 0) * 100%), #ffffff); }
 /* the row's content carries no clocks of its own in the trial: everything
    under the foot rides the cap and the one factor */

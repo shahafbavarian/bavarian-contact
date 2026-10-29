@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
 import { INSTAGRAM_URL } from '@/lib/agent-format'
-import { AVAIL, PRICES, SORTS, carsWord, lineOf, makesOf, modelsOf, norm, priceNum, rank, type Avail, type Option, type Ranked, type Sort } from './search'
+import { AVAIL, PRICES, SORTS, carsWord, haystack, lineOf, makesOf, matches, modelsOf, norm, priceNum, rank, type Avail, type Option, type Ranked, type Sort } from './search'
 
 const WHATSAPP = 'https://wa.me/97299561906'
 // the hall's Facebook page, as linked from the main site
@@ -61,6 +61,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
   useEffect(() => { setActive(0) }, [text, make, model])
   const searchable = useMemo(() => deck.map(c => ({ make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true })), [deck])
+  const hays = useMemo(() => searchable.map(haystack), [searchable])
   const makes = useMemo(() => makesOf(searchable), [searchable])
   const models = useMemo(() => (make ? modelsOf(searchable, make) : []), [searchable, make])
   const stage: 'make' | 'model' | 'done' = !make ? 'make' : !model ? 'model' : 'done'
@@ -75,12 +76,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const found = useMemo(() => {
     const qn = norm(query)
     if (!make && !qn && !filtersOn && sort.key === 'mix') return null
-    // typed but not yet picked: the cars of every maker (or line) still offered
-    const keys = qn && stage !== 'done' ? new Set(rank(stage === 'make' ? makes : models, query).map(r => norm(r.opt.key))) : null
+    // free text: every typed word must be found somewhere on the car —
+    // maker, model and trim, year, price, availability, Hebrew names too
     const ids = searchable.flatMap((c, i) => {
       if (make && norm(c.make) !== norm(make)) return []
       if (model && lineOf(c.model) !== model) return []
-      if (keys && !keys.has(norm(stage === 'make' ? c.make : lineOf(c.model)))) return []
+      if (qn && !matches(hays[i], query)) return []
       if (avail === 'stock' && !c.stock) return []
       if (avail === 'way' && c.stock) return []
       if (price >= 0) { const n = priceNum(c.price); if (n === null || n < PRICES[price].min || n >= PRICES[price].max) return [] }
@@ -93,7 +94,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // cars with no price go last, either way
     if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
-  }, [searchable, makes, models, make, model, stage, query, avail, price, sort, filtersOn])
+  }, [searchable, hays, make, model, query, avail, price, sort, filtersOn])
   const viewRef = useRef<number[] | null>(null)
   useEffect(() => { viewRef.current = found; handle.current?.setView(found) }, [found])
   const pick = (o: Option) => {
@@ -164,7 +165,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0
+    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0, prevK = bornBright ? 1 : 0
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -223,11 +224,14 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
         }
         // the strips change ONCE per cross (every re-toggle makes Safari's
-        // bottom glass pulse), and in the MIDDLE of it, not at its end — the
-        // cross's tail is slow, and a flip at its very end arrived a second
-        // after everything already read white. Safari's own tint animation
-        // eases the one change while the page and the sheets glide on
-        const want = k > (stripK === 1 ? 0.3 : 0.55) ? 1 : 0
+        // bottom glass pulse) and right as it SETS OFF, by direction: Safari
+        // answers a strip change with an animation of its own, on its own
+        // clock, so the order goes out at the first step of the move and both
+        // land together — fired at the end or the middle, the edges trailed
+        let want = stripK
+        if (k > prevK + 1e-4 && k > 0.12) want = 1
+        if (k < prevK - 1e-4 && k < 0.88) want = 0
+        prevK = k
         if (want !== stripK) {
           stripK = want
           const col = want ? '#f5f6f7' : '#06080c'
@@ -263,8 +267,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     const insets = () => {
       const n = nav.current, c = cap.current
       const top = (n ? n.offsetTop + n.offsetHeight : 64) + 14
-      const capBottom = c ? c.offsetTop + c.offsetHeight : cv.clientHeight - 30
-      const bottom = cv.clientHeight - capBottom + 124   // the search row and its line of words
+      // from the screen's bottom edge to the foot's top, plus a breath
+      const bottom = c ? cv.clientHeight - c.offsetTop + 12 : 150
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
@@ -499,9 +503,55 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             <span className="sr-pull-b">שחררו כדי לצאת לרחוב</span>
           </div>
 
-          {/* The foot of the hall: one line of lit words (the makers or models
-              to pick from, the filter, the order) over the search row */}
+          {/* The foot of the hall: the search row, and under it one line of lit
+              words (the makers or models to pick from, the filter, the order) —
+              low and tight, so the cards keep the screen */}
           <div ref={cap} className="sr-cap">
+            <div className="sr-row">
+              {/* the field: what has been picked sits in it as chips, then the next step */}
+              <form className="sr-find" role="search" data-picked={make ? '' : undefined} data-done={stage === 'done' ? '' : undefined}
+                onSubmit={e => e.preventDefault()} onClick={() => input.current?.focus()}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                {make && (
+                  <button type="button" className="sr-chip" aria-label={`הסרת ${make}`} onMouseDown={onPd} onClick={e => { e.stopPropagation(); dropMake() }}>
+                    <bdi>{make}</bdi>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+                {model && (
+                  <button type="button" className="sr-chip" aria-label={`הסרת ${model}`} onMouseDown={onPd} onClick={e => { e.stopPropagation(); dropModel() }}>
+                    <bdi>{model}</bdi>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+                <span className="sr-qwrap">
+                  <input ref={input} className="sr-q" type="search" inputMode="search" enterKeyHint="search"
+                    autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                    placeholder={stage === 'make' ? 'חיפוש: יצרן, דגם, גימור…' : stage === 'model' ? 'דגם, גימור או כל דבר' : undefined}
+                    aria-label={stage === 'make' ? 'חיפוש לפי יצרן' : 'חיפוש לפי דגם'} aria-expanded={listOpen} aria-autocomplete="list"
+                    value={text} onChange={e => { if (model) setModel(null); setText(e.target.value) }}
+                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
+                  {/* empty and waiting: a lit caret says the field is open for typing */}
+                  {stage !== 'done' && <span className="sr-caret" aria-hidden="true" />}
+                </span>
+                {found && <span className="sr-n" aria-live="polite">{carsWord(found.length)}</span>}
+              </form>
+              <button type="button" className="sr-tool" aria-label="סינון" aria-expanded={panel === 'filter'} data-on={filtersOn || undefined}
+                onClick={() => { input.current?.blur(); setPanel(p => (p === 'filter' ? null : 'filter')) }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" />
+                </svg>
+              </button>
+              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort.key !== 'mix' || undefined}
+                onClick={() => { input.current?.blur(); setPanel(p => (p === 'sort' ? null : 'sort')) }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 5v14M8 19l-3-3M8 19l3-3M16 19V5M16 5l-3 3M16 5l3 3" />
+                </svg>
+              </button>
+            </div>
             {listOpen ? (
               <div className="sr-words" role="listbox" aria-label={stage === 'make' ? 'יצרנים' : 'דגמים'}>
                 {items.map((r, i) => (
@@ -546,52 +596,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
                 <button type="button" className="sr-word" onClick={clearAll}>נקה חיפוש</button>
               </div>
             ) : null}
-
-            <div className="sr-row">
-              {/* the field: what has been picked sits in it as chips, then the next step */}
-              <form className="sr-find" role="search" data-picked={make ? '' : undefined} data-done={stage === 'done' ? '' : undefined}
-                onSubmit={e => e.preventDefault()} onClick={() => input.current?.focus()}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                {make && (
-                  <button type="button" className="sr-chip" aria-label={`הסרת ${make}`} onMouseDown={onPd} onClick={e => { e.stopPropagation(); dropMake() }}>
-                    <bdi>{make}</bdi>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
-                  </button>
-                )}
-                {model && (
-                  <button type="button" className="sr-chip" aria-label={`הסרת ${model}`} onMouseDown={onPd} onClick={e => { e.stopPropagation(); dropModel() }}>
-                    <bdi>{model}</bdi>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
-                  </button>
-                )}
-                <span className="sr-qwrap">
-                  <input ref={input} className="sr-q" type="search" inputMode="search" enterKeyHint="search"
-                    autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                    placeholder={stage === 'make' ? 'חיפוש לפי יצרן' : stage === 'model' ? 'בחרו דגם' : undefined}
-                    aria-label={stage === 'make' ? 'חיפוש לפי יצרן' : 'חיפוש לפי דגם'} aria-expanded={listOpen} aria-autocomplete="list"
-                    value={text} onChange={e => { if (model) setModel(null); setText(e.target.value) }}
-                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
-                  {/* empty and waiting: a lit caret says the field is open for typing */}
-                  {stage !== 'done' && <span className="sr-caret" aria-hidden="true" />}
-                </span>
-                {found && <span className="sr-n" aria-live="polite">{carsWord(found.length)}</span>}
-              </form>
-              <button type="button" className="sr-tool" aria-label="סינון" aria-expanded={panel === 'filter'} data-on={filtersOn || undefined}
-                onClick={() => { input.current?.blur(); setPanel(p => (p === 'filter' ? null : 'filter')) }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-                  <path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" />
-                </svg>
-              </button>
-              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort.key !== 'mix' || undefined}
-                onClick={() => { input.current?.blur(); setPanel(p => (p === 'sort' ? null : 'sort')) }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M8 5v14M8 19l-3-3M8 19l3-3M16 19V5M16 5l-3 3M16 5l3 3" />
-                </svg>
-              </button>
-            </div>
           </div>
 
           {/* for screen readers: the cars on show, as plain links (client only: the order is per visit) */}
