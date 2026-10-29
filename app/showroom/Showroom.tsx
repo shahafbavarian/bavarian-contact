@@ -52,6 +52,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const [model, setModel] = useState<string | null>(null)
   const [text, setText] = useState('')
   const [query, setQuery] = useState('')   // the text, a beat later: the cards move once typing pauses
+  // a search, once sent (the search key, or leaving the field), is kept as a
+  // balloon with an x — one press clears it for a fresh search
+  const [term, setTerm] = useState<string | null>(null)
+  const activeMoved = useRef(false)
   const [focus, setFocus] = useState(false)
   const [active, setActive] = useState(0)
   const [panel, setPanel] = useState<'filter' | 'sort' | null>(null)
@@ -59,7 +63,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const [price, setPrice] = useState(-1)
   const [sort, setSort] = useState<Sort>({ key: 'mix', up: false })
   useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
-  useEffect(() => { setActive(0) }, [text, make, model])
+  useEffect(() => { setActive(0); activeMoved.current = false }, [text, make, model])
   const searchable = useMemo(() => deck.map(c => ({ make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true })), [deck])
   const hays = useMemo(() => searchable.map(haystack), [searchable])
   const makes = useMemo(() => makesOf(searchable), [searchable])
@@ -75,13 +79,14 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const filtersOn = avail !== 'all' || price >= 0
   const found = useMemo(() => {
     const qn = norm(query)
-    if (!make && !qn && !filtersOn && sort.key === 'mix') return null
+    if (!make && !qn && !term && !filtersOn && sort.key === 'mix') return null
     // free text: every typed word must be found somewhere on the car —
     // maker, model and trim, year, price, availability, Hebrew names too
     const ids = searchable.flatMap((c, i) => {
       if (make && norm(c.make) !== norm(make)) return []
       if (model && lineOf(c.model) !== model) return []
       if (qn && !matches(hays[i], query)) return []
+      if (term && !matches(hays[i], term)) return []
       if (avail === 'stock' && !c.stock) return []
       if (avail === 'way' && c.stock) return []
       if (price >= 0) { const n = priceNum(c.price); if (n === null || n < PRICES[price].min || n >= PRICES[price].max) return [] }
@@ -94,7 +99,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // cars with no price go last, either way
     if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
-  }, [searchable, hays, make, model, query, avail, price, sort, filtersOn])
+  }, [searchable, hays, make, model, term, query, avail, price, sort, filtersOn])
   const viewRef = useRef<number[] | null>(null)
   useEffect(() => { viewRef.current = found; handle.current?.setView(found) }, [found])
   const pick = (o: Option) => {
@@ -106,19 +111,24 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const fine = () => matchMedia('(pointer: fine)').matches
   const dropMake = () => { setMake(null); setModel(null); setText(''); if (fine()) input.current?.focus() }
   const dropModel = () => { setModel(null); setText(''); if (fine()) input.current?.focus() }
-  const clearAll = () => { setMake(null); setModel(null); setText(''); setQuery(''); setAvail('all'); setPrice(-1); setSort({ key: 'mix', up: false }) }
+  const clearAll = () => { setMake(null); setModel(null); setTerm(null); setText(''); setQuery(''); setAvail('all'); setPrice(-1); setSort({ key: 'mix', up: false }) }
+  // the typed search becomes the balloon (a fresh one replaces it)
+  const commit = () => { const t = text.trim(); if (t) { setTerm(t); setText(''); setQuery('') } }
   const onFieldKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       if (!listOpen || (text && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) return
       e.preventDefault()
+      activeMoved.current = true
       const fwd = e.key === 'ArrowDown' || e.key === 'ArrowLeft'   // the line reads right to left
       setActive(a => (a + (fwd ? 1 : -1) + items.length) % items.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      if (listOpen && (text.trim() || active > 0)) pick(items[Math.min(active, items.length - 1)].opt)
-      else input.current?.blur()
+      // an option walked to with the arrows is picked; anything typed is sent
+      // and kept as the balloon; the keyboard goes away either way
+      if (listOpen && activeMoved.current && items.length) pick(items[Math.min(active, items.length - 1)].opt)
+      else { commit(); input.current?.blur() }
     } else if (e.key === 'Backspace' && !text) {
-      if (model) setModel(null); else if (make) setMake(null)
+      if (term) setTerm(null); else if (model) setModel(null); else if (make) setMake(null)
     } else if (e.key === 'Escape') {
       e.preventDefault(); if (text) setText(''); else input.current?.blur()
     }
@@ -527,13 +537,19 @@ export default function Showroom({ cards }: { cards: Card[] }) {
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
                   </button>
                 )}
+                {term && (
+                  <button type="button" className="sr-chip" aria-label={`ניקוי החיפוש ${term}`} onMouseDown={onPd} onClick={e => { e.stopPropagation(); setTerm(null) }}>
+                    <bdi>{term}</bdi>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+                  </button>
+                )}
                 <span className="sr-qwrap">
                   <input ref={input} className="sr-q" type="search" inputMode="search" enterKeyHint="search"
                     autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
                     placeholder={stage === 'make' ? 'חיפוש: יצרן, דגם, גימור…' : stage === 'model' ? 'דגם, גימור או כל דבר' : undefined}
                     aria-label={stage === 'make' ? 'חיפוש לפי יצרן' : 'חיפוש לפי דגם'} aria-expanded={listOpen} aria-autocomplete="list"
                     value={text} onChange={e => { if (model) setModel(null); setText(e.target.value) }}
-                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
+                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); commit(); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
                   {/* empty and waiting: a lit caret says the field is open for typing */}
                   {stage !== 'done' && <span className="sr-caret" aria-hidden="true" />}
                 </span>

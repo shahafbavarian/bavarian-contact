@@ -809,11 +809,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
   const mod = (a: number, n: number) => ((a % n) + n) % n
   const listCar = (i: number) => (N ? view[mod(listStart + i, N)] : -1)
-  // the three screens facing you, in list order: before, middle, after
+  // ALL six screens join the scatter, in list order: the middle first, its
+  // neighbours, then the back screens turning in one after another as the
+  // fourth, fifth and sixth cards — none arrives as a mere fade
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
-    const o = rel === 0 ? 0 : rel < 0 ? 0.1 : 0.18
-    return easeInOut(fit(throwK, o, o + 0.72))
+    const o = rel === 0 ? 0 : rel === -1 ? 0.1 : 0.14 + (rel - 1) * 0.08
+    return easeInOut(fit(throwK, o, o + 0.6))
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
   const facingReady = () => {
@@ -823,7 +825,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   const relOfSlot = (sIdx: number) => {
     if (!mapped) return null
-    for (let rel = -1; rel <= 1; rel++) {
+    for (let rel = -1; rel <= SLOTS - 2; rel++) {
       const li = anchor + rel
       if (li >= 0 && li < N && slotOf(rel) === sIdx) return rel
     }
@@ -1118,7 +1120,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
-      if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
+      if (throwK < 1) for (let rel = -1; rel <= SLOTS - 2; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
     const ease = 1 - Math.exp(-dt * 9)
@@ -1162,7 +1164,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       let bright = 1
       let sc = 1, a = 1, strip = 1
       const rel = hd.i - anchor
-      if (mapped && Math.abs(rel) <= 1 && throwK < 1) {
+      if (mapped && rel >= -1 && rel <= SLOTS - 2 && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
