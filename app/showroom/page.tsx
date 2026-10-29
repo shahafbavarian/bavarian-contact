@@ -25,11 +25,14 @@ export default async function ShowroomPage() {
     cards = cars.map(c => {
       const words = c.name.trim().split(/\s+/)
       const cut = TWO.includes(words[0]) ? 2 : 1
+      const make = words.slice(0, cut).join(' '), model = words.slice(cut).join(' ')
+      const stock = c.status.includes('מלאי')
       return {
-        title: words.slice(0, cut).join(' '),
-        sub: [words.slice(cut).join(' '), c.year, c.price, c.status.includes('מלאי') ? 'במלאי' : 'בדרך לארץ'].filter(Boolean).join(' · '),
+        title: make,
+        sub: [model, c.year, c.price, stock ? 'במלאי' : 'בדרך לארץ'].filter(Boolean).join(' · '),
         href: `/car/${c.recNo}`,
         images: [img(c.imageUrl)],
+        make, model, year: c.year ?? '', price: c.price ?? '', stock,
       }
     })
   } catch {}

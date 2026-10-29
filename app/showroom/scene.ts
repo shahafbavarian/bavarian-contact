@@ -22,6 +22,10 @@ export type SceneHandle = {
   setPointer: (x: number, y: number) => void
   /** Rotate the ring by whole cards (buttons, keyboard). */
   step: (dir: 1 | -1) => void
+  /** Show only these cars (indices into cards), or the whole stock (null) */
+  setView: (ids: number[] | null) => void
+  /** The screen's edges the cards keep clear of (css px): the bar above, the search below, the sides */
+  setInsets: (top: number, bottom: number, side: number) => void
   resize: () => void
   /** Offline rendering: place the camera at p and draw one frame now */
   renderFrame: (p: number) => void
@@ -31,10 +35,16 @@ export type SceneHandle = {
 
 // A card on the floating gallery: one of the site's destinations. One image
 // = a photo card, several = a mosaic, none = a typographic card.
-export type Card = { title: string; sub: string; href: string; external?: boolean; images: string[] }
+export type Card = {
+  title: string; sub: string; href: string; external?: boolean; images: string[]
+  /** the car's own fields, for search: maker, model, year, price, in stock */
+  make?: string; model?: string; year?: string; price?: string; stock?: boolean
+}
 type Opts = {
   mobile: boolean; logoUrl: string; cards: Card[]; font: string
   onFront: (i: number) => void
+  /** inside, the cards' page and how many pages there are */
+  onPage?: (page: number, pages: number) => void
   onOpen: (i: number) => void
   /** the dark middle screen was tapped from the street: switch on and walk in */
   onEnter?: () => void
@@ -510,7 +520,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ─── The stand: one gloss plinth in the middle of the hall, a light ring at
   //     its edge, and the gallery hovering above it ───
   const STAND = new THREE.Vector3(0, 0, -12.5)
-  const N = opts.cards.length
+  const TOTAL = opts.cards.length
+  // the cars on show (a search narrows it): indices into the cards, the front
+  // one at `base`; N is how many there are
+  let view: number[] = Array.from({ length: TOTAL }, (_, i) => i)
+  let N = TOTAL, base = 0
+  const carAt = (k: number) => (N ? view[(((k - base) % N) + N) % N] : -1)
+  // a new set comes on like a change of channel: the screens dim, re-dress, light up
+  let pendingView: number[] | null = null, swap = 0
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
   // 3:2 screens, as asked
   const CW = mobile ? 3.0 : 2.3, CH = CW * (2 / 3)
@@ -518,7 +535,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // 35% of its width on each side, so no two cars ever touch
   // the ring holds a fixed 8 slots; the stock streams through them
   // 6 slots: the neighbours stay in frame beside the front screen
-  const SLOTS = Math.max(1, Math.min(6, N))
+  const SLOTS = Math.max(1, Math.min(6, TOTAL))
   const R = Math.max(3.0, (SLOTS * CW * 1.35) / (Math.PI * 2))
   const PR = R + 0.7                              // plinth radius
   // satin, not piano gloss: a mirror-bright edge caught the lamps as a stray streak by the ring
@@ -567,7 +584,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform float uSwap; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     // exact inverse of three's ACES filmic fit: the composer tone-maps the
     // whole frame at the end, so the screen pixels are pre-inverted here and
@@ -597,6 +614,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float pic = step(abs(vUv.y - .5), open * .5 + .004) * step(.001, uPower);
       col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
       col += smoothstep(-.012, -.002, d) * .10 * uPower;  // hairline edge, only on a lit screen (dark, it read as a stray line of light)
+      col = mix(col, vec3(.018, .019, .022), uSwap);      // mid-change, the glass goes dark
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       col = min(acesInv(max(col, vec3(0.))), vec3(uCap)); // capped where bloom runs, so white photos don't flare
       gl_FragColor = vec4(col, a * uAlpha);
@@ -608,7 +626,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   for (let i = 0; i < SLOTS; i++) {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uSwap: { value: 0 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
@@ -632,7 +650,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // the ring is virtual — a fixed set of screens re-dressed as you browse,
   // so the whole stock fits however long it is. Textures stream in and the
   // farthest are let go
-  const texCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean }>()
+  const texCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
   const ensureTex = (ci: number) => {
     let e = texCache.get(ci)
     if (e) return e
@@ -641,7 +659,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 683)
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
-    e = { tex, ready: false }; texCache.set(ci, e)
+    e = { tex, ready: false, used: time }; texCache.set(ci, e)
     const src = cards[ci]?.images[0]
     const done = (im: HTMLImageElement | null) => {
       if (im) cover(c, im, 0, 0, 1024, 683)
@@ -658,9 +676,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const lg = im as HTMLImageElement | null
       if (lg) { const w = 520, h = w * (lg.naturalHeight / lg.naturalWidth); c.globalAlpha = 0.5; c.drawImage(lg, (1024 - w) / 2, (683 - h) / 2, w, h); c.globalAlpha = 1; tex.needsUpdate = true }
     })
-    if (texCache.size > 24) {   // drop the car farthest from the front
-      let worst = -1, wd = -1
-      texCache.forEach((_, k) => { const d = Math.min(Math.abs(k - front), N - Math.abs(k - front)); if (k !== ci && d > wd) { wd = d; worst = k } })
+    if (texCache.size > 12) {   // drop the car shown longest ago (never one on a screen)
+      let worst = -1, wd = Infinity
+      const onScreen = new Set(cardMeshes.map(m => m.userData.car as number))
+      texCache.forEach((v, k) => { if (k !== ci && !onScreen.has(k) && v.used < wd) { wd = v.used; worst = k } })
       const w = texCache.get(worst)
       if (w) { w.tex.dispose(); texCache.delete(worst) }
     }
@@ -670,8 +689,311 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const loadCards = () => {
     if (loaded) return
     loaded = true
-    ensureTex(0)
-    if (N > 1) { ensureTex(1); ensureTex(((N - 1) % N + N) % N); ensureTex(2 % N) }
+    if (!N) return
+    ensureTex(carAt(0))
+    if (N > 1) { ensureTex(carAt(1)); ensureTex(carAt(-1)); ensureTex(carAt(2)) }
+  }
+
+  // ─── Inside, the stock as cards: once you are in, the cars leave the
+  //     screens and float in the hall as cards, a page at a time on a band
+  //     around you (a sideways swipe turns it one page); the screens dim
+  //     behind. The cards are drawn after the hall's bloom and blur, so they
+  //     stay crisp in front of it ───
+  const wallScene = new THREE.Scene()
+  const WALL_R = 3                      // the band's distance from you (m)
+  const STRIP = 0.234                   // the card's info band, as a share of its width
+  const CARD_A = 2 / 3 + STRIP          // the card's height over its width
+  const CARD_PX = 640                   // its face, in canvas pixels
+  const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+  const wallFrag = `
+    uniform sampler2D map; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad; varying vec2 vUv;
+    float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+    vec3 odtInv(vec3 y){
+      vec3 a = 1. - .983729 * y;
+      vec3 b = .0245786 - .432951 * y;
+      vec3 c = -(.000090537 + .238081 * y);
+      return (-b + sqrt(max(b * b - 4. * a * c, 0.))) / (2. * a);
+    }
+    vec3 acesInv(vec3 col){
+      mat3 invIn = mat3(1.76474, -.14703, -.03634, -.67578, 1.16025, -.16244, -.08896, -.01322, 1.19877);
+      mat3 invOut = mat3(.64304, .05927, .00596, .31119, .93144, .06393, .04578, .00929, .93012);
+      return invIn * odtInv(clamp(invOut * col, vec3(0.), vec3(.995))) * (.6 / max(uExp, .001));
+    }
+    void main(){
+      vec2 p = (vUv - .5) * (uSize + 2. * uPad);
+      float d = rbox(p, uSize * .5, uSize.x * .035);
+      float aa = max(fwidth(d), 1e-5);
+      float inCard = 1. - smoothstep(-aa, aa, d);
+      vec2 uv = clamp(p / uSize + .5, 0., 1.);
+      vec3 col = mix(vec3(.05, .055, .065), texture2D(map, uv).rgb, uReady);
+      // a hairline of light at the edge, like the screens' (brighter under the hand)
+      col += (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (.14 + .16 * uLift);
+      col = acesInv(max(col, vec3(0.)));   // the photo exactly as it is (the frame is tone-mapped after)
+      // a soft shadow around the card lifts it off the hall
+      float sh = (1. - smoothstep(0., uPad, d)) * .4 * (1. - inCard);
+      gl_FragColor = vec4(col * inCard, (inCard + sh) * uAlpha);
+      #include <colorspace_fragment>
+    }`
+  const wallGeo = new THREE.PlaneGeometry(1, 1)
+  // a pool of card meshes; each car in the band holds one while it is there
+  const allMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
+  const freeMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
+  const takeMesh = () => {
+    const f = freeMeshes.pop()
+    if (f) return f
+    const m = new THREE.Mesh(wallGeo, new THREE.ShaderMaterial({
+      uniforms: { map: { value: null }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 }, uSize: { value: new THREE.Vector2(cardW, cardW * CARD_A) }, uPad: { value: cardW * 0.07 } },
+      vertexShader: cardVert, fragmentShader: wallFrag, transparent: true, depthTest: false, depthWrite: false,
+    }))
+    m.visible = false; m.userData.car = -1
+    wallScene.add(m); allMeshes.push(m)
+    return m
+  }
+  // A car in the band: its mesh, where it stands (pa: the page it is on,
+  // eased; lp: its spot on the page, eased — so a filter moves it softly to
+  // its new place), and vis: in (1) or on its way out (0)
+  type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; pa: number; lp: THREE.Vector3; vis: number; live: boolean; j: number }
+  const held = new Map<number, Held>()
+  // the page's layout, worked out from the screen (see layout)
+  let cols = 2, rows = 3, perPage = 6, cardW = 0.5, gapW = 0.03, pageAngle = 0.6, cardCss = 170
+  let insetTop = 80, insetBottom = 170, insetSide = 16
+  let pageTarget = 0, pagePos = 0, wallOn = false, reported = '', hovered: THREE.Object3D | null = null
+  let throwK = 0, viewChanged = false
+  // a tapped card flies up to you, filling the screen, and its page opens
+  let opening: { h: Held; t: number; fired: boolean } | null = null
+  const slotLocal: THREE.Vector3[] = []
+  const layCam = new THREE.PerspectiveCamera()
+  const pivot = new THREE.Vector3(), yAxis = new THREE.Vector3(0, 1, 0), tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion()
+  const srcP = new THREE.Vector3(), srcQ = new THREE.Quaternion(), endP = new THREE.Vector3(), endQ = new THREE.Quaternion()
+  const pages = () => Math.max(1, Math.ceil(N / perPage))
+  const easeOut = (x: number) => 1 - (1 - x) ** 3
+  const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
+
+  // the face of a card: the photo (3:2, untouched), and under it a dark band
+  // with the car: maker and model in English from the left; price, year and
+  // availability in Hebrew from the right — sized to read at the card's size
+  const fitText = (c: CanvasRenderingContext2D, t: string, max: number) => {
+    if (c.measureText(t).width <= max) return t
+    while (t && c.measureText(t + '…').width > max) t = t.slice(0, -1)
+    return t + '…'
+  }
+  const drawInfo = (c: CanvasRenderingContext2D, card: Card, y0: number) => {
+    const Wc = CARD_PX, Hs = c.canvas.height - y0, pad = Math.round(Wc * 0.05)
+    c.fillStyle = '#0d0f13'; c.fillRect(0, y0, Wc, Hs)
+    c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(0, y0, Wc, 2)
+    const k = Wc / cardCss                                   // canvas px per css px
+    const css1 = Math.min(16, Math.max(12.5, cardCss * 0.075))
+    const f1 = Math.round(css1 * k), f2 = Math.round(css1 * 0.86 * k)
+    const total = f1 + f2 + f1 * 0.35
+    const b1 = y0 + (Hs - total) / 2 + f1 * 0.82, b2 = b1 + f1 * 0.38 + f2 * 0.95
+    const font = opts.font
+    c.textBaseline = 'alphabetic'
+    const make = card.make ?? card.title, model = card.model ?? ''
+    c.direction = 'ltr'; c.textAlign = 'left'
+    c.font = `700 ${f1}px ${font}`; c.fillStyle = '#ffffff'
+    const mk = fitText(c, make, Wc - pad * 2)
+    c.fillText(mk, pad, b1)
+    const mw = c.measureText(mk + ' ').width
+    c.font = `400 ${f1}px ${font}`; c.fillStyle = 'rgba(255,255,255,.72)'
+    if (model && mw < Wc - pad * 2 - f1) c.fillText(fitText(c, model, Wc - pad * 2 - mw), pad + mw, b1)
+    c.textAlign = 'right'
+    let x = Wc - pad
+    const seg = (t: string, color: string, weight: number, dir: CanvasDirection) => {
+      if (!t) return
+      c.direction = dir; c.font = `${weight} ${f2}px ${font}`; c.fillStyle = color
+      c.fillText(t, x, b2); x -= c.measureText(t).width
+    }
+    const dot = '  ·  '
+    if (card.price) seg(card.price, '#ffffff', 600, 'ltr')
+    if (card.year) { if (card.price) seg(dot, 'rgba(255,255,255,.4)', 400, 'ltr'); seg(card.year, 'rgba(255,255,255,.66)', 400, 'ltr') }
+    if (card.make) { seg(dot, 'rgba(255,255,255,.4)', 400, 'ltr'); seg(card.stock === false ? 'בדרך לארץ' : 'במלאי', 'rgba(255,255,255,.66)', 400, 'rtl') }
+  }
+  const wallCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
+  const ensureCard = (ci: number) => {
+    let e = wallCache.get(ci)
+    if (e) return e
+    const cv = document.createElement('canvas'); cv.width = CARD_PX; cv.height = Math.round(CARD_PX * CARD_A)
+    const c = cv.getContext('2d')!
+    c.fillStyle = '#0d0f13'; c.fillRect(0, 0, cv.width, cv.height)
+    const tex = new THREE.CanvasTexture(cv)
+    tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4
+    const entry = { tex, ready: false, used: time }; e = entry; wallCache.set(ci, entry)
+    const card = cards[ci], ph = Math.round(CARD_PX * 2 / 3)
+    const src = card?.images[0]
+    Promise.all([src ? loadImg(src) : Promise.resolve(null), document.fonts?.ready]).then(([im]) => {
+      if (im) cover(c, im as HTMLImageElement, 0, 0, CARD_PX, ph)
+      else {
+        const gr = c.createLinearGradient(0, 0, CARD_PX, ph)
+        gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
+        c.fillStyle = gr; c.fillRect(0, 0, CARD_PX, ph)
+      }
+      if (card) drawInfo(c, card, ph)
+      tex.needsUpdate = true; entry.ready = true; dirty = true
+    })
+    if (wallCache.size > perPage * 3 + 8) {   // let go of the card shown longest ago (never one in the band)
+      let worst = -1, wd = Infinity
+      wallCache.forEach((v, k) => { if (k !== ci && !held.has(k) && v.used < wd) { wd = v.used; worst = k } })
+      const w = wallCache.get(worst)
+      if (w) { w.tex.dispose(); wallCache.delete(worst) }
+    }
+    return entry
+  }
+  // The page is laid out on the screen first: the room between the bar above
+  // and the search below, a margin at the sides; as many columns and rows as
+  // read well there (two by three on a phone, four by two on a computer),
+  // the cards as large as fit. Then it is set into the hall, WALL_R metres
+  // ahead of where the walk ends, facing you
+  const layout = () => {
+    const w = viewW || canvas.clientWidth, h = viewH || canvas.clientHeight
+    if (!w || !h) return
+    layCam.copy(camera)
+    layCam.position.set(0, 1.6, endZ); layCam.lookAt(0, 1.6 + Math.tan(pitch1) * 30, endZ - 30); layCam.updateMatrixWorld()
+    pivot.copy(layCam.position)
+    const hy = WALL_R * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), hx = hy * camera.aspect
+    const mpp = (2 * hy) / h                                     // metres per css px at the band
+    const availW = 2 * hx - 2 * insetSide * mpp
+    const top = hy - insetTop * mpp, bottom = -hy + insetBottom * mpp, availH = Math.max(0.2, top - bottom)
+    const aspect = w / h
+    cols = aspect < 0.75 ? 2 : aspect < 1.25 ? 3 : 4
+    rows = aspect < 0.75 ? 3 : 2
+    const GAP = 0.07
+    // no row smaller than reads: fewer rows on a short screen
+    rows = Math.max(1, Math.min(rows, Math.floor((availH / mpp + 14) / (150 + 14))))
+    cardW = Math.min(availW / (cols + (cols - 1) * GAP), availH / (rows * CARD_A + (rows - 1) * GAP))
+    gapW = cardW * GAP
+    const gw = cols * cardW + (cols - 1) * gapW, gh = rows * cardW * CARD_A + (rows - 1) * gapW
+    const cy = (top + bottom) / 2
+    const css = cardW / mpp
+    if (Math.abs(css - cardCss) / cardCss > 0.15) {   // much larger or smaller: the faces are drawn again at the new size
+      wallCache.forEach(v => v.tex.dispose()); wallCache.clear()
+      held.forEach(hd => { hd.m.material.uniforms.map.value = ensureCard(hd.car).tex })
+    }
+    cardCss = css
+    perPage = cols * rows
+    slotLocal.length = 0
+    // reading order, right to left
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      slotLocal.push(new THREE.Vector3(gw / 2 - cardW / 2 - c * (cardW + gapW), cy + gh / 2 - cardW * CARD_A / 2 - r * (cardW * CARD_A + gapW), -WALL_R))
+    }
+    pageAngle = 2 * Math.atan(gw / 2 / WALL_R) + 0.08
+    allMeshes.forEach(m => { m.material.uniforms.uSize.value.set(cardW, cardW * CARD_A); m.material.uniforms.uPad.value = cardW * 0.07 })
+    held.forEach(hd => { const sl = slotLocal[hd.j % perPage]; if (sl) hd.lp.copy(sl) })
+    pageTarget = Math.min(pageTarget, pages() - 1); dirty = true
+  }
+  // Sideways: the band turns a page; past either end it gives a little and comes back
+  const turnPage = (dir: number) => {
+    const t = pageTarget + dir
+    if (t < 0 || t > pages() - 1) { pagePos += dir * 0.14; dirty = true; return }
+    pageTarget = t; dirty = true
+  }
+  const placeWall = (p: number, dt: number) => {
+    // the throw: once you are in (and the screens are on), the cars leave the
+    // front screen one after another; walking out, they fly back into it
+    const tk = throwK
+    throwK = Math.min(1, Math.max(0, throwK + (p > 0.86 && screenOn ? dt / 1.1 : -dt / 0.55)))
+    if (throwK !== tk) dirty = true
+    wallOn = throwK > 0.5
+    pagePos += (pageTarget - pagePos) * (1 - Math.exp(-dt * 7))
+    if (Math.abs(pageTarget - pagePos) > 1e-3) dirty = true; else pagePos = pageTarget
+    const rep = `${pageTarget}/${pages()}`
+    if (rep !== reported) { reported = rep; opts.onPage?.(pageTarget, pages()) }
+    // which cars belong in the band: the pages around where it stands
+    const want = new Map<number, { pg: number; j: number }>()
+    if (throwK > 0) {
+      const lo = Math.max(0, Math.floor(Math.min(pagePos, pageTarget)) - 1), hi = Math.min(pages() - 1, Math.ceil(Math.max(pagePos, pageTarget)) + 1)
+      for (let pg = lo; pg <= hi; pg++) for (let j = 0; j < perPage; j++) {
+        const idx = pg * perPage + j
+        if (idx < N) want.set(view[idx], { pg, j })
+      }
+    }
+    held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
+    const ease = 1 - Math.exp(-dt * 9)
+    want.forEach(({ pg, j }, car) => {
+      let hd = held.get(car)
+      if (!hd) {
+        const m = takeMesh()
+        m.userData.car = car; m.material.uniforms.map.value = ensureCard(car).tex
+        // new with a filter: it grows in where it belongs; with the page or the throw: just there
+        hd = { m, car, pa: pg, lp: slotLocal[j].clone(), vis: viewChanged ? 0 : 1, live: true, j }
+        held.set(car, hd)
+      } else if (viewChanged && Math.abs(hd.pa - pg) > 1) { hd.pa = pg; hd.lp.copy(slotLocal[j]); hd.vis = 0 }
+      hd.live = true; hd.j = j
+      hd.pa += (pg - hd.pa) * ease
+      hd.lp.lerp(slotLocal[j], ease)
+      if (Math.abs(pg - hd.pa) > 1e-3 || hd.lp.distanceToSquared(slotLocal[j]) > 1e-7) dirty = true
+    })
+    viewChanged = false
+    // the front screen: where the cars come out of
+    srcP.set(STAND.x, ring.position.y, STAND.z + R); srcQ.identity()
+    const srcS = (CW * 0.96) / cardW
+    // opening: the tapped card comes up to you until it fills the screen
+    let openK = 0
+    if (opening) {
+      opening.t += dt; dirty = true
+      openK = easeInOut(Math.min(1, opening.t / 0.5))
+      if (!opening.fired && opening.t > 0.34) { opening.fired = true; opts.onOpen(opening.h.car) }
+      if (opening.t > 2.5) opening = null   // nothing opened (or you came back): settle
+    }
+    held.forEach(hd => {
+      const { m } = hd, u = m.material.uniforms
+      const v0 = hd.vis
+      hd.vis = Math.min(1, Math.max(0, hd.vis + (hd.live ? dt / 0.28 : -dt / 0.18)))
+      if (hd.vis !== v0) dirty = true
+      if (!hd.live && hd.vis <= 0) { m.visible = false; m.userData.car = -1; freeMeshes.push(m); held.delete(hd.car); if (hovered === m) hovered = null; return }
+      const e = wallCache.get(hd.car)
+      if (e) e.used = time
+      u.uReady.value = e?.ready ? 1 : 0
+      u.uExp.value = renderer.toneMappingExposure
+      // its place on its page, the page turned about you by where it is on the band
+      const off = hd.pa - pagePos
+      tmpV.copy(hd.lp).applyMatrix4(layCam.matrixWorld).sub(pivot).applyAxisAngle(yAxis, off * pageAngle).add(pivot)
+      tmpQ.setFromAxisAngle(yAxis, off * pageAngle).multiply(layCam.quaternion)
+      // the flight out of the screen: an arc up and over, turning to face you,
+      // shrinking from the screen's size to the card's; in reading order
+      const fj = calm ? 1 : easeOut(fit(throwK, (hd.j % perPage) * 0.055, (hd.j % perPage) * 0.055 + 0.5))
+      let sc = 1, a = calm ? throwK : fit(fj, 0, 0.18)
+      if (fj < 1) {
+        m.position.lerpVectors(srcP, tmpV, fj); m.position.y += Math.sin(Math.PI * fj) * 0.45
+        m.quaternion.slerpQuaternions(srcQ, tmpQ, fj)
+        sc = srcS + (1 - srcS) * fj
+      } else { m.position.copy(tmpV); m.quaternion.copy(tmpQ) }
+      // under the mouse it lifts a touch
+      const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
+      if (Math.abs(lift - u.uLift.value) > 1e-3) dirty = true
+      u.uLift.value = lift
+      sc *= 1 + lift * 0.03
+      // in or out with a filter: it grows in, it shrinks away
+      const vv = smooth(hd.vis)
+      sc *= calm ? 1 : 0.86 + 0.14 * vv
+      a *= vv * (1 - smooth(fit(Math.abs(off), 0.3, 1)))
+      if (opening) {
+        if (opening.h === hd) {
+          // up to the camera, square to it, near enough to cover the whole screen
+          const vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * camera.aspect)
+          const dist = Math.min((cardW * CARD_A) / 2 / Math.tan(vf), cardW / 2 / Math.tan(hf)) * 0.96
+          endP.set(0, 0, -dist).applyMatrix4(camera.matrixWorld); endQ.copy(camera.quaternion)
+          m.position.lerp(endP, openK); m.quaternion.slerp(endQ, openK)
+          m.renderOrder = 1
+        } else a *= 1 - openK
+      } else m.renderOrder = 0
+      u.uAlpha.value = a
+      m.visible = a > 0.002
+      const pad = cardW * 0.07
+      m.scale.set((cardW + pad * 2) * sc, (cardW * CARD_A + pad * 2) * sc, 1)
+    })
+  }
+  const wallHit = (e: PointerEvent) => {
+    const r = canvas.getBoundingClientRect()
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+    ray.setFromCamera(ndc, camera)
+    return ray.intersectObjects(allMeshes, false).find(h => h.object.visible && (h.object as THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>).material.uniforms.uAlpha.value > 0.5)?.object ?? null
+  }
+  const openCard = (o: THREE.Object3D) => {
+    const car = o.userData.car as number
+    const hd = held.get(car)
+    if (!hd || opening) return
+    if (calm) { opts.onOpen(car); return }
+    opening = { h: hd, t: 0, fired: false }; dirty = true
   }
 
   // ─── Post: bloom (only the sign, spots and rings exceed 1), tilt-shift on desktop ───
@@ -682,6 +1004,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   if (!mobile) composer.addPass(bloom)   // half-res bloom on tiny lights flickered on phones
   const tilt = new ShaderPass(TiltShift)
   if (!mobile) composer.addPass(tilt)
+  const wallPass = new RenderPass(wallScene, camera)
+  wallPass.clear = false
+  composer.addPass(wallPass)
   composer.addPass(new OutputPass())
 
   // ─── Camera: street → doors → inside → stops facing the stand. A narrow
@@ -700,7 +1025,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // stand. That is where the page scroll ends: the gallery itself only turns
   // sideways — finger, mouse or arrows — and always rests on a card.
   const WALK = 0.82
-  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0, autoT = 0
+  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0, autoT = 0, swapHold = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
   const tmpP = new THREE.Vector3(), tmpL = new THREE.Vector3()
@@ -743,7 +1068,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (th > Math.PI) th -= Math.PI * 2
       if (th < -Math.PI) th += Math.PI * 2
       const u = m.material.uniforms
-      u.uAlpha.value = 1
       // the screens are dark from the street and switch on as you walk in
       // (one after another), off again as you walk out
       // the screen facing the street is on from the start (once everything
@@ -755,22 +1079,50 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const before = u.uPower.value
       u.uPower.value = Math.min(1, Math.max(0, before + (onNow ? dt / 0.35 : -dt / 0.25)))
       if (u.uPower.value !== before) dirty = true
-      u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
+      u.uDim.value = Math.max(smooth(fit(Math.abs(th), 0.18, 1.1)), throwK * 0.72)   // behind the cards, the screens dim
     })
     // dress each slot with the car that belongs at its spot of the ring, so
     // browsing runs through the whole stock, newest to oldest, in a loop
+    // a new set of cars: dark first, then the screens are re-dressed with it,
+    // the first match at the front, and light up again
+    if (pendingView) {
+      swap = Math.min(1, swap + dt / 0.16); dirty = true
+      if (swap >= 1) {
+        view = pendingView; pendingView = null; N = view.length
+        drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
+        pageTarget = 0; pagePos = 0; viewChanged = true
+      }
+    } else if (swap > 0) {
+      // hold the dark a moment for the front photo, never long
+      const fc = carAt(Math.round(drag / STEP))
+      swapHold = texCache.get(fc)?.ready || fc < 0 ? 0 : swapHold + dt
+      if (!swapHold || swapHold > 0.6) swap = Math.max(0, swap - dt / 0.32)
+      dirty = true
+    }
     const pos = angle / STEP
+    // fewer cars than screens: only as many screens as cars, around the front
+    const r0 = Math.round(pos), lo = -Math.floor((N - 1) / 2), hi = Math.ceil((N - 1) / 2)
     cardMeshes.forEach((m, sIdx) => {
       const k = sIdx + SLOTS * Math.round((pos - sIdx) / SLOTS)
-      const car = ((k % N) + N) % N
+      const show = N > 0 && (N >= SLOTS || (k - r0 >= lo && k - r0 <= hi))
+      const car = show ? carAt(k) : -1
       const u = m.material.uniforms
-      if (m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
-      u.uReady.value = texCache.get(car)?.ready ? 1 : 0
+      if (car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
+      m.userData.shown = show
+      const a0 = u.uAlpha.value
+      u.uAlpha.value = Math.min(1, Math.max(0, a0 + (show ? dt / 0.3 : -dt / 0.2)))
+      if (u.uAlpha.value !== a0) dirty = true
+      m.visible = u.uAlpha.value > 0.001
+      const e = texCache.get(m.userData.car)
+      if (e && show) e.used = time
+      u.uReady.value = e?.ready ? 1 : 0
+      u.uSwap.value = swap
       u.uFill.value = 1   // the photo fills the whole screen, both views
       u.uExp.value = renderer.toneMappingExposure
     })
-    const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
+    const f = carAt(Math.round(angle / STEP))
     if (f !== front) { front = f; opts.onFront(f) }
+    placeWall(p, dt)
   }
 
   function setSize() {
@@ -788,6 +1140,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     camera.fov = THREE.MathUtils.clamp(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(hfov) / 2) / aspect) * 180 / Math.PI, 42, 68)
     camera.updateProjectionMatrix()
     buildPath(aspect)
+    layout()
     dirty = true
   }
   setSize()
@@ -813,6 +1166,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (ay > ax && ay > 6) { dragging = false; return }   // a vertical gesture: not ours
     if (ax < 28) return
     moved = true                                         // one card per swipe
+    if (wallOn) { turnPage(Math.sign(dx)); return }      // RTL: swipe right for the next page
     settle(); drag += Math.sign(dx) * STEP; dirty = true // swipe right, cards go right
   }
   const onUp = (e: PointerEvent) => {
@@ -822,7 +1176,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const r = canvas.getBoundingClientRect()
       ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
       ray.setFromCamera(ndc, camera)
-      const hit = ray.intersectObjects(cardMeshes, false)[0]
+      const hit = ray.intersectObjects(cardMeshes, false).find(h => h.object.userData.shown)
       if (hit) opts.onEnter?.()
       return
     }
@@ -833,7 +1187,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const r = canvas.getBoundingClientRect()
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
     ray.setFromCamera(ndc, camera)
-    const hit = ray.intersectObjects(cardMeshes, false)[0]
+    if (wallOn) { const o = wallHit(e); if (o) openCard(o); return }
+    const hit = ray.intersectObjects(cardMeshes, false).find(h => h.object.userData.shown)
     if (!hit) return
     const sIdx = hit.object.userData.slot as number
     let th = (-sIdx * STEP + angle) % (Math.PI * 2)
@@ -845,9 +1200,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses
   // on the page's own buttons and links are theirs
-  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav')) onDown(e) }
+  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap')) onDown(e) }
+  const onHover = (e: PointerEvent) => {
+    if (mobile || e.pointerType !== 'mouse') return
+    let next: THREE.Object3D | null = null
+    if (wallOn && !opening) next = wallHit(e)
+    if (next !== hovered) { hovered = next; document.body.style.cursor = next ? 'pointer' : ''; dirty = true }
+  }
   addEventListener('pointerdown', onDownAny)
   addEventListener('pointermove', onMove, { passive: true })
+  addEventListener('pointermove', onHover, { passive: true })
   addEventListener('pointerup', onUp)
   addEventListener('pointercancel', () => { if (dragging) { dragging = false; settle() } })
 
@@ -865,7 +1227,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
     // the ring slides one screen on its own every three seconds: the middle
     // car moves to the next screen and its neighbour takes the middle
-    if (screenOn && N > 1 && !dragging) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
+    if (screenOn && N > 1 && !dragging && !pendingView && !swap && !wallOn) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     let signRising = false
@@ -884,7 +1246,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     renderFrame(p) { hallClock = p > LIT ? POWER_END : 0; progress = p; time = 0; place(p, 1 / 30); composer.render(); reportSign() },
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
-    step(dir) { settle(); drag += dir * STEP; dirty = true },
+    step(dir) { if (wallOn) { turnPage(dir); return } settle(); drag += dir * STEP; dirty = true },
+    setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
+    setView(ids) {
+      const next = ids ?? Array.from({ length: TOTAL }, (_, i) => i)
+      const cur = pendingView ?? view
+      if (next.length === cur.length && next.every((v, i) => v === cur[i])) return
+      pendingView = next; dirty = true
+    },
     resize: setSize,
     stats() {
       const s = [...frames].sort((a, b) => a - b)
@@ -897,7 +1266,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     dispose() {
       running = false; cancelAnimationFrame(raf)
       removeEventListener('pointerdown', onDownAny)
-      removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp)
+      removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointermove', onHover)
+      document.body.style.cursor = ''
+      wallCache.forEach(v => v.tex.dispose()); allMeshes.forEach(m => m.material.dispose()); wallGeo.dispose()
       scene.traverse(o => {
         const m = o as THREE.Mesh
         m.geometry?.dispose()

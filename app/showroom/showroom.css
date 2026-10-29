@@ -210,12 +210,121 @@ html:has(.sr) { overflow: auto; }
   margin: 12px 0 0; font-size: clamp(17px, 4.4vw, 20px); font-weight: 500; letter-spacing: .01em;
   color: rgba(255,255,255,.86); text-shadow: 0 0 1px rgba(255,255,255,.3), 0 0 10px rgba(255,255,255,.22);
 }
+/* ─── The search, at the foot of the hall. Fine, like the street's line of
+   doors: hairlines of light, lit words, no surfaces — nothing covers the
+   cards or the hall ─── */
+.sr-row { display: flex; align-items: center; gap: 8px; width: min(100%, 560px); }
+.sr-find {
+  position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 46px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.34); background: rgba(255,255,255,.035); cursor: text;
+  box-shadow: 0 0 14px rgba(255,255,255,.07);
+  transition: border-color 220ms ease, box-shadow 260ms ease, background-color 220ms ease;
+}
+.sr-find:focus-within { border-color: rgba(255,255,255,.82); background: rgba(255,255,255,.06); box-shadow: 0 0 20px rgba(255,255,255,.16); }
+.sr-find > svg { flex: none; margin-inline: 16px 8px; color: rgba(255,255,255,.9); filter: drop-shadow(0 0 5px rgba(255,255,255,.4)); pointer-events: none; }
+/* what has been picked: a quiet chip each, a cross to take it back */
+.sr-chip {
+  flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; margin-inline-end: 6px; padding-inline: 11px 9px; border: 0; border-radius: 999px;
+  background: rgba(255,255,255,.11); color: #fff; font: inherit; font-size: 14px; font-weight: 500;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  animation: sr-cap-in 280ms cubic-bezier(.23,1,.32,1) backwards;
+  transition: transform 140ms cubic-bezier(.23,1,.32,1), background-color 160ms ease;
+}
+.sr-chip + .sr-chip { flex: none; }            /* the model's chip is short: only the maker's may shorten */
+.sr-chip bdi { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-chip svg { flex: none; opacity: .6; }
+.sr-chip:active { transform: scale(.95); background: rgba(255,255,255,.18); }
+.sr-find[data-picked] > svg { display: none; }   /* a maker picked: the chip says it all */
+.sr-find[data-picked] .sr-chip:first-of-type { margin-inline-start: 8px; }
+.sr-qwrap { position: relative; flex: 1 1 64px; min-width: 64px; height: 100%; }
+.sr-find[data-done] .sr-qwrap { flex-basis: 16px; min-width: 16px; }
+.sr-q {
+  -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0;
+  background: transparent; color: #fff; font: inherit; font-size: 16px; font-weight: 400; text-align: start;
+  padding-block: 0; padding-inline: 0 16px; caret-color: #fff; text-shadow: 0 0 8px rgba(255,255,255,.25);
+}
+.sr .sr-q:focus, .sr .sr-q:focus-visible { outline: none; }   /* the ring of light is the focus */
+.sr-q::placeholder { color: rgba(255,255,255,.5); text-shadow: none; opacity: 1; }
+.sr-q::-webkit-search-cancel-button, .sr-q::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+/* waiting for the first letter: a lit caret just before the hint */
+.sr-caret {
+  display: none; position: absolute; inset-inline-start: 0; top: 50%; width: 1.5px; height: 19px; margin-top: -9.5px;
+  border-radius: 1px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8); pointer-events: none;
+  animation: sr-blink 1.06s steps(1) infinite;
+}
+.sr-q:placeholder-shown:not(:focus) { text-indent: 9px; }
+.sr-q:placeholder-shown:not(:focus) + .sr-caret { display: block; }
+@keyframes sr-blink { 50% { opacity: 0; } }
+.sr-n { flex: none; padding-inline: 4px 16px; font-size: 12.5px; white-space: nowrap; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; }
+/* filter and order: hairline circles; a lit dot when in use */
+.sr-tool {
+  position: relative; flex: none; display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.34); background: rgba(255,255,255,.035); color: rgba(255,255,255,.92);
+  box-shadow: 0 0 14px rgba(255,255,255,.07);
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms cubic-bezier(.23,1,.32,1), border-color 220ms ease, background-color 220ms ease;
+}
+.sr-tool svg { filter: drop-shadow(0 0 5px rgba(255,255,255,.4)); }
+.sr-tool[aria-expanded="true"] { border-color: rgba(255,255,255,.82); background: rgba(255,255,255,.08); }
+.sr-tool[data-on]::after {
+  content: ''; position: absolute; top: 6px; inset-inline-end: 6px; width: 6px; height: 6px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.9);
+}
+.sr-tool:active { transform: scale(.94); }
+/* the row pours in as you arrive, on the street's beat */
+.sr-cap[data-in] .sr-find { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 120ms backwards; }
+.sr-cap[data-in] .sr-tool:nth-of-type(1) { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 155ms backwards; }
+.sr-cap[data-in] .sr-tool:nth-of-type(2) { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 190ms backwards; }
+
+/* One line of lit words over the row: the makers or models to pick from,
+   the filter, the order. Hairlines between the words (the street's doors);
+   a line too long slides sideways, its ends fading */
+.sr-words {
+  display: flex; align-items: center; width: min(100%, 560px); margin-bottom: 6px;
+  overflow-x: auto; overscroll-behavior: contain; touch-action: pan-x; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to left, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+}
+.sr-words::-webkit-scrollbar { display: none; }
+.sr-word {
+  position: relative; flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding-inline: 13px;
+  border: 0; background: none; color: rgba(255,255,255,.7); font: inherit; font-size: 15px; font-weight: 500; white-space: nowrap;
+  text-shadow: 0 0 8px rgba(255,255,255,.3); cursor: pointer; touch-action: pan-x; -webkit-tap-highlight-color: transparent;
+  animation: sr-cap-in 260ms cubic-bezier(.23,1,.32,1) backwards; animation-delay: calc(var(--i, 0) * 28ms);
+  transition: color 160ms ease, text-shadow 160ms ease;
+}
+.sr-word + .sr-word::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 13px; margin-top: -6.5px; background: rgba(255,255,255,.24);
+}
+.sr-word small { font-size: 11px; color: rgba(255,255,255,.42); text-shadow: none; font-variant-numeric: tabular-nums; }
+/* the letters you typed light up in the name */
+.sr-word b { color: #fff; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,.55); }
+.sr-word[aria-selected="true"], .sr-word[aria-pressed="true"], .sr-word:active { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,.6); }
+/* chosen: a short line of light under the word */
+.sr-word[aria-pressed="true"]::after, .sr-word[aria-selected="true"]::after {
+  content: ''; position: absolute; inset-inline: 13px; bottom: 8px; height: 1px; border-radius: 1px;
+  background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8);
+}
+.sr-word-note { cursor: default; color: rgba(255,255,255,.55); }
+.sr-words-gap { flex: none; width: 18px; }
+.sr-words-gap + .sr-word::before { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .sr-word:hover { color: #fff; }
+  .sr-tool:hover { background: rgba(255,255,255,.08); }
+}
+/* the cars as plain links, for screen readers only */
+.sr-vh { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* the arrows beside the gallery: top is set to the front card's height */
 .sr-arrows {
   position: absolute; z-index: 3; inset-inline: 10px; top: 45%; transform: translateY(-50%);
   display: flex; justify-content: space-between; pointer-events: none; opacity: 0; visibility: hidden;
 }
 .sr-arrows > * { pointer-events: auto; }
+/* one page of cards: nothing to turn to; on a phone the cards turn with a swipe */
+.sr-arrows[data-few] { display: none; }
+@media (pointer: coarse) { .sr-arrows { display: none; } }
 /* fine chevrons: a 44px target, a thin hairline circle around a light stroke */
 .sr-arrows .sr-arrow {
   width: 44px; height: 44px; background: rgba(10,12,16,.4); color: var(--ink);
@@ -243,6 +352,10 @@ html:has(.sr) { overflow: auto; }
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
   .sr-cap-in { animation: sr-fade 200ms ease both; }
+  .sr-chip, .sr-word { animation: sr-fade 200ms ease both; }
+  .sr-cap[data-in] .sr-find, .sr-cap[data-in] .sr-tool:nth-of-type(n) { animation: sr-fade 300ms ease both; }
+  .sr-caret { animation: none; }
+  .sr-tool:active, .sr-chip:active { transform: none; }
   .sr[data-state="ready"] .sr-hover { animation: none; }
   .sr[data-state="ready"] .sr-sign-img { animation: sr-fade 300ms ease both; }
   .sr-canvas { transition: none; }

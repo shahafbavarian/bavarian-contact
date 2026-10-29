@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
 import { INSTAGRAM_URL } from '@/lib/agent-format'
+import { AVAIL, PRICES, SORTS, carsWord, lineOf, makesOf, modelsOf, norm, priceNum, rank, type Avail, type Option, type Ranked, type Sort } from './search'
 
 const WHATSAPP = 'https://wa.me/97299561906'
 // the hall's Facebook page, as linked from the main site
@@ -30,7 +31,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const strip = useRef<HTMLDivElement>(null)
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
-  const [front, setFront] = useState(0)
+  const [, setFront] = useState(0)
+  // inside: how many pages of cards (one page: no arrows)
+  const [pages, setPages] = useState(1)
   // a fresh random order on every refresh: stock and on-the-way, mixed
   const [deck] = useState(() => {
     const d = [...cards]
@@ -40,6 +43,86 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const [menu, setMenu] = useState(false)
   const menuOpen = useRef(false)
   menuOpen.current = menu
+
+  // Inside, the hall is the stock's search, in steps: the field asks for a
+  // maker (the makers offered as you type), then one of its models; beside
+  // it, filter and order. The cards in the hall are the cars that answer
+  const input = useRef<HTMLInputElement>(null)
+  const [make, setMake] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
+  const [text, setText] = useState('')
+  const [query, setQuery] = useState('')   // the text, a beat later: the cards move once typing pauses
+  const [focus, setFocus] = useState(false)
+  const [active, setActive] = useState(0)
+  const [panel, setPanel] = useState<'filter' | 'sort' | null>(null)
+  const [avail, setAvail] = useState<Avail>('all')
+  const [price, setPrice] = useState(-1)
+  const [sort, setSort] = useState<Sort>('mix')
+  useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
+  useEffect(() => { setActive(0) }, [text, make, model])
+  const searchable = useMemo(() => deck.map(c => ({ make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true })), [deck])
+  const makes = useMemo(() => makesOf(searchable), [searchable])
+  const models = useMemo(() => (make ? modelsOf(searchable, make) : []), [searchable, make])
+  const stage: 'make' | 'model' | 'done' = !make ? 'make' : !model ? 'model' : 'done'
+  const items: Ranked[] = useMemo(() => {
+    if (stage === 'done') return []
+    const r = rank(stage === 'make' ? makes : models, text)
+    const all: Option = { key: '', label: 'כל הדגמים', count: models.reduce((a, o) => a + o.count, 0), he: [], extra: '' }
+    return stage === 'model' && !text.trim() ? [{ opt: all, hit: null }, ...r] : r
+  }, [stage, makes, models, text])
+  const listOpen = focus && !panel && items.length > 0
+  const filtersOn = avail !== 'all' || price >= 0
+  const found = useMemo(() => {
+    const qn = norm(query)
+    if (!make && !qn && !filtersOn && sort === 'mix') return null
+    // typed but not yet picked: the cars of every maker (or line) still offered
+    const keys = qn && stage !== 'done' ? new Set(rank(stage === 'make' ? makes : models, query).map(r => norm(r.opt.key))) : null
+    const ids = searchable.flatMap((c, i) => {
+      if (make && norm(c.make) !== norm(make)) return []
+      if (model && lineOf(c.model) !== model) return []
+      if (keys && !keys.has(norm(stage === 'make' ? c.make : lineOf(c.model)))) return []
+      if (avail === 'stock' && !c.stock) return []
+      if (avail === 'way' && c.stock) return []
+      if (price >= 0) { const n = priceNum(c.price); if (n === null || n < PRICES[price].min || n >= PRICES[price].max) return [] }
+      return [i]
+    })
+    const pn = (i: number) => priceNum(searchable[i].price)
+    const yr = (i: number) => parseInt(searchable[i].year, 10) || 0
+    if (sort === 'new') ids.sort((a, b) => yr(b) - yr(a))
+    if (sort === 'cheap') ids.sort((a, b) => (pn(a) ?? Infinity) - (pn(b) ?? Infinity))
+    if (sort === 'dear') ids.sort((a, b) => (pn(b) ?? -1) - (pn(a) ?? -1))
+    return ids
+  }, [searchable, makes, models, make, model, stage, query, avail, price, sort, filtersOn])
+  const viewRef = useRef<number[] | null>(null)
+  useEffect(() => { viewRef.current = found; handle.current?.setView(found) }, [found])
+  const pick = (o: Option) => {
+    setText(''); setQuery('')
+    if (stage === 'make') { setMake(o.key); return }           // on to its models: the field stays open
+    setModel(o.key || null); input.current?.blur()               // done: the hall shows them
+  }
+  const dropMake = () => { setMake(null); setModel(null); input.current?.focus() }
+  const dropModel = () => { setModel(null); input.current?.focus() }
+  const clearAll = () => { setMake(null); setModel(null); setText(''); setQuery(''); setAvail('all'); setPrice(-1); setSort('mix') }
+  const onFieldKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (!listOpen || (text && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) return
+      e.preventDefault()
+      const fwd = e.key === 'ArrowDown' || e.key === 'ArrowLeft'   // the line reads right to left
+      setActive(a => (a + (fwd ? 1 : -1) + items.length) % items.length)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (listOpen && (text.trim() || active > 0)) pick(items[Math.min(active, items.length - 1)].opt)
+      else input.current?.blur()
+    } else if (e.key === 'Backspace' && !text) {
+      if (model) setModel(null); else if (make) setMake(null)
+    } else if (e.key === 'Escape') {
+      e.preventDefault(); if (text) setText(''); else input.current?.blur()
+    }
+  }
+  const mark = (r: Ranked) => r.hit
+    ? <>{r.opt.label.slice(0, r.hit[0])}<b>{r.opt.label.slice(r.hit[0], r.hit[1])}</b>{r.opt.label.slice(r.hit[1])}</>
+    : r.opt.label
+  const onPd = (e: React.PointerEvent) => e.preventDefault()   // a press that leaves the field its focus
 
   useEffect(() => {
     const cv = canvas.current!
@@ -59,9 +142,14 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     const go = (dest: 0 | 1) => {
       if (dur ? to === dest : target === dest) return
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
+      if (dest === 0) { if (document.activeElement === input.current) input.current?.blur(); setPanel(null) }
       try { sessionStorage.setItem('sr-view', dest === 1 ? 'in' : 'out') } catch {}
     }
     goRef.current = go
+    // capIn: the foot of the hall is on screen (its row pours in); arrived:
+    // the walk in has ended, and on a computer the field takes the keyboard
+    // (a phone opens its keyboard only for a tap: there the field waits, lit)
+    let capIn = false, arrived = false
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -83,7 +171,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (c) {
         const s = fit(current, 0.86, 0.93)
         c.style.opacity = String(s); c.style.visibility = s > 0.01 ? 'visible' : 'hidden'
-        c.style.transform = `translateY(${(1 - s) * 14}px)`
+        const on = s > 0.5
+        if (on !== capIn) { capIn = on; c.toggleAttribute('data-in', on) }
+        // the phone's keyboard: the row rides just above it
+        const vv = visualViewport, inp = input.current
+        const lift = vv && inp && document.activeElement === inp ? Math.max(0, document.documentElement.clientHeight - vv.height - vv.offsetTop) : 0
+        c.style.transform = `translateY(${(1 - s) * 14 - lift}px)`
+        if (target === 1 && !dur && current > 0.97) {
+          if (!arrived) { arrived = true; if (!mobile) inp?.focus({ preventScroll: true }) }
+        } else if (target === 0) arrived = false
         const a = arrows.current
         if (a) { a.style.opacity = String(s); a.style.visibility = s > 0.01 ? 'visible' : 'hidden' }
       }
@@ -102,11 +198,26 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     let rTimer = 0
     // Resize at once (a delayed resize showed a stretched frame while turning
     // the phone), and again once Safari has settled its bars after a rotation
-    const onResize = () => { handle.current?.resize(); clearTimeout(rTimer); rTimer = window.setTimeout(() => handle.current?.resize(), 350) }
+    // Inside, the cards keep clear of the bar above and the search row below
+    // (measured, never assumed), and of the arrows at the sides on a computer
+    let gridMid = 0
+    const insets = () => {
+      const n = nav.current, c = cap.current
+      const top = (n ? n.offsetTop + n.offsetHeight : 64) + 14
+      const capBottom = c ? c.offsetTop + c.offsetHeight : cv.clientHeight - 30
+      const bottom = cv.clientHeight - capBottom + 124   // the search row and its line of words
+      gridMid = (top + cv.clientHeight - bottom) / 2
+      handle.current?.setInsets(top, bottom, mobile ? 16 : 84)
+    }
+    const onResize = () => {
+      handle.current?.resize(); insets()
+      clearTimeout(rTimer); rTimer = window.setTimeout(() => { handle.current?.resize(); insets() }, 350)
+    }
     // gestures: wheel, a vertical swipe, keys. Inside, a sideways scroll turns
     // the gallery by one card per gesture (a trackpad's long tail counts once)
     let wheelLock = false, wheelTimer = 0
     const onWheel = (e: WheelEvent) => {
+      if (inLine(e)) return
       e.preventDefault()
       if (menuOpen.current) return
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -118,17 +229,27 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     }
     let ty = 0, tx = 0
     const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
-    const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current) e.preventDefault() }
+    // the line of words scrolls sideways on its own
+    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words')
+    const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current && !inLine(e)) e.preventDefault() }
     const onTouchEnd = (e: TouchEvent) => {
-      if (menuOpen.current) return
+      if (menuOpen.current || inLine(e)) return
       const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx
-      if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) go(dy < 0 ? 1 : 0)
+      if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) {
+        // with the keyboard up, a swipe only puts it away
+        if (document.activeElement === input.current) { input.current?.blur(); return }
+        go(dy < 0 ? 1 : 0)
+      }
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setMenu(false); return }
+      if (e.target instanceof HTMLInputElement) return   // typing belongs to the field
+      if (e.key === 'Escape') { setMenu(false); setPanel(null); return }
       if (menuOpen.current) return
       if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); go(1) }
       if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); go(0) }
+      // sideways, right to left: the left arrow is the next page
+      if (current > 0.95 && e.key === 'ArrowLeft') handle.current?.step(1)
+      if (current > 0.95 && e.key === 'ArrowRight') handle.current?.step(-1)
     }
 
     import('./scene').then(({ createShowroom }) => {
@@ -150,18 +271,29 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             el.style.transform = `translate3d(${x - 500}px, ${y - 500 * (232 / 1283)}px, 0) scale(${w / 1000})`
           },
           font: getComputedStyle(root.current!).fontFamily,
+          // the arrows: beside the ring's front screen, or inside, at the cards' middle
           onGallery: y => {
-            if (arrows.current) arrows.current.style.top = `${y}px`
+            if (arrows.current) arrows.current.style.top = `${current > 0.8 ? gridMid : y}px`
           },
+          onPage: (_, n) => setPages(n),
           onReady: () => setState('ready'),
           onEnter: () => goRef.current(1),
           onFront: setFront,
           onOpen: i => { const c = deck[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
+        insets()
+        if (viewRef.current) handle.current.setView(viewRef.current)
       } catch { setState('fallback') }
     })
 
+    // a press anywhere else puts the keyboard and the panels away
+    const onDownOut = (e: PointerEvent) => {
+      if ((e.target as Element | null)?.closest?.('.sr-cap')) return
+      if (document.activeElement === input.current) input.current?.blur()
+      setPanel(null)
+    }
+    addEventListener('pointerdown', onDownOut)
     addEventListener('wheel', onWheel, { passive: false })
     addEventListener('touchstart', onTouchStart, { passive: true })
     addEventListener('touchmove', onTouchMove, { passive: false })
@@ -177,12 +309,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart); removeEventListener('touchmove', onTouchMove)
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
-      removeEventListener('pointermove', onPointer)
+      removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
       handle.current?.dispose(); handle.current = null
     }
   }, [deck, router])
-
-  const card = deck[front]
 
   return (
     <div ref={root} className="sr" data-state={state}>
@@ -265,8 +395,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             </div>
           </div>
 
-          {/* the arrows stand beside the turning gallery, at the height of its front card */}
-          <div ref={arrows} className="sr-arrows">
+          {/* the arrows stand beside the cards, at their middle (a phone swipes) */}
+          <div ref={arrows} className="sr-arrows" data-few={pages < 2 || undefined}>
             <button type="button" className="sr-arrow" aria-label="הקודם" onClick={() => handle.current?.step(-1)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
@@ -275,19 +405,96 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             </button>
           </div>
 
-          {/* the front card's name over the floor; tapping the card (or the name) opens it */}
-          {card && (
-            <div ref={cap} className="sr-cap" aria-live="polite">
-              {/* keyed by the card: a short fade from blur as the next one comes to the front */}
-              <div key={front} className="sr-cap-in">
-              {card.external
-                ? <a href={card.href} className="sr-name" target="_blank" rel="noopener noreferrer">{card.title}</a>
-                : <Link href={card.href} className="sr-name">{card.title}</Link>}
-              {/* the rest of the car under the maker: model, year, price, status */}
-              {card.sub && <p className="sr-price"><bdi>{card.sub}</bdi></p>}
+          {/* The foot of the hall: one line of lit words (the makers or models
+              to pick from, the filter, the order) over the search row */}
+          <div ref={cap} className="sr-cap">
+            {listOpen ? (
+              <div className="sr-words" role="listbox" aria-label={stage === 'make' ? 'יצרנים' : 'דגמים'}>
+                {items.map((r, i) => (
+                  <button key={r.opt.key || '*'} type="button" role="option" aria-selected={i === active} className="sr-word"
+                    style={{ '--i': Math.min(i, 10) } as React.CSSProperties} onPointerDown={onPd} onClick={() => pick(r.opt)}>
+                    <bdi>{mark(r)}</bdi><small>{r.opt.count}</small>
+                  </button>
+                ))}
               </div>
+            ) : panel === 'filter' ? (
+              <div className="sr-words" role="group" aria-label="סינון">
+                {AVAIL.map(([k, l], i) => (
+                  <button key={k} type="button" className="sr-word" aria-pressed={avail === k} style={{ '--i': i } as React.CSSProperties} onClick={() => setAvail(k)}>{l}</button>
+                ))}
+                <span className="sr-words-gap" aria-hidden="true" />
+                <button type="button" className="sr-word" aria-pressed={price < 0} style={{ '--i': 3 } as React.CSSProperties} onClick={() => setPrice(-1)}>כל המחירים</button>
+                {PRICES.map((b, i) => (
+                  <button key={b.label} type="button" className="sr-word" aria-pressed={price === i} style={{ '--i': 4 + i } as React.CSSProperties} onClick={() => setPrice(i)}>{b.label}</button>
+                ))}
+              </div>
+            ) : panel === 'sort' ? (
+              <div className="sr-words" role="group" aria-label="מיון">
+                {SORTS.map(([k, l], i) => (
+                  <button key={k} type="button" className="sr-word" aria-pressed={sort === k} style={{ '--i': i } as React.CSSProperties}
+                    onClick={() => { setSort(k); setPanel(null) }}>{l}</button>
+                ))}
+              </div>
+            ) : found && found.length === 0 ? (
+              <div className="sr-words" role="status">
+                <span className="sr-word sr-word-note">לא נמצאו רכבים</span>
+                <button type="button" className="sr-word" onClick={clearAll}>נקה חיפוש</button>
+              </div>
+            ) : null}
+
+            <div className="sr-row">
+              {/* the field: what has been picked sits in it as chips, then the next step */}
+              <form className="sr-find" role="search" data-picked={make ? '' : undefined} data-done={stage === 'done' ? '' : undefined}
+                onSubmit={e => e.preventDefault()} onClick={() => input.current?.focus()}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                {make && (
+                  <button type="button" className="sr-chip" aria-label={`הסרת ${make}`} onPointerDown={onPd} onClick={e => { e.stopPropagation(); dropMake() }}>
+                    <bdi>{make}</bdi>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+                {model && (
+                  <button type="button" className="sr-chip" aria-label={`הסרת ${model}`} onPointerDown={onPd} onClick={e => { e.stopPropagation(); dropModel() }}>
+                    <bdi>{model}</bdi>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+                <span className="sr-qwrap">
+                  <input ref={input} className="sr-q" type="search" inputMode="search" enterKeyHint="search"
+                    autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                    placeholder={stage === 'make' ? 'חיפוש לפי יצרן' : stage === 'model' ? 'בחרו דגם' : undefined}
+                    aria-label={stage === 'make' ? 'חיפוש לפי יצרן' : 'חיפוש לפי דגם'} aria-expanded={listOpen} aria-autocomplete="list"
+                    value={text} onChange={e => { if (model) setModel(null); setText(e.target.value) }}
+                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => setFocus(false)} onKeyDown={onFieldKey} />
+                  {/* empty and waiting: a lit caret says the field is open for typing */}
+                  {stage !== 'done' && <span className="sr-caret" aria-hidden="true" />}
+                </span>
+                {found && <span className="sr-n" aria-live="polite">{carsWord(found.length)}</span>}
+              </form>
+              <button type="button" className="sr-tool" aria-label="סינון" aria-expanded={panel === 'filter'} data-on={filtersOn || undefined}
+                onClick={() => { input.current?.blur(); setPanel(p => (p === 'filter' ? null : 'filter')) }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" />
+                </svg>
+              </button>
+              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort !== 'mix' || undefined}
+                onClick={() => { input.current?.blur(); setPanel(p => (p === 'sort' ? null : 'sort')) }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 5v14M8 19l-3-3M8 19l3-3M16 19V5M16 5l-3 3M16 5l3 3" />
+                </svg>
+              </button>
             </div>
-          )}
+          </div>
+
+          {/* for screen readers: the cars on show, as plain links (client only: the order is per visit) */}
+          {state !== 'loading' && <ul className="sr-vh" aria-label="הרכבים">
+            {(found ?? deck.map((_, i) => i)).map(i => (
+              <li key={deck[i].href}><Link href={deck[i].href} tabIndex={-1}>{[deck[i].title, deck[i].sub].filter(Boolean).join(' · ')}</Link></li>
+            ))}
+          </ul>}
 
           <div className="sr-progress" aria-hidden="true"><div ref={bar} /></div>
           {state === 'fallback' && (
