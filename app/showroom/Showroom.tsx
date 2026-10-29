@@ -17,7 +17,7 @@ const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a)
 // whole entrance (street → doors → the stand) as one continuous move; the
 // opposite gesture walks you back out. The page itself never scrolls. Inside,
 // the gallery turns only sideways: finger, mouse or the arrows.
-export default function Showroom({ cards }: { cards: Card[] }) {
+export default function Showroom({ cards, street }: { cards: Card[]; street?: Card[] }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -338,7 +338,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (!alive) return
       try {
         handle.current = createShowroom(cv, {
-          mobile, cards: deck, light, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
+          mobile, cards: deck, street, light, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {

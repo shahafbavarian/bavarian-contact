@@ -2,6 +2,7 @@ import { fetchCarList } from '@/lib/scraper'
 import { getCachedImageUrls, freshImage } from '@/lib/image-sync'
 import { INSTAGRAM_URL } from '@/lib/agent-format'
 import Showroom from './Showroom'
+import { HISTORY } from './history'
 import type { Card } from './scene'
 
 export const revalidate = 300
@@ -46,5 +47,7 @@ export default async function ShowroomPage() {
   } catch {}
   // no stock reachable: one quiet card that still leads somewhere
   if (!cards.length) cards = [{ title: 'הרכבים שלנו', sub: '', href: '/cars', images: [] }]
-  return <Showroom cards={cards} />
+  // the street gallery: history photos on the big screens outside
+  const street: Card[] = HISTORY.map(src => ({ title: '', sub: '', href: '/cars', images: [src] }))
+  return <Showroom cards={cards} street={street} />
 }

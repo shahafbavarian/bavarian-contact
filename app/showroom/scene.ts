@@ -54,6 +54,8 @@ type Opts = {
   onPull?: (k: number) => void
   /** the pull at the top was let go past its mark: walk out */
   onExit?: () => void
+  /** the street gallery: the agency's own history, shown on the big screens outside */
+  street?: Card[]
   /** a trial: a bright theme — at the end of the walk in, the whole hall comes up bright to carry it */
   light?: boolean
   veil?: number
@@ -538,6 +540,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   let view: number[] = Array.from({ length: TOTAL }, (_, i) => i)
   let N = TOTAL, base = 0
   const carAt = (k: number) => (N ? view[(((k - base) % N) + N) % N] : -1)
+  // outside, the screens carry the history gallery (indices past the stock)
+  const S = opts.street?.length ?? 0
+  const sAt = (k: number) => TOTAL + (((k % S) + S) % S)
+  let onStreet = S > 0, deckSwap = false
   // a new set comes on like a change of channel: the screens dim, re-dress, light up
   let pendingView: number[] | null = null, swap = 0
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
@@ -590,7 +596,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     pasted photo: the car's photograph in a rounded frame, a band with the
   //     model and price, a hairline edge. Unlit, so the photos keep their
   //     true colour; cards off the front dim and recede. ───
-  const cards = opts.cards
+  const cards = [...opts.cards, ...(opts.street ?? [])]
   const STEP = (Math.PI * 2) / SLOTS
   const ARC = CW / R
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
@@ -688,7 +694,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const lg = im as HTMLImageElement | null
       if (lg) { const w = 520, h = w * (lg.naturalHeight / lg.naturalWidth); c.globalAlpha = 0.5; c.drawImage(lg, (1024 - w) / 2, (683 - h) / 2, w, h); c.globalAlpha = 1; tex.needsUpdate = true }
     })
-    if (texCache.size > 12) {   // drop the car shown longest ago (never one on a screen)
+    if (texCache.size > 16) {   // drop the car shown longest ago (never one on a screen)
       let worst = -1, wd = Infinity
       const onScreen = new Set(cardMeshes.map(m => m.userData.car as number))
       texCache.forEach((v, k) => { if (k !== ci && !onScreen.has(k) && v.used < wd) { wd = v.used; worst = k } })
@@ -701,6 +707,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const loadCards = () => {
     if (loaded) return
     loaded = true
+    if (S) { ensureTex(sAt(0)); if (S > 1) { ensureTex(sAt(1)); ensureTex(sAt(-1)); ensureTex(sAt(2)) }; return }
     if (!N) return
     ensureTex(carAt(0))
     if (N > 1) { ensureTex(carAt(1)); ensureTex(carAt(-1)); ensureTex(carAt(2)) }
@@ -1032,7 +1039,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // walking in: the screens go in with you and scatter as one move, in
     // step with the walk from its first step to its last
     const tk = throwK
-    throwK = fit(p, 0.03, 0.96)
+    throwK = fit(p, 0.1, 0.96)
     if (throwK !== tk) dirty = true
     wallOn = throwK >= 0.98
     // the screens facing you, frozen as the walk begins: their cars open the list
@@ -1318,27 +1325,35 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // browsing runs through the whole stock, newest to oldest, in a loop
     // a new set of cars: dark first, then the screens are re-dressed with it,
     // the first match at the front, and light up again
-    if (pendingView) {
+    // the street's screens show the gallery; crossing the doors they blink
+    // to the stock (the ring's own channel change), and back on the way out
+    const wantStreet = S > 0 && p < 0.02
+    if (wantStreet !== onStreet && !deckSwap && !pendingView) { deckSwap = true; dirty = true }
+    if (pendingView || deckSwap) {
       swap = Math.min(1, swap + dt / 0.16); dirty = true
       if (swap >= 1) {
-        view = pendingView; pendingView = null; N = view.length
-        drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
-        listStart = 0; scrollTarget = 0; viewChanged = true
+        if (pendingView) {
+          view = pendingView; pendingView = null; N = view.length
+          drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
+          listStart = 0; scrollTarget = 0; viewChanged = true
+        }
+        if (deckSwap) { onStreet = wantStreet; deckSwap = false }
       }
     } else if (swap > 0) {
       // hold the dark a moment for the front photo, never long
-      const fc = carAt(Math.round(drag / STEP))
+      const fc = onStreet ? sAt(Math.round(drag / STEP)) : carAt(Math.round(drag / STEP))
       swapHold = texCache.get(fc)?.ready || fc < 0 ? 0 : swapHold + dt
       if (!swapHold || swapHold > 0.6) swap = Math.max(0, swap - dt / 0.32)
       dirty = true
     }
     const pos = angle / STEP
     // fewer cars than screens: only as many screens as cars, around the front
-    const r0 = Math.round(pos), lo = -Math.floor((N - 1) / 2), hi = Math.ceil((N - 1) / 2)
+    const CNT = onStreet ? S : N
+    const r0 = Math.round(pos), lo = -Math.floor((CNT - 1) / 2), hi = Math.ceil((CNT - 1) / 2)
     cardMeshes.forEach((m, sIdx) => {
       const k = sIdx + SLOTS * Math.round((pos - sIdx) / SLOTS)
-      const show = N > 0 && (N >= SLOTS || (k - r0 >= lo && k - r0 <= hi))
-      const car = show ? carAt(k) : -1
+      const show = CNT > 0 && (CNT >= SLOTS || (k - r0 >= lo && k - r0 <= hi))
+      const car = show ? (onStreet ? sAt(k) : carAt(k)) : -1
       const u = m.material.uniforms
       if (car >= 0 && m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
       m.userData.shown = show
@@ -1353,7 +1368,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       u.uFill.value = 1   // the photo fills the whole screen, both views
       u.uExp.value = renderer.toneMappingExposure
     })
-    const f = carAt(Math.round(angle / STEP))
+    const f = onStreet ? -1 : carAt(Math.round(angle / STEP))
     if (f !== front) { front = f; opts.onFront(f) }
     placeWall(p, dt); placeShow(dt); placeCards(dt)
   }
