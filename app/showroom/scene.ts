@@ -782,18 +782,23 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     dress(m); wallScene.add(m); allMeshes.push(m)
     return m
   }
+  showMeshes.forEach(sm => { sm.visible = true })
+  const warm = takeMesh(); warm.visible = true
+  renderer.compile(wallScene, camera)
+  showMeshes.forEach(sm => { sm.visible = false }); warm.visible = false; freeMeshes.push(warm)
   // A car on show: its mesh, its place in the list (pi, eased — so a filter
   // moves it softly to its new place) and vis: in (1) or on its way out (0)
   type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pi: number; vis: number; live: boolean }
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
-  let throwK = 0, growT = -1, viewChanged = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
+  let throwK = 0, growAt = -1, viewChanged = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
   const layCam = new THREE.PerspectiveCamera()
   const invLay = new THREE.Matrix4(), layQi = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0)
   const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion()
   const srcP = new THREE.Vector3(), srcQ = new THREE.Quaternion(), endP = new THREE.Vector3(), endQ = new THREE.Quaternion()
+  const GROW_MS = 900
   const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
   const mod = (a: number, n: number) => ((a % n) + n) % n
   const listCar = (i: number) => (N ? view[mod(listStart + i, N)] : -1)
@@ -804,6 +809,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     return easeInOut(fit(throwK, o, o + 0.72))
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
+  const facingReady = () => {
+    const r0 = Math.round(angle / STEP)
+    for (let rel = -1; rel <= 1; rel++) { const c = cardMeshes[mod(r0 + rel, SLOTS)]?.userData.car; if (c >= 0 && !texCache.get(c)?.ready) return false }
+    return true
+  }
   const relOfSlot = (sIdx: number) => {
     if (!mapped) return null
     for (let rel = -1; rel <= 1; rel++) {
@@ -940,8 +950,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // the screens out in front of you: from their place on the ring to the same
   // place as seen from the hall's middle, carried with you
   const placeShow = (dt: number) => {
-    if (growT >= 0 && growT < 1) { growT = Math.min(1, growT + dt / 1.4); dirty = true }
-    const g = growT < 0 ? 0 : calm ? 1 : easeInOut(growT)
+    // growing out: on the clock (a slow frame jumps ahead instead of dragging
+    // the move), quick off the mark and easing into place
+    const gt = growAt < 0 ? 0 : Math.min(1, (performance.now() - growAt) / GROW_MS)
+    if (gt > 0 && gt < 1) dirty = true
+    const g = calm ? (gt > 0 ? 1 : 0) : 1 - (1 - gt) ** 4
     ring.updateMatrixWorld(true); camera.updateMatrixWorld()
     invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
     cardMeshes.forEach((m, i) => {
@@ -962,9 +975,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     })
   }
   const placeWall = (p: number, dt: number) => {
-    // walking in: once past the doors the screens scatter, in step with the walk
+    // walking in: the screens go in with you and scatter as one move, in
+    // step with the walk from its first step to its last
     const tk = throwK
-    throwK = fit(p, 0.68, 0.97)
+    throwK = fit(p, 0.03, 0.96)
     if (throwK !== tk) dirty = true
     wallOn = throwK >= 0.98
     // the screens facing you, frozen as the walk begins: their cars open the list
@@ -1262,13 +1276,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const PULL = 90
   const onDown = (e: PointerEvent) => {
     autoT = 0
-    if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // from the street: only a tap on a screen
+    if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // the street: a tap on a screen walks in, a sideways swipe turns them
     if (progress < WALK - 0.04 || !wallOn) return
     dragging = true; moved = false; downX = e.clientX; downY = e.clientY
     holding = true; scroll0 = scrollPos; scrollTarget = scrollPos; vy = 0; lastMy = e.clientY; lastMt = performance.now()
     topStart = scrollPos < 0.05; pullPx = 0
   }
   const onMove = (e: PointerEvent) => {
+    if (tapOut) {
+      // on the street, a sideways swipe turns the big screens by one (RTL: swipe right, the next comes in from the left)
+      const dx = e.clientX - downX
+      if (Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(e.clientY - downY)) { tapOut = false; settle(); drag += Math.sign(dx) * STEP; dirty = true }
+      return
+    }
     if (!dragging || !holding) return
     const dx = e.clientX - downX, dy = e.clientY - downY
     if (!moved) { if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) return; moved = true }
@@ -1339,7 +1359,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
     // the kick wakes the render loop so the switch-on plays even at rest
     if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
-    if (growT < 0 && readyAt >= 0 && (progress > 0.5 || (screenOn && now - readyAt > 1250))) { growT = progress > 0.5 ? 1 : 0; dirty = true }
+    if (growAt < 0 && readyAt >= 0) {
+      // a page opened inside: already out. On the street: as the screens light up,
+      // once the three facing you have their photos (never waiting long)
+      if (progress > 0.5) { growAt = now - GROW_MS; dirty = true }
+      else if (screenOn && now - readyAt > 780 && (facingReady() || now - readyAt > 1600)) { growAt = now; dirty = true }
+    }
     // the ring slides one screen on its own every three seconds: the middle
     // car moves to the next screen and its neighbour takes the middle
     if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0

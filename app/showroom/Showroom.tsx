@@ -224,10 +224,18 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // gestures: wheel, a vertical swipe, keys. Inside, up and down runs
     // through the cards; at the top of the list, a pull on leads out
     const cardsOut = () => current > 0.95 && !!handle.current?.inside()
+    // on the street, a sideways scroll turns the big screens by one per gesture
+    // (a trackpad's long tail counts once)
+    let wheelLock = false, wheelTimer = 0
     const onWheel = (e: WheelEvent) => {
       if (inLine(e)) return
       e.preventDefault()
-      if (menuOpen.current || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      if (menuOpen.current) return
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        clearTimeout(wheelTimer); wheelTimer = window.setTimeout(() => { wheelLock = false }, 180)
+        if (current < 0.05 && !wheelLock && Math.abs(e.deltaX) > 6) { wheelLock = true; handle.current?.step(e.deltaX > 0 ? -1 : 1) }
+        return
+      }
       if (cardsOut()) { if (!handle.current!.wheel(e.deltaY)) go(0); return }
       if (Math.abs(e.deltaY) > 4) go(e.deltaY > 0 ? 1 : 0)
     }
@@ -252,6 +260,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (menuOpen.current) return
       if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut()) handle.current?.step(1); else go(1) }
       if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); if (cardsOut() && !handle.current?.atTop()) handle.current?.step(-1); else go(0) }
+      // the street's screens, right to left: the left arrow brings the next
+      if (current < 0.05 && e.key === 'ArrowLeft') handle.current?.step(1)
+      if (current < 0.05 && e.key === 'ArrowRight') handle.current?.step(-1)
     }
 
     import('./scene').then(({ createShowroom }) => {
