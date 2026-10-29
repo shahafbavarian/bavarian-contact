@@ -608,26 +608,33 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   const drawCard = async (card: Card, mesh: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>) => {
     const imgs = (await Promise.all(card.images.map(loadImg))).filter(Boolean) as HTMLImageElement[]
+    const logoImg = imgs.length ? null : (await loadImg(opts.logoUrl)) as HTMLImageElement | null
     const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 832
     const c = cv.getContext('2d')!
-    c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832)
-    if (imgs.length === 1) cover(c, imgs[0], 0, 0, 1024, 640, 0.62)
-    else if (imgs.length > 1) {
-      // portrait mosaic: 4 × 2, hairline gaps
-      const cols = 4, rows = 2, g = 4, cw = (1024 - g * (cols - 1)) / cols, rh = (640 - g * (rows - 1)) / rows
-      imgs.slice(0, cols * rows).forEach((im, k) => cover(c, im, (k % cols) * (cw + g), Math.floor(k / cols) * (rh + g), cw, rh, 0.2))
-    } else {
-      const g = c.createLinearGradient(0, 0, 1024, 640)
-      g.addColorStop(0, '#1c1f24'); g.addColorStop(1, '#0e0f12')
-      c.fillStyle = g; c.fillRect(0, 0, 1024, 640)
-      c.fillStyle = 'rgba(242,239,233,.9)'; c.textAlign = 'center'; c.textBaseline = 'middle'
-      c.font = `600 120px ${opts.font}`; c.fillText(card.title, 512, 330)
+    // no titles on the screens: the caption under the gallery already names
+    // the card, so the screen carries only its picture
+    const drawGrid = (alpha = 1) => {
+      c.save(); c.globalAlpha = alpha
+      c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832)
+      if (imgs.length === 1) cover(c, imgs[0], 0, 0, 1024, 832)
+      else if (imgs.length > 1) {
+        // a grid of several, full bleed, hairline gaps
+        const cols = imgs.length >= 7 ? 4 : imgs.length > 4 ? 3 : 2
+        const rows = Math.max(1, Math.min(2, Math.ceil(Math.min(imgs.length, cols * 2) / cols)))
+        const g = 4, cw = (1024 - g * (cols - 1)) / cols, rh = (832 - g * (rows - 1)) / rows
+        imgs.slice(0, cols * rows).forEach((im, k) => cover(c, im, (k % cols) * (cw + g), Math.floor(k / cols) * (rh + g), cw, rh, 0.25))
+      } else {
+        const gr = c.createLinearGradient(0, 0, 1024, 832)
+        gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
+        c.fillStyle = gr; c.fillRect(0, 0, 1024, 832)
+        if (logoImg) {   // the brand mark, quiet, instead of repeating the caption
+          const w = 560, h = w * (logoImg.naturalHeight / logoImg.naturalWidth)
+          c.globalAlpha = alpha * 0.5; c.drawImage(logoImg, (1024 - w) / 2, (832 - h) / 2, w, h)
+        }
+      }
+      c.restore()
     }
-    c.direction = 'rtl'; c.textAlign = 'right'; c.textBaseline = 'alphabetic'
-    c.fillStyle = '#f2efe9'; c.font = `600 58px ${opts.font}`
-    c.fillText(card.title, 984, 730)
-    c.font = `400 34px ${opts.font}`; c.fillStyle = 'rgba(242,239,233,.6)'
-    c.fillText(card.sub, 984, 790)
+    drawGrid()
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
     mesh.material.uniforms.map.value = tex
@@ -688,7 +695,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     doors.forEach((d, i) => {
       const s = i === 0 ? -1 : 1
       d.position.x = s * (0.6 + open * 1.15)
-      ;(d.userData.frame as THREE.Mesh).position.x = s * (1.2 + open * 1.15)
+      // the frame (two posts and the header) stands still; only the glass slides
     })
     renderer.toneMappingExposure = 0.9 + 0.12 * fit(p, 0.3, 0.6)
     bloom.strength = 0.6 - 0.25 * fit(p, 0.4, 0.7)
@@ -714,7 +721,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       u.uAlpha.value = 1
       // the screens are dark from the street and switch on as you walk in
       // (one after another), off again as you walk out
-      if (p <= LIT || tvClock > 0.15 + i * 0.05) u.uPower.value = Math.min(1, Math.max(0, u.uPower.value + (p > LIT ? dt / 0.35 : -dt / 0.25)))
+      // the screen facing the street is on from the start (once everything
+      // has loaded); the other screens come on only inside and go off on the
+      // way out. Ramped per frame, so a slow device still reaches full
+      const onNow = p > LIT ? tvClock > 0.15 + i * 0.05 : assetsReady && Math.abs(th) < 0.35
+      const before = u.uPower.value
+      u.uPower.value = Math.min(1, Math.max(0, before + (onNow ? dt / 0.35 : -dt / 0.25)))
+      if (u.uPower.value !== before) dirty = true
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
     })
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
