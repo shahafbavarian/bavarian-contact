@@ -321,8 +321,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // transom glass only over the door gap, its bottom edge hidden inside the header
   box(2.4, glassH - 2.78, 0.02, mats.glass, 0, 2.78 + (glassH - 2.78) / 2, FRONT)
   const doors: THREE.Mesh[] = []
+  // the leaves get their own, slightly more present glass, so the two panels
+  // are seen sweeping aside instead of being all but invisible
+  const doorGlass = new THREE.MeshStandardMaterial({ color: '#7e92a4', roughness: 0.04, metalness: 1, transparent: true, opacity: 0.26, envMapIntensity: 0.3, depthWrite: false })
   for (const s of [-1, 1]) {
-    const d = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.7), mats.glass)
+    const d = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.7), doorGlass)
     d.position.set(s * 0.6, 1.35, FRONT + 0.04); scene.add(d); doors.push(d)
     const frame = box(0.05, 2.7, 0.06, mats.metal, s * 1.2, 1.35, FRONT + 0.04)
     d.userData.frame = frame
@@ -679,7 +682,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     tmpP.set(0, 1.6, z)
     tmpL.set(pointerS.x * 0.5, 1.6 + Math.tan(pitch) * 30 + pointerS.y * 0.25, z - 30)
     camera.position.copy(tmpP); camera.lookAt(tmpL)
-    const open = smooth(fit(z, 7.5, 2.5))     // the doors part as you reach them
+    // the doors part in one clear sweep just as you reach them (over five
+    // metres of approach the move was too slow to be seen)
+    const open = smooth(fit(z, 5.4, 3.4))
     doors.forEach((d, i) => {
       const s = i === 0 ? -1 : 1
       d.position.x = s * (0.6 + open * 1.15)
