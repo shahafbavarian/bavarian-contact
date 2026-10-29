@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { fetchCarList, fetchCarDetail, CarSummary } from '@/lib/scraper'
-import { getCachedImageUrls } from '@/lib/image-sync'
+import { getCachedImageUrls, freshImage } from '@/lib/image-sync'
 
 // Route reads query params (filter, basic) so it must run dynamically.
 // Data caching is handled inside fetchCarList (next: { revalidate: 300 }).
@@ -70,10 +70,8 @@ export async function GET(req: Request) {
 
     const [cars, cachedUrls] = await Promise.all([fetchCarList(), getCachedImageUrls()])
 
-    // Substitute CDN URLs where available
-    const withCdn = cars.map(c =>
-      cachedUrls[c.recNo] ? { ...c, imageUrl: cachedUrls[c.recNo] } : c
-    )
+    // Substitute CDN URLs where they still match the source photo
+    const withCdn = cars.map(c => ({ ...c, imageUrl: freshImage(c.imageUrl, cachedUrls[c.recNo]) }))
 
     // Image syncing deliberately does NOT happen here. It used to be kicked off
     // unawaited on every call, which meant it was killed the moment the function

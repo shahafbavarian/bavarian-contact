@@ -1,5 +1,5 @@
 import { fetchCarList } from '@/lib/scraper'
-import { getCachedImageUrls } from '@/lib/image-sync'
+import { getCachedImageUrls, freshImage } from '@/lib/image-sync'
 import { INSTAGRAM_URL } from '@/lib/agent-format'
 import Showroom from './Showroom'
 import type { Card } from './scene'
@@ -26,7 +26,7 @@ export default async function ShowroomPage() {
   let cards: Card[] = []
   try {
     const [list, cdn] = await Promise.all([fetchCarList(), getCachedImageUrls()])
-    const cars = list.map(c => (cdn[c.recNo] ? { ...c, imageUrl: cdn[c.recNo] } : c)).filter(c => c.imageUrl)
+    const cars = list.map(c => ({ ...c, imageUrl: freshImage(c.imageUrl, cdn[c.recNo]) })).filter(c => c.imageUrl)
     // title: the maker; everything else moves to the line below
     const TWO = ['Land', 'Alfa', 'Aston', 'Rolls', 'לנד', 'אלפא', 'אסטון', 'רולס']
     cards = cars.map(c => {
