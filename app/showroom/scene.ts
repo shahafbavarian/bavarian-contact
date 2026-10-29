@@ -1003,7 +1003,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       srcP.set(0, 0, R).applyMatrix4(m.matrixWorld); m.getWorldQuaternion(srcQ)
       endP.copy(srcP).applyMatrix4(invLay).applyMatrix4(camera.matrixWorld)
       endQ.copy(camera.quaternion).multiply(tmpQ.copy(layQi).multiply(srcQ))
-      showP[i].lerpVectors(srcP, endP, g); showQ[i].slerpQuaternions(srcQ, endQ, g)
+      // already outside as it starts: it sits on your own line of sight to
+      // the real screen, out at the end pose's distance, scaled to cover it
+      // exactly — then grows along that line, never passing the door's posts
+      const dSrc = srcP.distanceTo(camera.position), dEnd = endP.distanceTo(camera.position)
+      const s0 = dEnd / Math.max(dSrc, 1e-4)
+      tmpV.copy(srcP).sub(camera.position).multiplyScalar(s0).add(camera.position)
+      showP[i].lerpVectors(tmpV, endP, g); showQ[i].slerpQuaternions(srcQ, endQ, g)
+      sm.scale.setScalar(Math.min(1, s0) + (1 - Math.min(1, s0)) * g)
       sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i])
       // the three facing you become cards (each hides as its card leaves);
       // the others fade as you go in
@@ -1047,8 +1054,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the hall brightens over the walk's last stretch — gradual, never a
       // snap — and only part way: the hall stays clearly itself, just light
       const b0 = briK
-      const want = calm ? (full ? 1 : 0) : smooth(fit(throwK, 0.68, 1))
-      briK += (want - briK) * (1 - Math.exp(-dt * 3))
+      const want = calm ? (full ? 1 : 0) : smooth(fit(throwK, 0.55, 1))
+      briK += (want - briK) * (1 - Math.exp(-dt * 2.2))
       if (Math.abs(want - briK) < 1e-3) briK = want
       if (briK !== b0) dirty = true
       const k = briK
@@ -1060,10 +1067,20 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       veil.material.uniforms.uA.value = va; veil.material.uniforms.uExp.value = renderer.toneMappingExposure; veil.visible = va > 0.002
     }
     if (!holding) {
-      const sp = scrollPos
-      scrollPos += (scrollTarget - scrollPos) * (1 - Math.exp(-dt * 9))
-      if (Math.abs(scrollTarget - scrollPos) < 1e-4) scrollPos = scrollTarget
-      if (scrollPos !== sp) dirty = true
+      if (fling) {
+        // the throw runs on, braking smoothly; past either end it stops and
+        // springs back; once slow, it eases onto the nearest row
+        scrollPos += vy * dt; vy *= Math.exp(-dt * 2.4)
+        const max = maxScroll()
+        if (scrollPos < 0 || scrollPos > max) { vy = 0 }
+        if (Math.abs(vy) < 0.9) { fling = false; scrollTarget = Math.min(max, Math.max(0, Math.round(scrollPos))) }
+        dirty = true
+      } else {
+        const sp = scrollPos
+        scrollPos += (scrollTarget - scrollPos) * (1 - Math.exp(-dt * 9))
+        if (Math.abs(scrollTarget - scrollPos) < 1e-4) scrollPos = scrollTarget
+        if (scrollPos !== sp) dirty = true
+      }
     }
   }
   // the bright trial: inside, a light wash over the hall (it still shows through), under the cards
@@ -1096,7 +1113,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
-      const r0 = Math.max(0, Math.floor(scrollPos) - 1), r1 = Math.ceil(scrollPos) + rowsFit + 1
+      const ahead = Math.min(3, Math.ceil(Math.abs(vy) * 0.3))
+      const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
@@ -1361,14 +1379,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // inside: the finger holds the list (1:1), lets go with its speed and the
   // list comes to rest on a card; at the top, pulled on further, it gives
   // like rubber, and let go past the mark it walks you out
-  let scroll0 = 0, vy = 0, lastMy = 0, lastMt = 0, topStart = false, pullPx = 0
+  let scroll0 = 0, vy = 0, lastMy = 0, lastMt = 0, topStart = false, pullPx = 0, fling = false
   const PULL = 90
   const onDown = (e: PointerEvent) => {
     autoT = 0
     if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // the street: a tap on a screen walks in, a sideways swipe turns them
     if (progress < WALK - 0.04 || !wallOn) return
     dragging = true; moved = false; downX = e.clientX; downY = e.clientY
-    holding = true; scroll0 = scrollPos; scrollTarget = scrollPos; vy = 0; lastMy = e.clientY; lastMt = performance.now()
+    holding = true; fling = false; scroll0 = scrollPos; scrollTarget = scrollPos; vy = 0; lastMy = e.clientY; lastMt = performance.now()
     topStart = scrollPos < 0.05; pullPx = 0
   }
   const onMove = (e: PointerEvent) => {
@@ -1393,9 +1411,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const release = (exit: boolean) => {
     holding = false
     opts.onPull?.(0)
-    if (exit && topStart && pullPx >= PULL) { scrollTarget = 0; dirty = true; opts.onExit?.(); return }
+    if (exit && topStart && pullPx >= PULL) { fling = false; scrollTarget = 0; dirty = true; opts.onExit?.(); return }
     if (performance.now() - lastMt > 120) vy = 0
-    scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollPos + vy * 0.22)))
+    // let go with the finger's speed: the list runs on and slows by itself
+    // (a slow release just settles on the nearest row)
+    if (Math.abs(vy) > 1.2) fling = true
+    else { fling = false; scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollPos))) }
     dirty = true
   }
   const onUp = (e: PointerEvent) => {
@@ -1412,7 +1433,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!dragging) return
     dragging = false
     if (moved) { release(true); return }
-    holding = false
+    holding = false; fling = false
     // a tap on a card opens it
     const o = wallHit(e)
     if (!o) { scrollTarget = Math.round(scrollPos); return }
@@ -1474,7 +1495,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     setProgress(p) { progress = p },
     setPointer(x, y) { if (!mobile) pointer.set(x, y) },
     step(dir) {
-      if (wallOn) { scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollTarget) + dir)); dirty = true; return }
+      if (wallOn) { fling = false; scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(scrollTarget) + dir)); dirty = true; return }
       settle(); drag += dir * STEP; dirty = true
     },
     inside: () => wallOn,
@@ -1495,6 +1516,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         return true
       }
       wheelArmed = false
+      fling = false
       scrollTarget = Math.min(maxScroll(), Math.max(0, scrollTarget + dy / pitchPx))
       clearTimeout(snapT); snapT = window.setTimeout(() => { scrollTarget = Math.round(scrollTarget); dirty = true }, 160)
       dirty = true

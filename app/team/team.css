@@ -229,7 +229,7 @@ html:has(.bm) body { overflow: visible; }
 .bm-rail {
   list-style: none; margin: 0; padding: 4px 0 16px;
   display: flex; gap: 14px; overflow-x: auto;
-  scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory; scrollbar-width: none;
   margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
 }
 .bm-rail::-webkit-scrollbar { display: none; }

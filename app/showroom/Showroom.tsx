@@ -136,7 +136,16 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 900
     // a trial, not on the site: ?theme=light (and &veil=0..1) shows the hall inside in a bright theme
     const qs = new URLSearchParams(location.search), light = qs.get('theme') === 'light'
-    if (light) root.current!.dataset.theme = 'light'
+    if (light) {
+      root.current!.dataset.theme = 'light'
+      // body's colour is what Safari watches live for the phone's edges; the
+      // fixed strips would outrank it with a colour sampled once, so in the
+      // bright trial they go away and body alone carries both bars — which
+      // lets the black-to-white cross glide, frame by frame
+      document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = 'none' })
+      document.documentElement.style.transition = 'background-color 0s'
+      document.body.style.transition = 'background-color 0s'
+    }
     // two remembered states: a refresh while inside opens inside
     let inside = false
     try { inside = sessionStorage.getItem('sr-view') === 'in' } catch {}
@@ -157,7 +166,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false, wasBright = false
+    let capIn = false, arrived = false, wasBright = false, lastK = -1
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -198,24 +207,22 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
-      // The bright trial: the page's chrome follows the hall's own
-      // brightening. Safari paints the phone's top and bottom from body's
-      // colour (watched live) UNLESS a fixed strip at the edge outranks it —
-      // and a strip is sampled once, locking the bar to its load colour. So
-      // body and html are set directly, and the strips are switched off and
-      // on again with the new colour, which makes Safari sample them afresh
+      // The bright trial: the page itself crosses from the hall's dark to
+      // the light ground frame by frame over the walk's last stretch — and
+      // Safari, watching body live, glides the phone's edges with it
       if (light) {
-        const bright = current > 0.9
-        if (bright !== wasBright) {
-          wasBright = bright
-          root.current?.toggleAttribute('data-bright', bright)
-          const col = bright ? '#f5f6f7' : '#06080c'
+        const sm = (x: number) => x * x * (3 - 2 * x)
+        const k = sm(fit(current, 0.78, 1))
+        if (Math.abs(k - lastK) > 0.004 || ((k === 0 || k === 1) && k !== lastK)) {
+          lastK = k
+          const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
+          const col = `rgb(${ch(6, 245)}, ${ch(8, 246)}, ${ch(12, 247)})`
           document.documentElement.style.backgroundColor = col
           document.body.style.backgroundColor = col
-          const strips = document.querySelectorAll<HTMLElement>('.sr-safari-strip')
-          strips.forEach(el => { el.style.display = 'none' })
-          requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
+          root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
         }
+        const bright = current > 0.88
+        if (bright !== wasBright) { wasBright = bright; root.current?.toggleAttribute('data-bright', bright) }
       }
       // the street's buttons give way as soon as you step in
       if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
@@ -354,7 +361,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
       if (light) {   // leaving the page: everything back as it was
+        document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = '' })
         document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
+        document.documentElement.style.transition = ''; document.body.style.transition = ''
       }
       handle.current?.dispose(); handle.current = null
     }
