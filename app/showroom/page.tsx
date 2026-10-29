@@ -18,7 +18,7 @@ export default async function ShowroomPage() {
     const cars = list.map(c => (cdn[c.recNo] ? { ...c, imageUrl: cdn[c.recNo] } : c)).filter(c => c.imageUrl)
     const inHall = cars.filter(c => c.status.includes('מלאי')), onWay = cars.filter(c => !c.status.includes('מלאי'))
     stock = inHall.length; away = onWay.length
-    stockImgs = inHall.slice(0, 8).map(c => c.imageUrl!)
+    stockImgs = inHall.slice(0, 9).map(c => c.imageUrl!)
     awayImg = onWay[0]?.imageUrl ?? ''
   } catch {}
 
