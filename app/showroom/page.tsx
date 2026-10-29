@@ -6,9 +6,10 @@ import type { Card } from './scene'
 
 export const revalidate = 300
 
-// q=75 matches the site's own <Image> default, so every car reuses the
-// transformation already cached for the cars pages (one variant, not two)
-const img = (url: string) => `/_next/image?url=${encodeURIComponent(url)}&w=828&q=75`
+// w=828&q=85 is exactly the variant the cars grid makes on a phone (its
+// <Image quality={85}> with ~100vw sizes), so every car reuses the one
+// transformation already cached — never a second variant per car
+const img = (url: string) => `/_next/image?url=${encodeURIComponent(url)}&w=828&q=85`
 // The new portraits committed under /public/team
 const PORTRAITS = ['257080', '257075', '257076', '257077', '258775', '259104', '260394', '281088'].map(n => `/team/${n}.jpg`)
 

@@ -222,10 +222,13 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           document.body.style.backgroundColor = col
           root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
         }
-        if (Math.abs(k - stripK) > 0.26 || ((k === 0 || k === 1) && k !== stripK)) {
+        // the strips change ONCE, at either end of the cross: every re-toggle
+        // makes Safari's bottom glass pulse, so stepping them through the
+        // blend read as a flicker — one clean change, eased by Safari's own
+        // tint animation, while the page and the sheets glide continuously
+        if ((k === 0 || k === 1) && k !== stripK) {
           stripK = k
-          const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
-          const col = `rgb(${ch(6, 245)}, ${ch(8, 246)}, ${ch(12, 247)})`
+          const col = k === 1 ? '#f5f6f7' : '#06080c'
           const strips = document.querySelectorAll<HTMLElement>('.sr-safari-strip')
           strips.forEach(el => { el.style.display = 'none' })
           requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
@@ -238,6 +241,17 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     }
 
     const onPointer = (e: PointerEvent) => handle.current?.setPointer((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1))
+    // The iPhone's tap on the clock: the page keeps two real pixels of scroll
+    // and rests on one; Safari's gesture pulls it to zero — the only signal
+    // it gives — and the stock rides back to its top. The page then returns
+    // to its resting pixel, armed for the next tap
+    const BASE = 1
+    const settleWin = () => { if (document.activeElement !== input.current) scrollTo(0, BASE) }
+    const onWinScroll = () => {
+      if (document.activeElement === input.current) return   // the keyboard moves the page; leave it be
+      if (scrollY === 0) { handle.current?.toTop(); requestAnimationFrame(settleWin) }
+      else if (scrollY > BASE) settleWin()
+    }
     let rTimer = 0
     // Resize at once (a delayed resize showed a stretched frame while turning
     // the phone), and again once Safari has settled its bars after a rotation
@@ -256,7 +270,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     const onResize = () => {
       // Safari leaves the page scrolled after its keyboard closes, and the
       // field's touch area with it: back to the top whenever it is down
-      if (document.activeElement !== input.current && (scrollY || document.documentElement.scrollTop)) window.scrollTo(0, 0)
+      if (document.activeElement !== input.current && scrollY !== BASE) window.scrollTo(0, BASE)
       handle.current?.resize(); insets()
       clearTimeout(rTimer); rTimer = window.setTimeout(() => { handle.current?.resize(); insets() }, 350)
     }
@@ -362,13 +376,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     addEventListener('orientationchange', onResize)
     visualViewport?.addEventListener('resize', onResize)
     addEventListener('pointermove', onPointer, { passive: true })
+    addEventListener('scroll', onWinScroll, { passive: true })
+    settleWin()
     raf = requestAnimationFrame(frame)
     return () => {
       alive = false; cancelAnimationFrame(raf)
       removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart); removeEventListener('touchmove', onTouchMove)
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
-      removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
+      removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut); removeEventListener('scroll', onWinScroll)
       if (light) {   // leaving the page: everything back as it was
         document.documentElement.removeAttribute('data-sr-bright')
         document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = ''; el.style.backgroundColor = '' })
@@ -555,7 +571,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
                     placeholder={stage === 'make' ? 'חיפוש לפי יצרן' : stage === 'model' ? 'בחרו דגם' : undefined}
                     aria-label={stage === 'make' ? 'חיפוש לפי יצרן' : 'חיפוש לפי דגם'} aria-expanded={listOpen} aria-autocomplete="list"
                     value={text} onChange={e => { if (model) setModel(null); setText(e.target.value) }}
-                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 0) }) }} onKeyDown={onFieldKey} />
+                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
                   {/* empty and waiting: a lit caret says the field is open for typing */}
                   {stage !== 'done' && <span className="sr-caret" aria-hidden="true" />}
                 </span>

@@ -12,6 +12,10 @@ html:has(.sr[data-theme="light"][data-bright]), html:has(.sr[data-theme="light"]
 html[data-sr-bright], html[data-sr-bright] body { background: #f5f6f7; }
 html[data-sr-bright] .sr-safari-strip { background: #f5f6f7; }
 html:has(.sr) { overflow: auto; }
+/* two real pixels of page scroll, resting at one: the iPhone's tap on the
+   clock pulls the page to zero — the one signal Safari gives — and the hall
+   turns it into the list's own ride to the top */
+html:has(.sr) body { min-height: calc(100svh + 2px); }
 
 .sr {
   /* pure white, the logo's own colour, so the bar's mark and every text match */

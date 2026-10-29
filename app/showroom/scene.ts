@@ -28,6 +28,8 @@ export type SceneHandle = {
   setInsets: (top: number, bottom: number, side: number) => void
   /** inside, with the cards out: up and down is theirs */
   inside: () => boolean
+  /** the clock was tapped: the list goes back to its top */
+  toTop: () => void
   atTop: () => boolean
   /** a wheel turn inside; false: it was a pull out at the top */
   wheel: (dy: number) => boolean
@@ -678,7 +680,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
         c.fillStyle = gr; c.fillRect(0, 0, 1024, 683)
       }
-      tex.needsUpdate = true; e!.ready = true; dirty = true
+      tex.needsUpdate = true; renderer.initTexture(tex); e!.ready = true; dirty = true
     }
     if (src) loadImg(src).then(im => done(im as HTMLImageElement | null))
     else loadImg(opts.logoUrl).then(im => {
@@ -939,9 +941,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         c.fillStyle = gr; c.fillRect(0, 0, CARD_PX, ph)
       }
       if (card) drawInfo(c, card, ph)
-      tex.needsUpdate = true; entry.ready = true; dirty = true
+      tex.needsUpdate = true; renderer.initTexture(tex); entry.ready = true; dirty = true
     })
-    if (wallCache.size > 14) {   // let go of the card shown longest ago (never one on show)
+    if (wallCache.size > 26) {   // let go of the card shown longest ago (never one on show)
       let worst = -1, wd = Infinity
       wallCache.forEach((v, k) => { if (k !== ci && !held.has(k) && v.used < wd) { wd = v.used; worst = k } })
       const w = wallCache.get(worst)
@@ -1113,7 +1115,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
-      const ahead = Math.min(3, Math.ceil(Math.abs(vy) * 0.3))
+      const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
@@ -1504,6 +1506,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       settle(); drag += dir * STEP; dirty = true
     },
     inside: () => wallOn,
+    toTop() { if (!wallOn) return; fling = false; scrollTarget = 0; dirty = true },
     atTop: () => scrollTarget <= 0.001,
     wheel(dy) {
       if (!wallOn) return false
