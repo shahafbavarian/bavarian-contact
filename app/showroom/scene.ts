@@ -343,10 +343,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   signShade.position.set(0, SIGN_Y, SIGN_Z + 0.003); scene.add(signShade)
   // its light on the stone comes up with the letters (the page brings them
   // on 200 ms after the view is ready, over a second: the same beat)
-  const signLight = (k: number) => {
-    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.12 * k
-  }
-  signLight(0)
+  let signOnK = 0
+  const signLight = (k: number) => { signOnK = k }
   // the street side is lit already when the page opens: only the hall's lights run
   const signL = new THREE.Vector3(), signR = new THREE.Vector3()
   let viewW = canvas.clientWidth, viewH = canvas.clientHeight
@@ -354,6 +352,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!opts.onSign) return
     signL.set(-signW / 2, SIGN_Y, SIGN_Z).project(camera); signR.set(signW / 2, SIGN_Y, SIGN_Z).project(camera)
     const cw = viewW, ch = viewH   // cached on resize: reading layout every frame forced a reflow each time
+    // THE HAZE: the wash and shade painted on the stone live in the scene, so
+    // walking up they swelled to fill the frame as a white blob long after the
+    // letters had faded. They die away while the sign is still well ahead
+    const near = fit(camera.position.z, SIGN_Z + 4, SIGN_Z + 7)
+    ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.12 * signOnK * near
+    ;(signShade.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.32 * near
     // as you come under the canopy its edge hides the sign: the page's sign (drawn
     // over the scene, so it knows nothing of that) fades out before its glow could show
     const fade = signL.z < 1 && signR.z < 1 ? fit(camera.position.z, SIGN_Z + 0.6, SIGN_Z + 3.2) : 0
@@ -478,7 +482,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   power(0, k => {
     mats.wall.envMapIntensity = 0.05 + 0.23 * k
     mats.ceiling.envMapIntensity = 0.06 + 0.29 * k
-    tileMat.envMapIntensity = 0.15 + 0.2 * k      // the floor's tiles still read, softly, in the dark hall
+    tileMat.envMapIntensity = 0.26 + 0.09 * k    // the dark hall's floor stays readable, a clear step lighter than the mat
   }, 0.4)
   const moon = new THREE.DirectionalLight('#8ea6d6', 0.6); moon.position.set(0, 10, 14); scene.add(moon)
 
@@ -525,7 +529,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
   glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)   // the light on the plinth goes out with the hall
 
-  // (no glass offices at the back: the back wall is plain)
+  // Back wall: the vertical black posts stay (they give the room its depth);
+  // no frosted bands or glass between them
+  for (const x of [-8, -4.8, -1.6, 1.6, 4.8, 8]) box(0.06, H, 0.08, mats.metal, x, H / 2, FRONT - D + 0.15)
   // ─── The gallery: cards bent along the ring. Each card is designed, not a
   //     pasted photo: the car's photograph in a rounded frame, a band with the
   //     model and price, a hairline edge. Unlit, so the photos keep their
