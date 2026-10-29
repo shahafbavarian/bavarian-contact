@@ -669,6 +669,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // the ring is virtual — a fixed set of screens re-dressed as you browse,
   // so the whole stock fits however long it is. Textures stream in and the
   // farthest are let go
+  // textures go to the GPU one per frame, off the showing path, so a burst
+  // of births never lands in one frame
+  const uploadQ: THREE.Texture[] = []
   const texCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
   const ensureTex = (ci: number) => {
     let e = texCache.get(ci)
@@ -687,7 +690,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
         c.fillStyle = gr; c.fillRect(0, 0, 1280, 853)
       }
-      tex.needsUpdate = true; renderer.initTexture(tex); e!.ready = true; dirty = true
+      tex.needsUpdate = true; uploadQ.push(tex); e!.ready = true; dirty = true
     }
     if (src) loadImg(src).then(im => done(im as HTMLImageElement | null))
     else loadImg(opts.logoUrl).then(im => {
@@ -774,6 +777,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const showGeo = new THREE.PlaneGeometry(CW, CH)
   const showMeshes = cardMeshes.map(m => { const sm = new THREE.Mesh(showGeo, m.material); sm.visible = false; sm.userData.slot = m.userData.slot; wallScene.add(sm); return sm })
   const showP = cardMeshes.map(() => new THREE.Vector3()), showQ = cardMeshes.map(() => new THREE.Quaternion())
+  // the ring screens' true world poses, and how much of the street twins remains
+  const ringP = cardMeshes.map(() => new THREE.Vector3()), ringQ = cardMeshes.map(() => new THREE.Quaternion())
+  let showK = 0
   const slotDim = cardMeshes.map(() => 0)
   const wallGeo = new THREE.PlaneGeometry(1, 1)
   // a pool of card meshes; each car on show holds one while it is there
@@ -959,7 +965,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         c.fillStyle = gr; c.fillRect(0, 0, CARD_PX, ph)
       }
       if (card) drawInfo(c, card, ph)
-      tex.needsUpdate = true; renderer.initTexture(tex); entry.ready = true; dirty = true
+      tex.needsUpdate = true; uploadQ.push(tex); entry.ready = true; dirty = true
     })
     if (wallCache.size > 26) {   // let go of the card shown longest ago (never one on show)
       let worst = -1, wd = Infinity
@@ -1020,12 +1026,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // very end on the way home) — carried with the camera they crossed it
     // mid-walk as giant smears, both ways
     const g = g0 * (1 - smooth(fit(p, 0.02, 0.2)))
+    showK = g
     ring.updateMatrixWorld(true); camera.updateMatrixWorld()
     invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
     cardMeshes.forEach((m, i) => {
       const sm = showMeshes[i], u = m.material.uniforms
       const on = m.visible
       srcP.set(0, 0, R).applyMatrix4(m.matrixWorld); m.getWorldQuaternion(srcQ)
+      ringP[i].copy(srcP); ringQ[i].copy(srcQ)
       endP.copy(srcP).applyMatrix4(invLay).applyMatrix4(camera.matrixWorld)
       endQ.copy(camera.quaternion).multiply(tmpQ.copy(layQi).multiply(srcQ))
       // and pulled in toward you, so the street screens stand as large as the
@@ -1092,7 +1100,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the hall rides the very same window as the page and the sheets (see
       // Showroom): one factor, no chasing clock, nothing drifts apart
       const b0 = briK
-      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.86, 0.96))   // the hall rides the same short cross as the page
+      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.35, 0.82))   // the hall brightens WITH the flights (the page's own chrome keeps its short cross)
       if (briK !== b0) dirty = true
       const k = briK
       renderer.toneMappingExposure *= 1 + 0.85 * k
@@ -1200,7 +1208,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
-        srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
+        // the card flies from (or home to) whatever actually shows the face:
+        // the street twin while it stands, the ring screen once it is gone —
+        // the old anchor kept pointing at the twin's ghost by the camera
+        if (showK > 0.001) { srcP.copy(showP[sl]); srcQ.copy(showQ[sl]) }
+        else { srcP.copy(ringP[sl]); srcQ.copy(ringQ[sl]) }
         srcP.sub(tmpV2.set(0, ((cardH - (cardW * 2) / 3) / 2) * sc0, 0).applyQuaternion(srcQ))   // its photo exactly on the screen
         m.position.lerpVectors(srcP, tmpV, fe); m.position.y += Math.sin(Math.PI * fe) * 0.12
         m.quaternion.slerpQuaternions(srcQ, tmpQ, fe)
@@ -1239,7 +1251,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         m.position.copy(tmpV); m.quaternion.copy(tmpQ)
         u.uFlip.value = 0   // settled: the card shows its own face, no turn
         u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
-        a = calm ? throwK : fit(throwK, 0.8, 1)   // the rest of the stock comes in once the screens have landed
+        a = calm ? throwK : fit(throwK, 0.55, 0.85)   // the rest of the stock rises in among the landings, not after them
       }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
       if (Math.abs(lift - u.uLift.value) > 1e-3) dirty = true
@@ -1247,7 +1259,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       sc *= 1 + lift * 0.02
       const vv = smooth(hd.vis)
       sc *= calm ? 1 : 0.86 + 0.14 * vv
-      a *= vv * (1 - smooth(fit(off, rowsFit + 0.6, rowsFit + 1.4))) * (1 - smooth(fit(-off, 0.6, 1.4)))
+      a *= vv * (1 - smooth(fit(off, rowsFit + 0.9, rowsFit + 1.25))) * (1 - smooth(fit(-off, 0.78, 1.1)))
       u.uClipOn.value = 1
       if (opening) {
         if (opening.h === hd) {
@@ -1546,6 +1558,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // picture moves on and its neighbour takes the middle
     if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 5) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
+    const uq = uploadQ.shift()
+    if (uq) { renderer.initTexture(uq); dirty = true }
     loadCards()
     let signRising = false
     if (readyAt >= 0 && !signDone) { const k = smooth(fit(now - readyAt, 200, 1200)); signLight(0.28 + 0.72 * k); signDone = k >= 1; signRising = !signDone }
