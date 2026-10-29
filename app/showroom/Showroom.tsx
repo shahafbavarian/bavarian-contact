@@ -199,18 +199,22 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       // The bright trial: the page's chrome follows the hall's own
-      // brightening. Safari colours the phone's top and bottom from the
-      // page background AND the theme-color meta, and a CSS :has rule alone
-      // did not move them — so all three are set directly, on the change
+      // brightening. Safari paints the phone's top and bottom from body's
+      // colour (watched live) UNLESS a fixed strip at the edge outranks it —
+      // and a strip is sampled once, locking the bar to its load colour. So
+      // body and html are set directly, and the strips are switched off and
+      // on again with the new colour, which makes Safari sample them afresh
       if (light) {
         const bright = current > 0.9
         if (bright !== wasBright) {
           wasBright = bright
           root.current?.toggleAttribute('data-bright', bright)
           const col = bright ? '#f5f6f7' : '#06080c'
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', col)
           document.documentElement.style.backgroundColor = col
           document.body.style.backgroundColor = col
+          const strips = document.querySelectorAll<HTMLElement>('.sr-safari-strip')
+          strips.forEach(el => { el.style.display = 'none' })
+          requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
         }
       }
       // the street's buttons give way as soon as you step in
@@ -349,8 +353,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
-      if (light) {
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#000000')
+      if (light) {   // leaving the page: everything back as it was
         document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
       }
       handle.current?.dispose(); handle.current = null

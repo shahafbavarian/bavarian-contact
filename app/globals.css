@@ -7,6 +7,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html:has(.sb2), html:has(.sb2) body {
+  position: static !important; height: auto !important; overflow: auto !important; touch-action: auto !important;
+  background: #06080c;
+}
+
 html {
   overflow: hidden;
   position: fixed;
