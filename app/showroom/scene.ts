@@ -512,10 +512,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const STAND = new THREE.Vector3(0, 0, -12.5)
   const N = opts.cards.length
   // card size (m), canvas 1024×832 — larger on a phone, where it must read at arm's length
-  const CW = mobile ? 3.0 : 2.3, CH = CW * (832 / 1024)
+  // 3:2 screens, as asked
+  const CW = mobile ? 3.0 : 2.3, CH = CW * (2 / 3)
   // The ring grows with the number of cars: every card gets a clear gap of
   // 35% of its width on each side, so no two cars ever touch
-  const R = Math.max(3.0, (N * CW * 1.35) / (Math.PI * 2))
+  // the ring holds a fixed 8 slots; the stock streams through them
+  const SLOTS = Math.max(1, Math.min(8, N))
+  const R = Math.max(3.0, (SLOTS * CW * 1.35) / (Math.PI * 2))
   const PR = R + 0.7                              // plinth radius
   // satin, not piano gloss: a mirror-bright edge caught the lamps as a stray streak by the ring
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(PR, PR + 0.06, 0.08, 160), new THREE.MeshStandardMaterial({ color: '#070708', roughness: 0.45, metalness: 0 }))
@@ -558,18 +561,21 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     model and price, a hairline edge. Unlit, so the photos keep their
   //     true colour; cards off the front dim and recede. ───
   const cards = opts.cards
-  const STEP = N ? (Math.PI * 2) / N : 1
+  const STEP = (Math.PI * 2) / SLOTS
   const ARC = CW / R
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     void main(){
       vec2 p = (vUv - .5) * uSize;
       float d = rbox(p, uSize * .5, .055);
       float a = 1. - smoothstep(-.004, .002, d);
-      vec3 col = mix(vec3(.075, .078, .085), texture2D(map, vUv).rgb, uReady);
+      // uFill < 1 leaves a bezel of dark screen around the photo
+      vec2 mu = (vUv - .5) / uFill + .5;
+      float inPic = step(0., mu.x) * step(mu.x, 1.) * step(0., mu.y) * step(mu.y, 1.);
+      vec3 col = mix(vec3(.075, .078, .085), texture2D(map, clamp(mu, 0., 1.)).rgb, uReady * inPic);
       // switched on like a screen: the picture opens out of a bright line
       // across the middle, with a flash, then settles
       float open = smoothstep(0., .55, uPower);
@@ -584,16 +590,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   ring.position.copy(STAND)
   scene.add(ring)
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
-  cards.forEach((_, i) => {
+  for (let i = 0; i < SLOTS; i++) {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
     m.rotation.y = -i * STEP
-    m.userData.index = i
+    m.userData.slot = i; m.userData.car = -1
     ring.add(m); cardMeshes.push(m)
-  })
+  }
 
   // Card faces are composed on a canvas once the font and photo are in
   const loadImg = async (src: string) => {
@@ -606,66 +612,50 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip()
     c.drawImage(img, x + (w - iw) / 2, y + (h - ih) * fy, iw, ih); c.restore()
   }
-  // The front screen has two faces: outside, one car at a time, changing by
-  // itself every few seconds; inside, nine car tiles, three to a row
-  let show: { mode: 'in' | 'out'; t: number; swap: number; tiles: (k?: number) => void; solo: (idx: number, k?: number) => void; tex: THREE.CanvasTexture } | null = null
-  const tilesIn = (sh: NonNullable<typeof show>, k: number) => { sh.tiles(k) }
-  const drawCard = async (card: Card, mesh: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>, idx: number) => {
-    const imgs = (await Promise.all(card.images.map(loadImg))).filter(Boolean) as HTMLImageElement[]
-    const logoImg = imgs.length ? null : (await loadImg(opts.logoUrl)) as HTMLImageElement | null
-    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 832
+  // The gallery IS the inventory: every card is one car, newest first, and
+  // the ring is virtual — a fixed set of screens re-dressed as you browse,
+  // so the whole stock fits however long it is. Textures stream in and the
+  // farthest are let go
+  const texCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean }>()
+  const ensureTex = (ci: number) => {
+    let e = texCache.get(ci)
+    if (e) return e
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 683
     const c = cv.getContext('2d')!
-    // no titles on the screens: the caption under the gallery already names the card
-    const tiles = (k = 1) => {
-      // card tiles, three to a row, up to nine: rounded, real air between, hairline edge
-      c.save(); c.globalAlpha = k
-      c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832)
-      const n = Math.min(imgs.length, 9), cols = 3, rows = Math.max(1, Math.ceil(n / cols))
-      const pad = 32, g = 20
-      const cw = (1024 - pad * 2 - g * (cols - 1)) / cols
-      const rh = (832 - pad * 2 - g * (rows - 1)) / rows
-      imgs.slice(0, n).forEach((im, t) => {
-        const x = pad + (t % cols) * (cw + g), y = pad + Math.floor(t / cols) * (rh + g)
-        c.save(); c.beginPath(); c.roundRect(x, y, cw, rh, 18); c.clip()
-        cover(c, im, x, y, cw, rh, 0.3)
-        c.restore()
-        c.beginPath(); c.roundRect(x + 0.75, y + 0.75, cw - 1.5, rh - 1.5, 18)
-        c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1.5; c.stroke()
-      })
-      c.restore()
-    }
-    const solo = (sidx: number, k = 1) => {
-      const n = imgs.length
-      c.save(); c.globalAlpha = k
-      c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832)
-      cover(c, imgs[((sidx % n) + n) % n], 0, 0, 1024, 832)
-      c.restore()
-    }
-    if (imgs.length === 1) { c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 832); cover(c, imgs[0], 0, 0, 1024, 832) }
-    else if (imgs.length > 1) { if (idx === 0 && progress < 0.5) solo(0); else tiles() }
-    else {
-      const gr = c.createLinearGradient(0, 0, 1024, 832)
-      gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
-      c.fillStyle = gr; c.fillRect(0, 0, 1024, 832)
-      if (logoImg) {   // the brand mark, quiet, instead of repeating the caption
-        const w = 560, h = w * (logoImg.naturalHeight / logoImg.naturalWidth)
-        c.globalAlpha = 0.5; c.drawImage(logoImg, (1024 - w) / 2, (832 - h) / 2, w, h); c.globalAlpha = 1
-      }
-    }
+    c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 683)
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
-    mesh.material.uniforms.map.value = tex
-    mesh.material.uniforms.uReady.value = 1
-    if (idx === 0 && imgs.length > 1) show = { mode: progress < 0.5 ? 'out' : 'in', t: 0, swap: 1, tiles, solo, tex }
-    dirty = true
+    e = { tex, ready: false }; texCache.set(ci, e)
+    const src = cards[ci]?.images[0]
+    const done = (im: HTMLImageElement | null) => {
+      if (im) cover(c, im, 0, 0, 1024, 683)
+      else {   // no photo: the quiet brand mark
+        const gr = c.createLinearGradient(0, 0, 1024, 683)
+        gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
+        c.fillStyle = gr; c.fillRect(0, 0, 1024, 683)
+      }
+      tex.needsUpdate = true; e!.ready = true; dirty = true
+    }
+    if (src) loadImg(src).then(im => done(im as HTMLImageElement | null))
+    else loadImg(opts.logoUrl).then(im => {
+      done(null)
+      const lg = im as HTMLImageElement | null
+      if (lg) { const w = 520, h = w * (lg.naturalHeight / lg.naturalWidth); c.globalAlpha = 0.5; c.drawImage(lg, (1024 - w) / 2, (683 - h) / 2, w, h); c.globalAlpha = 1; tex.needsUpdate = true }
+    })
+    if (texCache.size > 24) {   // drop the car farthest from the front
+      let worst = -1, wd = -1
+      texCache.forEach((_, k) => { const d = Math.min(Math.abs(k - front), N - Math.abs(k - front)); if (k !== ci && d > wd) { wd = d; worst = k } })
+      const w = texCache.get(worst)
+      if (w) { w.tex.dispose(); texCache.delete(worst) }
+    }
+    return e
   }
   let loaded = false
   const loadCards = () => {
     if (loaded) return
     loaded = true
-    document.fonts?.load(`600 46px ${opts.font}`).catch(() => {}).finally(() => {
-      cards.forEach((card, i) => drawCard(card, cardMeshes[i], i))
-    })
+    ensureTex(0)
+    if (N > 1) { ensureTex(1); ensureTex(((N - 1) % N + N) % N); ensureTex(2 % N) }
   }
 
   // ─── Post: bloom (only the sign, spots and rings exceed 1), tilt-shift on desktop ───
@@ -694,7 +684,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // stand. That is where the page scroll ends: the gallery itself only turns
   // sideways — finger, mouse or arrows — and always rests on a card.
   const WALK = 0.82
-  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0
+  let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0, autoT = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
   const tmpP = new THREE.Vector3(), tmpL = new THREE.Vector3()
@@ -742,28 +732,28 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the screen facing the street is on from the start (once everything
       // has loaded); the other screens come on only inside and go off on the
       // way out. Ramped per frame, so a slow device still reaches full
-      const onNow = p > LIT ? tvClock > 0.15 + i * 0.05 : screenOn && Math.abs(th) < 0.35
+      const onNow = p > LIT ? tvClock > 0.15 + i * 0.05 : screenOn && Math.abs(th) < 1.4
       const before = u.uPower.value
       u.uPower.value = Math.min(1, Math.max(0, before + (onNow ? dt / 0.35 : -dt / 0.25)))
       if (u.uPower.value !== before) dirty = true
       u.uDim.value = smooth(fit(Math.abs(th), 0.18, 1.1))
     })
-    // the front screen: one car at a time outside (changing every few
-    // seconds), the nine tiles inside, swapped with a soft crossfade
-    if (show) {
-      const want: 'in' | 'out' = p > 0.5 ? 'in' : 'out'
-      if (want !== show.mode) { show.mode = want; show.swap = 0 }
-      const cyc = Math.floor(show.t / 4.2), ph = show.t % 4.2
-      if (show.swap < 1) {
-        show.swap = Math.min(1, show.swap + dt / 0.6)
-        if (show.mode === 'in') tilesIn(show, smooth(show.swap))
-        else { show.tiles(1); show.solo(cyc, smooth(show.swap)) }
-        show.tex.needsUpdate = true; dirty = true
-      } else if (show.mode === 'out') {
-        show.t += dt
-        if (show.t > 4.2 && ph < 0.8) { show.solo(cyc - 1, 1); show.solo(cyc, smooth(ph / 0.8)); show.tex.needsUpdate = true; dirty = true }
-      }
-    }
+    // dress each slot with the car that belongs at its spot of the ring, so
+    // browsing runs through the whole stock, newest to oldest, in a loop
+    const pos = angle / STEP
+    cardMeshes.forEach((m, sIdx) => {
+      const k = sIdx + SLOTS * Math.round((pos - sIdx) / SLOTS)
+      const car = ((k % N) + N) % N
+      const u = m.material.uniforms
+      if (m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
+      u.uReady.value = texCache.get(car)?.ready ? 1 : 0
+      // outside, the photo keeps a bezel of screen around it; inside it fills
+      u.uFill.value += ((p < 0.5 ? 0.84 : 1) - u.uFill.value) * (1 - Math.exp(-dt * 6))
+    })
+    // outside, the screens step to the next car by themselves
+    if (p < 0.45 && N > 1) {
+      if (!dragging) { autoT += dt; if (autoT > 4.5) { autoT = 0; drag += STEP; dirty = true } }
+    } else autoT = 0
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
     if (f !== front) { front = f; opts.onFront(f) }
   }
@@ -817,7 +807,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
       ray.setFromCamera(ndc, camera)
       const hit = ray.intersectObjects(cardMeshes, false)[0]
-      if (hit && hit.object.userData.index === front) opts.onEnter?.()
+      if (hit) opts.onEnter?.()
       return
     }
     if (!dragging) return
@@ -829,10 +819,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     ray.setFromCamera(ndc, camera)
     const hit = ray.intersectObjects(cardMeshes, false)[0]
     if (!hit) return
-    const i = hit.object.userData.index as number
-    if (i === front) { opts.onOpen(i); return }
-    let d = (i - front) % N; if (d > N / 2) d -= N; if (d < -N / 2) d += N
-    drag += d * STEP; dirty = true
+    const sIdx = hit.object.userData.slot as number
+    let th = (-sIdx * STEP + angle) % (Math.PI * 2)
+    if (th > Math.PI) th -= Math.PI * 2
+    if (th < -Math.PI) th += Math.PI * 2
+    if (Math.abs(th) < STEP / 2) { opts.onOpen(hit.object.userData.car as number); return }
+    drag -= Math.round(th / STEP) * STEP; dirty = true
   }
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses
@@ -854,7 +846,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     raf = requestAnimationFrame(tick)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
     // the kick wakes the render loop so the switch-on plays even at rest
-    if (!screenOn && readyAt >= 0 && now - readyAt > 1800) { screenOn = true; dirty = true }
+    if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     let signRising = false

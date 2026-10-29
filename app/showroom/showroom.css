@@ -158,7 +158,6 @@ html:has(.sr) { overflow: auto; }
 .sr-enter, .sr-doors a, .sr-social a, .sr-social::before { opacity: 0; }
 .sr[data-state="ready"] .sr-enter,
 .sr[data-state="ready"] .sr-doors a,
-.sr[data-state="ready"] .sr-social a,
 .sr[data-state="ready"] .sr-social::before { opacity: 1; animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) backwards; }
 .sr[data-state="ready"] .sr-enter { animation-delay: 240ms; }
 .sr[data-state="ready"] .sr-doors a:nth-child(1) { animation-delay: 400ms; }
@@ -168,6 +167,27 @@ html:has(.sr) { overflow: auto; }
 .sr[data-state="ready"] .sr-social a:nth-child(1) { animation-delay: 505ms; }
 .sr[data-state="ready"] .sr-social a:nth-child(2) { animation-delay: 540ms; }
 .sr[data-state="ready"] .sr-social a:nth-child(3) { animation-delay: 575ms; }
+.sr[data-state="ready"] .sr-social a { animation-name: sr-pour-icon; }
+/* the icons' glow is a filter: the shared blur() keyframe wiped it until the
+   animation ended, so theirs fades the glow in instead */
+@keyframes sr-pour-icon {
+  from { opacity: 0; transform: translateY(8px); filter: drop-shadow(0 0 8px rgba(255,255,255,0)); }
+  to { opacity: 1; transform: none; filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
+}
+.sr[data-state="ready"] .sr-social a { animation-name: sr-pour-icon; }
+/* the icons' glow is a filter: the shared blur() keyframe wiped it until the
+   animation ended, so theirs fades the glow in instead */
+@keyframes sr-pour-icon {
+  from { opacity: 0; transform: translateY(8px); filter: drop-shadow(0 0 8px rgba(255,255,255,0)); }
+  to { opacity: 1; transform: none; filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
+}
+.sr[data-state="ready"] .sr-social a { animation-name: sr-pour-icon; }
+/* the icons' glow is a filter: the shared blur() keyframe wiped it until the
+   animation ended, so theirs fades the glow in instead */
+@keyframes sr-pour-icon {
+  from { opacity: 0; transform: translateY(8px); filter: drop-shadow(0 0 8px rgba(255,255,255,0)); }
+  to { opacity: 1; transform: none; filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
+}
 @keyframes sr-pour {
   from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
   60% { filter: blur(0); }
