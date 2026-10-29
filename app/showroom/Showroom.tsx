@@ -69,8 +69,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       current = Math.min(1, Math.max(0, target + (off + tmp) * e))
       if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
-      // the clock strip follows the view: stone outside, the hall's dark inside
-      if (strip.current) strip.current.style.background = current < 0.25 ? '#45403c' : '#06080c'
       const c = cap.current
       if (c) {
         const s = fit(current, 0.86, 0.93)
