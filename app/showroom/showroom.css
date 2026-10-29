@@ -263,14 +263,16 @@ html:has(.sr) { overflow: auto; }
   border: 1px solid rgba(255,255,255,.34); background: rgba(255,255,255,.035); color: rgba(255,255,255,.92);
   box-shadow: 0 0 14px rgba(255,255,255,.07);
   cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  transition: transform 140ms cubic-bezier(.23,1,.32,1), border-color 220ms ease, background-color 220ms ease;
+  transition: transform 140ms cubic-bezier(.23,1,.32,1), border-color 220ms ease, background-color 220ms ease, box-shadow 260ms ease;
 }
 .sr-tool svg { filter: drop-shadow(0 0 5px rgba(255,255,255,.4)); }
 .sr-tool[aria-expanded="true"] { border-color: rgba(255,255,255,.82); background: rgba(255,255,255,.08); }
-.sr-tool[data-on]::after {
-  content: ''; position: absolute; top: 6px; inset-inline-end: 6px; width: 6px; height: 6px; border-radius: 50%;
-  background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.9);
+/* in use: the circle lights up — a full ring of light, its glow, the mark brighter */
+.sr-tool[data-on] {
+  border-color: rgba(255,255,255,.95); background: rgba(255,255,255,.1);
+  box-shadow: 0 0 18px rgba(255,255,255,.3), inset 0 0 12px rgba(255,255,255,.14);
 }
+.sr-tool[data-on] svg { color: #fff; filter: drop-shadow(0 0 7px rgba(255,255,255,.85)); }
 .sr-tool:active { transform: scale(.94); }
 /* the row pours in as you arrive, on the street's beat */
 .sr-cap[data-in] .sr-find { animation: sr-pour 640ms cubic-bezier(.22,1,.36,1) 120ms backwards; }
@@ -307,6 +309,10 @@ html:has(.sr) { overflow: auto; }
   background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8);
 }
 .sr-word-note { cursor: default; color: rgba(255,255,255,.55); }
+/* the order's direction: a few words and an arrow that turns round */
+.sr-word .sr-dir { font-size: 12px; color: rgba(255,255,255,.62); }
+.sr-dir-ic { transition: transform 220ms cubic-bezier(.23,1,.32,1); }
+.sr-dir-ic[data-up] { transform: rotate(180deg); }
 .sr-words-gap { flex: none; width: 18px; }
 .sr-words-gap + .sr-word::before { display: none; }
 @media (hover: hover) and (pointer: fine) {
@@ -375,3 +381,28 @@ html:has(.sr) { overflow: auto; }
   .sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a, .sr[data-state="ready"] .sr-social a, .sr[data-state="ready"] .sr-social::before { animation: sr-fade 300ms ease both; }
   @keyframes sr-fade { from { opacity: 0; } to { opacity: 1; } }
 }
+
+/* ─── The bright trial (?theme=light): inside, ink on a light wash ─── */
+.sr-logo .sr-logo-ink { display: none; }
+.sr[data-theme="light"] .sr-top[data-bright] .sr-logo img { display: none; }
+.sr[data-theme="light"] .sr-top[data-bright] .sr-logo .sr-logo-ink { display: block; }
+.sr[data-theme="light"] .sr-top[data-bright] .sr-burger { color: #14171A; }
+.sr[data-theme="light"] .sr-find, .sr[data-theme="light"] .sr-tool {
+  border-color: rgba(20,23,26,.22); background: rgba(255,255,255,.7); color: #14171A; box-shadow: 0 1px 2px rgba(20,23,26,.06), 0 6px 18px rgba(20,23,26,.06);
+}
+.sr[data-theme="light"] .sr-find:focus-within, .sr[data-theme="light"] .sr-tool[aria-expanded="true"], .sr[data-theme="light"] .sr-tool[data-on] {
+  border-color: rgba(20,23,26,.7); background: #fff; box-shadow: 0 1px 2px rgba(20,23,26,.08), 0 8px 22px rgba(20,23,26,.1);
+}
+.sr[data-theme="light"] .sr-find > svg, .sr[data-theme="light"] .sr-tool svg { color: #14171A; filter: none; }
+.sr[data-theme="light"] .sr-q { color: #14171A; caret-color: #14171A; text-shadow: none; }
+.sr[data-theme="light"] .sr-q::placeholder { color: #5A6169; }
+.sr[data-theme="light"] .sr-caret { background: #14171A; box-shadow: none; }
+.sr[data-theme="light"] .sr-chip { background: rgba(20,23,26,.08); color: #14171A; }
+.sr[data-theme="light"] .sr-n { color: #5A6169; }
+.sr[data-theme="light"] .sr-word { color: #5A6169; text-shadow: none; }
+.sr[data-theme="light"] .sr-word b, .sr[data-theme="light"] .sr-word[aria-pressed="true"], .sr[data-theme="light"] .sr-word[aria-selected="true"] { color: #14171A; text-shadow: none; }
+.sr[data-theme="light"] .sr-word[aria-pressed="true"]::after, .sr[data-theme="light"] .sr-word[aria-selected="true"]::after { background: #14171A; box-shadow: none; }
+.sr[data-theme="light"] .sr-word + .sr-word::before { background: rgba(20,23,26,.2); }
+.sr[data-theme="light"] .sr-word small, .sr[data-theme="light"] .sr-word .sr-dir { color: #8a9098; }
+.sr[data-theme="light"] .sr-pull { color: #14171A; text-shadow: none; }
+.sr[data-theme="light"] .sr-pull svg { filter: none; }

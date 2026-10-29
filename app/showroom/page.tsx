@@ -19,7 +19,7 @@ const PORTRAITS = ['257080', '257075', '257076', '257077', '258775', '259104', '
 const km = (mileage?: string) => {
   if (!mileage) return ''
   const n = parseInt(mileage.replace(/[^\d]/g, ''), 10)
-  return !isNaN(n) && n > 0 ? `${n.toLocaleString('en-US')} ק״מ` : 'חדש'
+  return !isNaN(n) && n > 0 ? n.toLocaleString('en-US') : 'חדש'
 }
 
 export default async function ShowroomPage() {
@@ -39,7 +39,7 @@ export default async function ShowroomPage() {
         sub: [model, c.year, c.price, stock ? 'במלאי' : 'בדרך לארץ'].filter(Boolean).join(' · '),
         href: `/car/${c.recNo}`,
         images: [img(c.imageUrl)],
-        make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage),
+        make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || '',
       }
     })
   } catch {}

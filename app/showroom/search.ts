@@ -62,7 +62,8 @@ export function makesOf(cars: Searchable[]): Option[] {
     if (!o) { o = { key: c.make, label: c.make, count: 0, he: aliasesOf(c.make), extra: '' }; m.set(k, o) }
     o.count++
   })
-  return Array.from(m.values()).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+  // A to Z
+  return Array.from(m.values()).sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }))
 }
 
 export function modelsOf(cars: Searchable[], make: string): Option[] {
@@ -100,7 +101,8 @@ export function rank(opts: Option[], text: string): Ranked[] {
     const at = raw ? opt.label.toLowerCase().indexOf(raw) : -1
     out.push({ opt, hit: at >= 0 ? [at, at + raw.length] : null, score })
   }
-  out.sort((a, b) => b.score - a.score || b.opt.count - a.opt.count)
+  // the best matches first; among equals, the list's own order (makers A to Z)
+  out.sort((a, b) => b.score - a.score || opts.indexOf(a.opt) - opts.indexOf(b.opt))
   return out.map(({ opt, hit }) => ({ opt, hit }))
 }
 
@@ -114,7 +116,15 @@ export const PRICES: { label: string; min: number; max: number }[] = [
   { label: '600 אלף–מיליון', min: 600_000, max: 1_000_000 },
   { label: 'מעל מיליון', min: 1_000_000, max: Infinity },
 ]
-export type Sort = 'mix' | 'new' | 'cheap' | 'dear'
-export const SORTS: [Sort, string][] = [['mix', 'מעורב'], ['new', 'שנה: מהחדש'], ['cheap', 'מחיר: מהנמוך'], ['dear', 'מחיר: מהגבוה']]
+// The order: mixed, by year or by price. The first press on year or price
+// orders it the usual way (newest first; cheapest first), the next press
+// turns it round
+export type SortKey = 'mix' | 'year' | 'price'
+export type Sort = { key: SortKey; up: boolean }
+export const SORTS: { key: SortKey; label: string; first: boolean; dir?: [string, string] }[] = [
+  { key: 'mix', label: 'מעורב', first: false },
+  { key: 'year', label: 'שנה', first: false, dir: ['מהישן לחדש', 'מהחדש לישן'] },
+  { key: 'price', label: 'מחיר', first: true, dir: ['מהזול ליקר', 'מהיקר לזול'] },
+]
 
 export const carsWord = (n: number) => (n === 1 ? 'רכב אחד' : `${n} רכבים`)

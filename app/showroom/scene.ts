@@ -43,7 +43,7 @@ export type SceneHandle = {
 export type Card = {
   title: string; sub: string; href: string; external?: boolean; images: string[]
   /** the car's own fields, for search: maker, model, year, price, in stock */
-  make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string
+  make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string; yad?: string
 }
 type Opts = {
   mobile: boolean; logoUrl: string; cards: Card[]; font: string
@@ -52,6 +52,9 @@ type Opts = {
   onPull?: (k: number) => void
   /** the pull at the top was let go past its mark: walk out */
   onExit?: () => void
+  /** a trial: the hall inside in a bright theme (a light veil over the hall, white cards); veil: its strength */
+  light?: boolean
+  veil?: number
   onOpen: (i: number) => void
   /** the dark middle screen was tapped from the street: switch on and walk in */
   onEnter?: () => void
@@ -715,7 +718,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
     uniform sampler2D map; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
-    uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; varying vec2 vUv;
+    uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; uniform vec3 uBase; uniform vec3 uEdgeC; uniform float uEdgeK; uniform float uShade; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     vec3 odtInv(vec3 y){
       vec3 a = 1. - .983729 * y;
@@ -737,12 +740,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
-      vec3 col = mix(vec3(.05, .055, .065), texture2D(map, uv).rgb, uReady) * uBright;
+      vec3 col = mix(uBase, texture2D(map, uv).rgb, uReady) * uBright;
       // a hairline of light at the edge, like the screens' (brighter under the hand)
-      col += (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (.14 + .16 * uLift) * uBright;
+      col = mix(col, uEdgeC, (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (uEdgeK + .16 * uLift));
       col = acesInv(max(col, vec3(0.)));   // the photo exactly as it is (the frame is tone-mapped after)
       // a soft shadow around the card lifts it off the hall
-      float sh = (1. - smoothstep(0., uPad, d)) * .4 * (1. - inCard);
+      float sh = (1. - smoothstep(0., uPad, d)) * uShade * (1. - inCard);
       // kept clear of the bar above and the search below: faded at those lines
       float fy = gl_FragCoord.y;
       float clip = mix(1., smoothstep(uClip.x, uClip.x + uClip.z, fy) * (1. - smoothstep(uClip.y - uClip.z, uClip.y, fy)), uClipOn);
@@ -759,7 +762,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // a pool of card meshes; each car on show holds one while it is there
   const allMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
   const freeMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
-  let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 4, pitchPx = 300, cardCss = 340, cy = 0
+  let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 8, pitchPx = 300, cardCss = 170, cy = 0, gridTop = 1, colX = 0.9, rowsFit = 2, wideFace = false
   let insetTop = 80, insetBottom = 170, insetSide = 16
   const dress = (m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>) => {
     const u = m.material.uniforms, pad = cardW * 0.07
@@ -775,6 +778,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         map: { value: null }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
         uSize: { value: new THREE.Vector2(1, 1) }, uPad: { value: 0.05 }, uStrip: { value: 1 }, uStripH: { value: 0.3 },
         uBright: { value: 1 }, uClip: { value: new THREE.Vector3(0, 1e5, 1) }, uClipOn: { value: 1 },
+        uBase: { value: new THREE.Color(opts.light ? '#e9ecef' : '#0d0e11') }, uEdgeC: { value: new THREE.Color(opts.light ? '#000000' : '#ffffff') },
+        uEdgeK: { value: opts.light ? 0.06 : 0.14 }, uShade: { value: opts.light ? 0.16 : 0.4 },
       },
       vertexShader: cardVert, fragmentShader: wallFrag, transparent: true, depthTest: false, depthWrite: false,
     }))
@@ -788,7 +793,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   showMeshes.forEach(sm => { sm.visible = false }); warm.visible = false; freeMeshes.push(warm)
   // A car on show: its mesh, its place in the list (pi, eased — so a filter
   // moves it softly to its new place) and vis: in (1) or on its way out (0)
-  type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pi: number; vis: number; live: boolean }
+  type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pr: number; pc: number; vis: number; live: boolean }
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
   let throwK = 0, growAt = -1, viewChanged = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
@@ -823,67 +828,93 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     return null
   }
 
-  // the face of a card: the photo (3:2, untouched), and under it a dark band
-  // with the whole car — nothing cut: the maker and model in full (on two
-  // lines if they need), then price, year, kilometres and availability; the
-  // type steps down a little only if a line would not fit
+  // The face of a card: the cars page's card, in the hall's dark. The photo
+  // (3:2, untouched); under it the maker and the model in English, from the
+  // left, and the price, year · km · hand and availability in Hebrew, from
+  // the right — side by side on a wide card, one under the other on a narrow
+  // one. Nothing is cut: the model takes two lines if it needs, and a line
+  // that would not fit steps its type down a little
+  // the face's palette: the hall's dark, or (the bright trial) the cars page's own
+  const face = opts.light
+    ? { bg: '#ffffff', ink: '#14171A', muted: '#5A6169', line: 'rgba(0,0,0,.08)', green: '#1F4D3A', gold: '#A8862F' }
+    : { bg: '#111318', ink: '#ffffff', muted: 'rgba(255,255,255,.62)', line: 'rgba(255,255,255,.07)', green: '#7fcf9f', gold: '#d8b360' }
+  const GREEN = face.green, GOLD = face.gold
   const drawInfo = (c: CanvasRenderingContext2D, card: Card, y0: number) => {
-    const Wc = CARD_PX, Hs = c.canvas.height - y0, k = Wc / cardCss, pad = Math.round(16 * k), maxW = Wc - pad * 2
-    c.fillStyle = '#0d0f13'; c.fillRect(0, y0, Wc, Hs)
-    c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(0, y0, Wc, 2)
+    const Wc = CARD_PX, Hs = c.canvas.height - y0, k = Wc / cardCss
+    c.fillStyle = face.bg; c.fillRect(0, y0, Wc, Hs)
     const font = opts.font
+    const px = (v: number) => v * k
     c.textBaseline = 'alphabetic'
-    // the name: maker bold, model regular, word by word onto at most two lines
-    const words = [
-      ...(card.make ?? card.title).split(/\s+/).filter(Boolean).map(t => ({ t, b: true })),
-      ...(card.model ?? '').split(/\s+/).filter(Boolean).map(t => ({ t, b: false })),
-    ]
-    const wrap = (fs: number) => {
-      const lines: { t: string; b: boolean }[][] = [[]]
-      let w = 0
-      for (const wd of words) {
-        c.font = `${wd.b ? 700 : 400} ${fs}px ${font}`
-        const ww = c.measureText(wd.t).width, sp = c.measureText(' ').width
-        if (lines[lines.length - 1].length && w + sp + ww > maxW) { lines.push([]); w = 0 }
-        w += (lines[lines.length - 1].length ? sp : 0) + ww
-        lines[lines.length - 1].push(wd)
+    const wrapTo = (t: string, weight: number, size: number, maxW: number) => {
+      c.font = `${weight} ${size}px ${font}`
+      const lines: string[] = []
+      for (const w of t.split(/\s+/).filter(Boolean)) {
+        const cur = lines[lines.length - 1]
+        if (cur !== undefined && c.measureText(cur + ' ' + w).width <= maxW) lines[lines.length - 1] = cur + ' ' + w
+        else lines.push(w)
       }
-      const fits = lines.every(l => l.reduce((a, wd, n) => { c.font = `${wd.b ? 700 : 400} ${fs}px ${font}`; return a + c.measureText((n ? ' ' : '') + wd.t).width }, 0) <= maxW)
-      return { lines, fits }
+      return { lines, fits: lines.every(l => c.measureText(l).width <= maxW) }
     }
-    let f1 = 17
-    let name = wrap(f1 * k)
-    while ((name.lines.length > 2 || !name.fits) && f1 > 12) { f1 -= 0.5; name = wrap(f1 * k) }
-    // the facts, in Hebrew from the right
-    const facts: { t: string; color: string; w: number; dir: CanvasDirection }[] = []
-    const dot = { t: '  ·  ', color: 'rgba(255,255,255,.38)', w: 400, dir: 'ltr' as CanvasDirection }
-    if (card.price) facts.push({ t: card.price, color: '#ffffff', w: 600, dir: 'ltr' })
-    if (card.year) facts.push({ t: card.year, color: 'rgba(255,255,255,.7)', w: 400, dir: 'ltr' })
-    if (card.km) facts.push({ t: card.km, color: 'rgba(255,255,255,.7)', w: 400, dir: 'rtl' })
-    if (card.make) facts.push({ t: card.stock === false ? 'בדרך לארץ' : 'במלאי', color: 'rgba(255,255,255,.7)', w: 400, dir: 'rtl' })
-    const seq = facts.flatMap((f, n) => (n ? [dot, f] : [f]))
-    const widthAt = (fs: number) => seq.reduce((a, f) => { c.direction = f.dir; c.font = `${f.w} ${fs}px ${font}`; return a + c.measureText(f.t).width }, 0)
-    let f2 = 14.5
-    while (widthAt(f2 * k) > maxW && f2 > 10.5) f2 -= 0.5
-    const lh1 = f1 * k * 1.24, lh2 = f2 * k * 1.3, gap = 7 * k
-    const total = name.lines.length * lh1 + gap + lh2
-    let y = y0 + (Hs - total) / 2
-    c.direction = 'ltr'; c.textAlign = 'left'
-    for (const line of name.lines) {
-      let x = pad
-      y += lh1
-      line.forEach((wd, n) => {
-        c.font = `${wd.b ? 700 : 400} ${f1 * k}px ${font}`; c.fillStyle = wd.b ? '#ffffff' : 'rgba(255,255,255,.78)'
-        const t = (n ? ' ' : '') + wd.t
-        c.fillText(t, x, y - lh1 * 0.22); x += c.measureText(t).width
-      })
+    // the Hebrew side: price; year, km, hand; availability
+    const meta: string[] = []
+    if (card.year) meta.push(/^\d/.test(card.year) ? `שנה ${card.year}` : card.year)
+    // "new" once: not again for the km when the year already says so
+    if (card.km) { if (card.km !== 'חדש') meta.push(`ק״מ ${card.km}`); else if (!/חדש/.test(card.year ?? '')) meta.push('חדש') }
+    if (card.yad) meta.push(`יד ${card.yad}`)
+    const stock = card.stock !== false
+    const heLines = (size: number) => {
+      const pr = size * 1.13, mt = size * 0.82, av = size * 0.8
+      c.font = `600 ${px(pr)}px ${font}`; const wp = card.price ? c.measureText(card.price).width : 0
+      c.direction = 'rtl'; c.font = `400 ${px(mt)}px ${font}`
+      const wm = meta.reduce((a, m, n) => a + c.measureText(m).width + (n ? px(10) : 0), 0)
+      c.font = `600 ${px(av)}px ${font}`; const wa = card.make ? c.measureText(stock ? 'במלאי' : 'בדרך לארץ').width + px(11) : 0
+      c.direction = 'ltr'
+      return { pr, mt, av, w: Math.max(wp, wm, wa) }
     }
-    y += gap + lh2
-    c.textAlign = 'right'
-    let x = Wc - pad
-    for (const f of seq) {
-      c.direction = f.dir; c.font = `${f.w} ${f2 * k}px ${font}`; c.fillStyle = f.color
-      c.fillText(f.t, x, y - lh2 * 0.24); x -= c.measureText(f.t).width
+    const drawHe = (x: number, y: number, h: ReturnType<typeof heLines>) => {
+      c.textAlign = 'right'
+      if (card.price) { y += px(h.pr * 1.22); c.direction = 'ltr'; c.font = `600 ${px(h.pr)}px ${font}`; c.fillStyle = face.ink; c.fillText(card.price, x, y) }
+      if (meta.length) {
+        y += px(h.mt * 1.5); c.direction = 'rtl'; c.font = `400 ${px(h.mt)}px ${font}`; c.fillStyle = face.muted
+        let mx = x
+        for (const m of meta) { c.fillText(m, mx, y); mx -= c.measureText(m).width + px(10) }
+      }
+      if (card.make) {
+        y += px(h.av * 1.55)
+        c.fillStyle = stock ? GREEN : GOLD
+        c.beginPath(); c.arc(x - px(3), y - px(h.av * 0.34), px(3), 0, Math.PI * 2); c.fill()
+        c.direction = 'rtl'; c.font = `600 ${px(h.av)}px ${font}`
+        c.fillText(stock ? 'במלאי' : 'בדרך לארץ', x - px(11), y)
+      }
+      c.direction = 'ltr'
+    }
+    const drawEn = (x: number, y: number, maxW: number, mk: number, md: number) => {
+      c.textAlign = 'left'; c.direction = 'ltr'
+      const make = card.make ?? card.title
+      let f = mk, name = wrapTo(make, 600, px(f), maxW)
+      while ((!name.fits || name.lines.length > 1) && f > 11) { f -= 0.5; name = wrapTo(make, 600, px(f), maxW) }
+      y += px(f * 1.25); c.font = `600 ${px(f)}px ${font}`; c.fillStyle = face.ink; c.fillText(name.lines.join(' '), x, y)
+      if (card.model) {
+        let g = md, mdl = wrapTo(card.model, 400, px(g), maxW)
+        while ((!mdl.fits || mdl.lines.length > 2) && g > 10) { g -= 0.5; mdl = wrapTo(card.model, 400, px(g), maxW) }
+        c.font = `400 ${px(g)}px ${font}`; c.fillStyle = face.muted
+        for (const l of mdl.lines.slice(0, 3)) { y += px(g * 1.34); c.fillText(l, x, y) }
+      }
+    }
+    if (wideFace) {
+      const pad = px(16), he = heLines(15)
+      const heW = Math.min(he.w, (Wc - pad * 2) * 0.55)
+      drawHe(Wc - pad, y0 + px(12), he)
+      drawEn(pad, y0 + px(12), Wc - pad * 2 - heW - px(14), 18, 14)
+    } else {
+      const pad = px(11), maxW = Wc - pad * 2
+      let size = 13.5, he = heLines(size)
+      while (he.w > maxW && size > 10.5) { size -= 0.5; he = heLines(size) }
+      drawEn(pad, y0 + px(7), maxW, 15, 12.5)
+      // the Hebrew lines take the band's lower part, under a hairline
+      const yHe = y0 + Hs - px(10) - px(he.pr * 1.22 + he.mt * 1.5 + he.av * 1.55) - px(6)
+      c.fillStyle = face.line; c.fillRect(pad, yHe, maxW, Math.max(1, px(0.5)))
+      drawHe(Wc - pad, yHe + px(2), he)
     }
   }
   const wallCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
@@ -916,10 +947,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     }
     return entry
   }
-  // The cards are laid out on the screen: the room between the bar above and
-  // the search below; one card a row, as wide as fits (a phone's full width),
-  // the middle one about half the room high, so the one before and the one
-  // after show above and below it — three at a time
+  // The cards are laid out on the screen like the cars page: two a row, in
+  // the room between the bar above and the search below, the first row at
+  // the top; the rows run on down, curving away a little at the edges
   const layout = () => {
     const w = viewW || canvas.clientWidth, h = viewH || canvas.clientHeight
     if (!w || !h) return
@@ -929,24 +959,31 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const mpp = (2 * hy) / h                                     // metres per css px at the cards
     const availW = 2 * hx - 2 * insetSide * mpp
     const top = hy - insetTop * mpp, bottom = -hy + insetBottom * mpp, availH = Math.max(0.2, top - bottom)
-    let W = availW, strip = 0.26
-    for (let it = 0; it < 3; it++) {
-      W = Math.min(availW, (availH * 0.54) / (2 / 3 + strip), 520 * mpp)
-      const css = W / mpp
-      strip = Math.min(116, Math.max(88, css * 0.25)) / css
-    }
-    const css = W / mpp
-    const redraw = Math.abs(css - cardCss) / cardCss > 0.12 || Math.abs(strip - STRIP) > 0.01
-    STRIP = strip; cardCss = css
-    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH * 1.06; drumR = pitch * 2.6; pitchPx = pitch / mpp; cy = (top + bottom) / 2
-    if (redraw) {   // much larger or smaller: the faces are drawn again at the new size
+    const gap = 12 * mpp
+    const W = Math.min((availW - gap) / 2, 420 * mpp)
+    const css = W / mpp, wide = css >= 300
+    const strip = (wide ? 94 : 132) / css
+    const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
+    STRIP = strip; cardCss = css; wideFace = wide
+    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = (W + gap) / 2
+    gridTop = top; cy = (top + bottom) / 2; drumR = pitch * 5; pitchPx = pitch / mpp
+    rowsFit = Math.max(1, Math.floor((availH + gap) / pitch))
+    if (redraw) {   // the faces are drawn again at the new size
       wallCache.forEach(v => v.tex.dispose()); wallCache.clear()
       held.forEach(hd => { hd.m.material.uniforms.map.value = ensureCard(hd.car).tex })
     }
     allMeshes.forEach(dress)
     dirty = true
   }
-  const maxScroll = () => Math.max(0, N - 1)
+  // a card's place: its row and column (RTL: the first on the right), the
+  // list scrolled to row `s`; the rows bend away a little above and below
+  const gridPlace = (r: number, col: number, s: number, outP: THREE.Vector3, outQ: THREE.Quaternion) => {
+    const yFlat = gridTop - cardH / 2 - (r - s) * pitch
+    const u = (yFlat - cy) / drumR
+    outP.set(colX * (1 - 2 * col), cy + drumR * Math.sin(u), -WALL_R - drumR * (1 - Math.cos(u))).applyMatrix4(camera.matrixWorld)
+    outQ.copy(camera.quaternion).multiply(tmpQ2.setFromAxisAngle(xAxis, -u))
+  }
+  const maxScroll = () => Math.max(0, Math.ceil(N / 2) - rowsFit)
   // the screens out in front of you: from their place on the ring to the same
   // place as seen from the hall's middle, carried with you
   const placeShow = (dt: number) => {
@@ -983,17 +1020,24 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     wallOn = throwK >= 0.98
     // the screens facing you, frozen as the walk begins: their cars open the list
     if (p > 0.02 && !mapped && N) {
-      drag = Math.round(angle / STEP) * STEP; angle = drag; ring.rotation.y = angle
+      // (no snap: a screen still turning finishes its turn as it flies)
+      drag = Math.round(angle / STEP) * STEP; autoT = 0
       r0m = Math.round(drag / STEP)
       listStart = r0m - 1 - base; anchor = N > 1 ? 1 : 0
-      scrollPos = scrollTarget = anchor; mapped = true
+      scrollPos = scrollTarget = 0; mapped = true
+    }
+    // on the street: the faces of the cards about to fly are drawn ahead
+    if (!mapped && N && screenOn) {
+      const r0 = Math.round(drag / STEP)
+      for (let d = -1; d <= 4; d++) ensureCard(view[mod(r0 - base + d, N)])
     }
     if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
     const full = throwK >= 1
     if (wasFull && !full) {
       // walking out: the cards in front of you go back into the screens
-      const ci = Math.min(N - 1, Math.max(0, Math.round(scrollPos)))
-      anchor = ci; base = r0m - listStart - ci; dirty = true
+      // the first row in view goes back to the screens facing you
+      const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * 2))
+      anchor = Math.min(N - 1, i0 + 1); base = r0m - listStart - anchor; dirty = true
     }
     wasFull = full
     if (!holding) {
@@ -1003,11 +1047,34 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (scrollPos !== sp) dirty = true
     }
   }
+  // the bright trial: inside, a light wash over the hall (it still shows through), under the cards
+  const veil = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: { uA: { value: 0 }, uExp: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+    fragmentShader: `uniform float uA; uniform float uExp; varying vec2 vUv;
+      vec3 odtInv(vec3 y){ vec3 a = 1. - .983729 * y; vec3 b = .0245786 - .432951 * y; vec3 c = -(.000090537 + .238081 * y); return (-b + sqrt(max(b * b - 4. * a * c, 0.))) / (2. * a); }
+      vec3 acesInv(vec3 col){
+        mat3 invIn = mat3(1.76474, -.14703, -.03634, -.67578, 1.16025, -.16244, -.08896, -.01322, 1.19877);
+        mat3 invOut = mat3(.64304, .05927, .00596, .31119, .93144, .06393, .04578, .00929, .93012);
+        return invIn * odtInv(clamp(invOut * col, vec3(0.), vec3(.995))) * (.6 / max(uExp, .001));
+      }
+      void main(){
+        vec3 c = mix(vec3(.86, .875, .89), vec3(.955, .96, .968), vUv.y);   // a touch deeper at the floor
+        gl_FragColor = vec4(acesInv(pow(c, vec3(2.2))), uA);
+      }`,
+    transparent: true, depthTest: false, depthWrite: false,
+  }))
+  veil.frustumCulled = false; veil.renderOrder = -10; veil.visible = false
+  if (opts.light) wallScene.add(veil)
   const placeCards = (dt: number) => {
+    if (opts.light) {
+      const va = (opts.veil ?? 0.86) * smooth(fit(throwK, 0.25, 1))
+      veil.material.uniforms.uA.value = va; veil.material.uniforms.uExp.value = renderer.toneMappingExposure; veil.visible = va > 0.002
+    }
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
-      const lo = Math.max(0, Math.floor(scrollPos) - 2), hi = Math.min(N - 1, Math.ceil(scrollPos) + 2)
-      for (let i = lo; i <= hi; i++) want.set(listCar(i), i)
+      const r0 = Math.max(0, Math.floor(scrollPos) - 1), r1 = Math.ceil(scrollPos) + rowsFit + 1
+      for (let i = r0 * 2; i <= Math.min(N - 1, r1 * 2 + 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
@@ -1018,14 +1085,15 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const m = takeMesh()
         m.userData.car = car; m.material.uniforms.map.value = ensureCard(car).tex
         // new with a filter: it grows in where it belongs; otherwise just there
-        hd = { m, car, i, pi: i, vis: viewChanged ? 0 : 1, live: true }
+        hd = { m, car, i, pr: Math.floor(i / 2), pc: i % 2, vis: viewChanged ? 0 : 1, live: true }
         held.set(car, hd)
-      } else if (viewChanged && Math.abs(hd.pi - i) > 2) { hd.pi = i; hd.vis = 0 }
+      } else if (viewChanged && Math.abs(hd.pr - Math.floor(i / 2)) > 2) { hd.pr = Math.floor(i / 2); hd.pc = i % 2; hd.vis = 0 }
       hd.live = true; hd.i = i
-      const p0 = hd.pi
-      hd.pi += (i - hd.pi) * ease
-      if (Math.abs(i - hd.pi) < 1e-4) hd.pi = i
-      if (hd.pi !== p0) dirty = true
+      const tr = Math.floor(i / 2), tc = i % 2, r0 = hd.pr, c0 = hd.pc
+      hd.pr += (tr - hd.pr) * ease; hd.pc += (tc - hd.pc) * ease
+      if (Math.abs(tr - hd.pr) < 1e-4) hd.pr = tr
+      if (Math.abs(tc - hd.pc) < 1e-4) hd.pc = tc
+      if (hd.pr !== r0 || hd.pc !== c0) dirty = true
     })
     viewChanged = false
     let openK = 0
@@ -1045,12 +1113,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (e) e.used = time
       u.uReady.value = e?.ready ? 1 : 0
       u.uExp.value = renderer.toneMappingExposure
-      // its place on the drum: the middle card square to you, the others
-      // turning away above and below
-      const off = hd.pi - scrollPos, phi = (off * pitch) / drumR
-      tmpV.set(0, cy - drumR * Math.sin(phi), -WALL_R - drumR * (1 - Math.cos(phi))).applyMatrix4(camera.matrixWorld)
-      tmpQ.copy(camera.quaternion).multiply(tmpQ2.setFromAxisAngle(xAxis, phi))
-      let bright = 1 - 0.3 * smooth(fit(Math.abs(off), 0.15, 1.1))
+      // its place in the grid
+      gridPlace(hd.pr, hd.pc, scrollPos, tmpV, tmpQ)
+      const off = hd.pr - scrollPos
+      let bright = 1
       let sc = 1, a = 1, strip = 1
       const rel = hd.i - anchor
       if (mapped && Math.abs(rel) <= 1 && throwK < 1) {
@@ -1076,7 +1142,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       sc *= 1 + lift * 0.02
       const vv = smooth(hd.vis)
       sc *= calm ? 1 : 0.86 + 0.14 * vv
-      a *= vv * (1 - smooth(fit(Math.abs(off), 1.6, 2.4)))
+      a *= vv * (1 - smooth(fit(off, rowsFit + 0.6, rowsFit + 1.4))) * (1 - smooth(fit(-off, 0.6, 1.4)))
       u.uClipOn.value = 1
       if (opening) {
         if (opening.h === hd) {
@@ -1324,12 +1390,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     dragging = false
     if (moved) { release(true); return }
     holding = false
-    // a tap: on the middle card it opens; on the one above or below, brings it to the middle
+    // a tap on a card opens it
     const o = wallHit(e)
     if (!o) { scrollTarget = Math.round(scrollPos); return }
-    const hd = held.get(o.userData.car as number)
-    if (hd && Math.abs(hd.pi - scrollPos) > 0.5) { scrollTarget = Math.min(maxScroll(), Math.max(0, Math.round(hd.pi))); dirty = true }
-    else openCard(o)
+    openCard(o)
   }
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses

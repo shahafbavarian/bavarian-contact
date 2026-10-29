@@ -57,7 +57,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const [panel, setPanel] = useState<'filter' | 'sort' | null>(null)
   const [avail, setAvail] = useState<Avail>('all')
   const [price, setPrice] = useState(-1)
-  const [sort, setSort] = useState<Sort>('mix')
+  const [sort, setSort] = useState<Sort>({ key: 'mix', up: false })
   useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
   useEffect(() => { setActive(0) }, [text, make, model])
   const searchable = useMemo(() => deck.map(c => ({ make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true })), [deck])
@@ -74,7 +74,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const filtersOn = avail !== 'all' || price >= 0
   const found = useMemo(() => {
     const qn = norm(query)
-    if (!make && !qn && !filtersOn && sort === 'mix') return null
+    if (!make && !qn && !filtersOn && sort.key === 'mix') return null
     // typed but not yet picked: the cars of every maker (or line) still offered
     const keys = qn && stage !== 'done' ? new Set(rank(stage === 'make' ? makes : models, query).map(r => norm(r.opt.key))) : null
     const ids = searchable.flatMap((c, i) => {
@@ -88,9 +88,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     })
     const pn = (i: number) => priceNum(searchable[i].price)
     const yr = (i: number) => parseInt(searchable[i].year, 10) || 0
-    if (sort === 'new') ids.sort((a, b) => yr(b) - yr(a))
-    if (sort === 'cheap') ids.sort((a, b) => (pn(a) ?? Infinity) - (pn(b) ?? Infinity))
-    if (sort === 'dear') ids.sort((a, b) => (pn(b) ?? -1) - (pn(a) ?? -1))
+    const sg = sort.up ? 1 : -1   // up: smallest first
+    if (sort.key === 'year') ids.sort((a, b) => sg * (yr(a) - yr(b)))
+    // cars with no price go last, either way
+    if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
   }, [searchable, makes, models, make, model, stage, query, avail, price, sort, filtersOn])
   const viewRef = useRef<number[] | null>(null)
@@ -104,7 +105,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const fine = () => matchMedia('(pointer: fine)').matches
   const dropMake = () => { setMake(null); setModel(null); setText(''); if (fine()) input.current?.focus() }
   const dropModel = () => { setModel(null); setText(''); if (fine()) input.current?.focus() }
-  const clearAll = () => { setMake(null); setModel(null); setText(''); setQuery(''); setAvail('all'); setPrice(-1); setSort('mix') }
+  const clearAll = () => { setMake(null); setModel(null); setText(''); setQuery(''); setAvail('all'); setPrice(-1); setSort({ key: 'mix', up: false }) }
   const onFieldKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       if (!listOpen || (text && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) return
@@ -133,6 +134,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     if (!cv.getContext('webgl2')) { setState('fallback'); return }
 
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 900
+    // a trial, not on the site: ?theme=light (and &veil=0..1) shows the hall inside in a bright theme
+    const qs = new URLSearchParams(location.search), light = qs.get('theme') === 'light'
+    if (light) root.current!.dataset.theme = 'light'
     // two remembered states: a refresh while inside opens inside
     let inside = false
     try { inside = sessionStorage.getItem('sr-view') === 'in' } catch {}
@@ -192,6 +196,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         const l = fit(current, 0.42, 0.6)
         nav.current.style.opacity = String(l); nav.current.style.visibility = l > 0.01 ? 'visible' : 'hidden'
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
+        if (light) nav.current.toggleAttribute('data-bright', current > 0.8)
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       // the street's buttons give way as soon as you step in
@@ -269,7 +274,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (!alive) return
       try {
         handle.current = createShowroom(cv, {
-          mobile, cards: deck,
+          mobile, cards: deck, light, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {
@@ -362,6 +367,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             <Link href="/" className="sr-logo" aria-label="בוואריאן מוטורס">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/logo-wide-light.png" alt="" width={1283} height={232} />
+              {/* the bright trial: the same mark in ink */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="sr-logo-ink" src="/brand/logo-horizontal-dark.png" alt="" width={1244} height={200} />
             </Link>
           </header>
 
@@ -457,10 +465,21 @@ export default function Showroom({ cards }: { cards: Card[] }) {
               </div>
             ) : panel === 'sort' ? (
               <div className="sr-words" role="group" aria-label="מיון">
-                {SORTS.map(([k, l], i) => (
-                  <button key={k} type="button" className="sr-word" aria-pressed={sort === k} style={{ '--i': i } as React.CSSProperties}
-                    onClick={() => { setSort(k); setPanel(null) }}>{l}</button>
-                ))}
+                {/* the line stays open: a press orders, the next press on the same word turns it round */}
+                {SORTS.map((o, i) => {
+                  const on = sort.key === o.key
+                  return (
+                    <button key={o.key} type="button" className="sr-word" aria-pressed={on} style={{ '--i': i } as React.CSSProperties}
+                      onClick={() => setSort(on && o.dir ? { key: o.key, up: !sort.up } : { key: o.key, up: o.first })}>
+                      {o.label}{on && o.dir && <small className="sr-dir">{o.dir[sort.up ? 0 : 1]}</small>}
+                      {on && o.dir && (
+                        <svg className="sr-dir-ic" data-up={sort.up || undefined} width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             ) : found && found.length === 0 ? (
               <div className="sr-words" role="status">
@@ -507,7 +526,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
                   <path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" />
                 </svg>
               </button>
-              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort !== 'mix' || undefined}
+              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort.key !== 'mix' || undefined}
                 onClick={() => { input.current?.blur(); setPanel(p => (p === 'sort' ? null : 'sort')) }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M8 5v14M8 19l-3-3M8 19l3-3M16 19V5M16 5l-3 3M16 5l3 3" />
