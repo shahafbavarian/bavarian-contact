@@ -567,8 +567,22 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardGeo = new THREE.CylinderGeometry(R, R, CH, 24, 1, true, -ARC / 2, ARC)
   const cardVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`
   const cardFrag = `
-    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform vec2 uSize; varying vec2 vUv;
+    uniform sampler2D map; uniform float uDim; uniform float uAlpha; uniform float uReady; uniform float uPower; uniform float uFill; uniform float uExp; uniform float uCap; uniform vec2 uSize; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+    // exact inverse of three's ACES filmic fit: the composer tone-maps the
+    // whole frame at the end, so the screen pixels are pre-inverted here and
+    // the photo lands on the glass exactly as authored
+    vec3 odtInv(vec3 y){
+      vec3 a = 1. - .983729 * y;
+      vec3 b = .0245786 - .432951 * y;
+      vec3 c = -(.000090537 + .238081 * y);
+      return (-b + sqrt(max(b * b - 4. * a * c, 0.))) / (2. * a);
+    }
+    vec3 acesInv(vec3 col){
+      mat3 invIn = mat3(1.76474, -.14703, -.03634, -.67578, 1.16025, -.16244, -.08896, -.01322, 1.19877);
+      mat3 invOut = mat3(.64304, .05927, .00596, .31119, .93144, .06393, .04578, .00929, .93012);
+      return invIn * odtInv(clamp(invOut * col, vec3(0.), vec3(.995))) * (.6 / max(uExp, .001));
+    }
     void main(){
       vec2 p = (vUv - .5) * uSize;
       float d = rbox(p, uSize * .5, .055);
@@ -584,6 +598,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
       col += smoothstep(-.012, -.002, d) * .10 * uPower;  // hairline edge, only on a lit screen (dark, it read as a stray line of light)
       col *= mix(1., .28, uDim);                          // cards away from the front recede
+      col = min(acesInv(max(col, vec3(0.))), vec3(uCap)); // capped where bloom runs, so white photos don't flare
       gl_FragColor = vec4(col, a * uAlpha);
       #include <colorspace_fragment>
     }`
@@ -593,7 +608,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const cardMeshes: THREE.Mesh<THREE.CylinderGeometry, THREE.ShaderMaterial>[] = []
   for (let i = 0; i < SLOTS; i++) {
     const m = new THREE.Mesh(cardGeo, new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uSize: { value: new THREE.Vector2(CW, CH) } },
+      uniforms: { map: { value: null }, uDim: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uPower: { value: 0 }, uFill: { value: 1 }, uExp: { value: 1.05 }, uCap: { value: mobile ? 16.0 : 1.5 }, uSize: { value: new THREE.Vector2(CW, CH) } },
       vertexShader: cardVert, fragmentShader: cardFrag, transparent: true,
     }))
     // RTL: the next car waits on the left of the front card
@@ -719,6 +734,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const target = drag
     angle += (target - angle) * (1 - Math.exp(-dt * 9))
     ring.rotation.y = angle
+    if (Math.abs(target - angle) > 1e-3) dirty = true   // the slide plays out even when nothing else moves
     // it floats only once you are on your way in: from the street it stands still
     // (its slow bob, drawn only now and then while the page loads, read as a flicker)
     ring.position.y = 1.72 + Math.sin(time * 0.9) * 0.035 * fit(p, 0.1, 0.5)
@@ -751,11 +767,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
       u.uReady.value = texCache.get(car)?.ready ? 1 : 0
       u.uFill.value = 1   // the photo fills the whole screen, both views
+      u.uExp.value = renderer.toneMappingExposure
     })
-    // outside, the screens step to the next car by themselves
-    if (p < 0.45 && N > 1) {
-      if (!dragging) { autoT += dt; if (autoT > 4.5) { autoT = 0; drag += STEP; dirty = true } }
-    } else autoT = 0
     const f = N ? ((Math.round(angle / STEP) % N) + N) % N : -1
     if (f !== front) { front = f; opts.onFront(f) }
   }
@@ -785,10 +798,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2()
   let downX = 0, downY = 0, moved = false
   const settle = () => {
-    drag = Math.round(drag / STEP) * STEP
+    drag = Math.round(drag / STEP) * STEP; autoT = 0
   }
   let tapOut = false
   const onDown = (e: PointerEvent) => {
+    autoT = 0
     if (progress < 0.05) { tapOut = true; downX = e.clientX; downY = e.clientY; return }   // from the street: only a tap on the middle screen
     if (progress < WALK - 0.04) return
     dragging = true; moved = false; downX = e.clientX; downY = e.clientY
@@ -849,6 +863,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
     // the kick wakes the render loop so the switch-on plays even at rest
     if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
+    // the ring slides one screen on its own every three seconds: the middle
+    // car moves to the next screen and its neighbour takes the middle
+    if (screenOn && N > 1 && !dragging) { autoT += dt; if (autoT > 3) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
     loadCards()
     let signRising = false
