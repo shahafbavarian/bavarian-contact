@@ -164,7 +164,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : -1
+    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -222,13 +222,15 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           document.body.style.backgroundColor = col
           root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
         }
-        // the strips change ONCE, at either end of the cross: every re-toggle
-        // makes Safari's bottom glass pulse, so stepping them through the
-        // blend read as a flicker — one clean change, eased by Safari's own
-        // tint animation, while the page and the sheets glide continuously
-        if ((k === 0 || k === 1) && k !== stripK) {
-          stripK = k
-          const col = k === 1 ? '#f5f6f7' : '#06080c'
+        // the strips change ONCE per cross (every re-toggle makes Safari's
+        // bottom glass pulse), and in the MIDDLE of it, not at its end — the
+        // cross's tail is slow, and a flip at its very end arrived a second
+        // after everything already read white. Safari's own tint animation
+        // eases the one change while the page and the sheets glide on
+        const want = k > (stripK === 1 ? 0.3 : 0.55) ? 1 : 0
+        if (want !== stripK) {
+          stripK = want
+          const col = want ? '#f5f6f7' : '#06080c'
           const strips = document.querySelectorAll<HTMLElement>('.sr-safari-strip')
           strips.forEach(el => { el.style.display = 'none' })
           requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
