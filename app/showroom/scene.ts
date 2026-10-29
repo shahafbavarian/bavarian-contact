@@ -672,19 +672,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const ensureTex = (ci: number) => {
     let e = texCache.get(ci)
     if (e) return e
-    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 683
+    const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 853
     const c = cv.getContext('2d')!
-    c.fillStyle = '#121316'; c.fillRect(0, 0, 1024, 683)
+    c.fillStyle = '#121316'; c.fillRect(0, 0, 1280, 853)
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
     e = { tex, ready: false, used: time }; texCache.set(ci, e)
     const src = cards[ci]?.images[0]
     const done = (im: HTMLImageElement | null) => {
-      if (im) cover(c, im, 0, 0, 1024, 683)
+      if (im) cover(c, im, 0, 0, 1280, 853)
       else {   // no photo: the quiet brand mark
-        const gr = c.createLinearGradient(0, 0, 1024, 683)
+        const gr = c.createLinearGradient(0, 0, 1280, 853)
         gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
-        c.fillStyle = gr; c.fillRect(0, 0, 1024, 683)
+        c.fillStyle = gr; c.fillRect(0, 0, 1280, 853)
       }
       tex.needsUpdate = true; renderer.initTexture(tex); e!.ready = true; dirty = true
     }
@@ -692,9 +692,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     else loadImg(opts.logoUrl).then(im => {
       done(null)
       const lg = im as HTMLImageElement | null
-      if (lg) { const w = 520, h = w * (lg.naturalHeight / lg.naturalWidth); c.globalAlpha = 0.5; c.drawImage(lg, (1024 - w) / 2, (683 - h) / 2, w, h); c.globalAlpha = 1; tex.needsUpdate = true }
+      if (lg) { const w = 520, h = w * (lg.naturalHeight / lg.naturalWidth); c.globalAlpha = 0.5; c.drawImage(lg, (1280 - w) / 2, (853 - h) / 2, w, h); c.globalAlpha = 1; tex.needsUpdate = true }
     })
-    if (texCache.size > 16) {   // drop the car shown longest ago (never one on a screen)
+    if (texCache.size > 12) {   // drop the car shown longest ago (never one on a screen)
       let worst = -1, wd = Infinity
       const onScreen = new Set(cardMeshes.map(m => m.userData.car as number))
       texCache.forEach((v, k) => { if (k !== ci && !onScreen.has(k) && v.used < wd) { wd = v.used; worst = k } })

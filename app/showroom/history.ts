@@ -1,6 +1,5 @@
 // The street gallery: chosen photographs from the agency's own history,
-// compressed once at commit time (1600px, mozjpeg q82) and served static —
-// no Vercel transformations, no Supabase, browser-cached
+// kept at native resolution, mozjpeg q90 (visually lossless), served static
 export const HISTORY = [
   '/showroom/history/h01.jpg',
   '/showroom/history/h02.jpg',
@@ -28,5 +27,4 @@ export const HISTORY = [
   '/showroom/history/h24.jpg',
   '/showroom/history/h25.jpg',
   '/showroom/history/h26.jpg',
-  '/showroom/history/h27.jpg',
 ]
