@@ -53,8 +53,8 @@ html:has(.sr) { overflow: auto; }
 }
 /* coming on: smaller and dim, then grown to full size and full light, on the
    buttons' beat (opacity and scale only: cheap on any phone) */
-.sr[data-state="ready"] .sr-sign-img { animation: sr-sign-on 1000ms cubic-bezier(.23,1,.32,1) 200ms both; }
-@keyframes sr-sign-on { from { opacity: .28; transform: scale(.9); } to { opacity: 1; transform: none; } }
+.sr[data-state="ready"] .sr-sign-img { animation: sr-sign-on 700ms cubic-bezier(.23,1,.32,1) 150ms both; }
+@keyframes sr-sign-on { from { opacity: 0; } to { opacity: 1; } }
 
 .sr-top {
   position: absolute; inset: 0 0 auto 0; z-index: 5;
@@ -126,7 +126,7 @@ html:has(.sr) { overflow: auto; }
 .sr-social { position: relative; display: flex; padding-inline-start: 4px; }
 .sr-social::before {
   content: ''; position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 14px; margin-top: -7px;
-  background: rgba(255,255,255,.3); opacity: 0;
+  background: rgba(255,255,255,.3);
 }
 /* a phone too narrow for one line: the icons get their own row, close under the words */
 @media (max-width: 419.98px) {
@@ -134,7 +134,6 @@ html:has(.sr) { overflow: auto; }
   .sr-social::before { display: none; }
 }
 /* the hairline comes on with the icons, not before them */
-.sr[data-state="ready"] .sr-social::before { animation: sr-word 460ms cubic-bezier(.23,1,.32,1) 380ms both; }
 .sr-social a {
   display: grid; place-items: center; width: 40px; height: 44px; color: rgba(255,255,255,.86); -webkit-tap-highlight-color: transparent;
   transition: color 160ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
@@ -142,30 +141,19 @@ html:has(.sr) { overflow: auto; }
 .sr-social a { color: rgba(255,255,255,.84); filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
 .sr-social a:active { color: #fff; }
 .sr-social a:active { transform: scale(.94); }
-.sr-social a { opacity: 0; }
-.sr[data-state="ready"] .sr-social a { opacity: 1; animation: sr-word 460ms cubic-bezier(.23,1,.32,1) 380ms backwards; }
 @media (hover: hover) and (pointer: fine) {
   .sr-enter:hover { background: rgba(255,255,255,.12); }
   .sr-doors a:hover { color: #fff; }
 }
 /* they come on one after another once the page is ready: opacity and a short rise only */
-.sr-enter, .sr-doors a { opacity: 0; }
 /* The strip comes on as one sweep, in reading order, on the hall's own beat:
    the way in ignites like a lamp — a dim pre-glow, one soft flutter, full —
    then word after word, the hairline, and the three marks */
-.sr[data-state="ready"] .sr-enter { opacity: 1; animation: sr-ignite 560ms cubic-bezier(.23,1,.32,1) 200ms backwards; }
-/* the whole line rises as one piece, one beat after the way in (no
-   one-by-one: it read as slow), on the sign's own curve and timing */
-.sr[data-state="ready"] .sr-doors a { opacity: 1; animation: sr-word 460ms cubic-bezier(.23,1,.32,1) 380ms backwards; }
-/* clean rises, no flutter: the dips read as a glitch, not as a lamp */
-@keyframes sr-ignite {
-  from { opacity: 0; transform: translateY(10px) scale(.98); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes sr-word {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
+/* One move: the whole strip (the way in, the words, the marks) rises as a
+   single block on the sign's beat — nothing element by element */
+.sr:not([data-state="ready"]) .sr-floor { opacity: 0; }
+.sr[data-state="ready"] .sr-floor { animation: sr-rise 560ms cubic-bezier(.23,1,.32,1) 320ms backwards; }
+@keyframes sr-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 /* then the way in hovers, gently: a few pixels up and down */
 .sr-hover { display: flex; justify-content: center; }
 .sr[data-state="ready"] .sr-hover { animation: sr-float 5.2s ease-in-out 1s infinite; }
@@ -229,12 +217,11 @@ html:has(.sr) { overflow: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .sr-menu { animation: none; }
-  .sr[data-state="ready"] .sr-social::before { animation: sr-fade 300ms ease both; }
   .sr-cap-in { animation: sr-fade 200ms ease both; }
   .sr[data-state="ready"] .sr-hover { animation: none; }
   .sr[data-state="ready"] .sr-sign-img { animation: sr-fade 300ms ease both; }
   .sr-canvas { transition: none; }
   .sr-cta:active, .sr-arrow:active, .sr-enter:active, .sr-doors a:active { transform: none; }
-  .sr[data-state="ready"] .sr-enter, .sr[data-state="ready"] .sr-doors a, .sr[data-state="ready"] .sr-social a { animation: sr-fade 300ms ease both; }
+  .sr[data-state="ready"] .sr-floor { animation: sr-fade 300ms ease both; }
   @keyframes sr-fade { from { opacity: 0; } to { opacity: 1; } }
 }
