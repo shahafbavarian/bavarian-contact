@@ -847,7 +847,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   const relOfSlot = (sIdx: number) => {
     if (!mapped) return null
-    for (let rel = -1; rel <= SLOTS - 2; rel++) {
+    for (let rel = -1; rel <= 1; rel++) {
       const li = anchor + rel
       if (li >= 0 && li < N && slotOf(rel) === sIdx) return rel
     }
@@ -1021,11 +1021,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const gt = growAt < 0 ? 0 : Math.min(1, (performance.now() - growAt) / GROW_MS)
     if (gt > 0 && gt < 1) dirty = true
     const g0 = calm ? (gt > 0 ? 1 : 0) : 1 - (1 - gt) ** 4
-    // the big screens belong to the street: as the walk begins they shrink
-    // back through the doors onto the ring (and come out again only at its
-    // very end on the way home) — carried with the camera they crossed it
-    // mid-walk as giant smears, both ways
-    const g = g0 * (1 - smooth(fit(p, 0.02, 0.2)))
+    // the big screens stay carried with you through the walk — each hands
+    // itself over to its own card the moment that card's glide begins, so
+    // nothing ever rushes away or sweeps past
+    const g = g0
     showK = g
     ring.updateMatrixWorld(true); camera.updateMatrixWorld()
     invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
@@ -1053,8 +1052,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const rel = relOfSlot(i)
       u.uFade.value = mapped && rel === null ? 1 - smooth(fit(throwK, 0, 0.45)) : 1
       const gone = rel !== null && flightE(rel) > 0
-      sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
-      if (g > 0) m.visible = false
+      sm.visible = on && g > 0 && p < 0.45 && !gone && u.uFade.value > 0.002
+      m.visible = !(g > 0 && p < 0.42)   // twins own the street and the handoff; the ring is the hall's backdrop
     })
   }
   const placeWall = (p: number, dt: number) => {
@@ -1100,7 +1099,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the hall rides the very same window as the page and the sheets (see
       // Showroom): one factor, no chasing clock, nothing drifts apart
       const b0 = briK
-      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.35, 0.82))   // the hall brightens WITH the flights (the page's own chrome keeps its short cross)
+      briK = calm ? (full ? 1 : 0) : smooth(fit(p, 0.86, 0.96))   // the hall stays itself through the flights; the one short cross at the end (rule 5)
       if (briK !== b0) dirty = true
       const k = briK
       renderer.toneMappingExposure *= 1 + 0.85 * k
@@ -1160,7 +1159,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
-      if (throwK < 1) for (let rel = -1; rel <= SLOTS - 2; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
+      if (throwK < 1) for (let rel = -1; rel <= 1; rel++) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
     const ease = 1 - Math.exp(-dt * 9)
@@ -1204,22 +1203,20 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       let bright = 1
       let sc = 1, sx = 1, a = 1, strip = 1
       const rel = hd.i - anchor
-      if (mapped && rel >= -1 && rel <= SLOTS - 2 && throwK < 1) {
+      if (mapped && rel >= -1 && rel <= 1 && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
-        // the card flies from (or home to) whatever actually shows the face:
-        // the street twin while it stands, the ring screen once it is gone —
-        // the old anchor kept pointing at the twin's ghost by the camera
-        if (showK > 0.001) { srcP.copy(showP[sl]); srcQ.copy(showQ[sl]) }
-        else { srcP.copy(ringP[sl]); srcQ.copy(ringQ[sl]) }
+        // the big screen IS the card: its carried pose is camera-glued, so
+        // the glide from full size into the grid cell is steady on screen
+        srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
         srcP.sub(tmpV2.set(0, ((cardH - (cardW * 2) / 3) / 2) * sc0, 0).applyQuaternion(srcQ))   // its photo exactly on the screen
-        m.position.lerpVectors(srcP, tmpV, fe); m.position.y += Math.sin(Math.PI * fe) * 0.12
+        m.position.lerpVectors(srcP, tmpV, fe); m.position.y += Math.sin(Math.PI * fe) * 0.05
         m.quaternion.slerpQuaternions(srcQ, tmpQ, fe)
         sc = sc0 + (1 - sc0) * fe
         const sb = 1 - 0.72 * slotDim[sl]
         bright = sb + (bright - sb) * fe
-        strip = fit(fe, 0.45, 1)
+        strip = fit(fe, 0.75, 1)   // the band unfolds on landing, never in the air
         // The screen TURNS OVER in flight — his own idea, and the right
         // one: the front face wears the screen's photo, the back face the
         // car, and the half-turn is what changes the picture. Walking out
@@ -1234,7 +1231,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           // face swapped at the zero crossing — a 3D turn of a near-full
           // screen smeared in perspective ("stretches, then straightens");
           // the flat flip reads clean at any distance, like iOS's own
-          const fl = smooth(fit(fe, 0.3, 0.62))
+          const fl = smooth(fit(fe, 0.35, 0.65))
           sx = Math.max(0.015, Math.abs(Math.cos(Math.PI * fl)))
           u.uFlip.value = fl < 0.5 ? 1 : 0
         } else u.uFlip.value = 0
@@ -1251,7 +1248,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         m.position.copy(tmpV); m.quaternion.copy(tmpQ)
         u.uFlip.value = 0   // settled: the card shows its own face, no turn
         u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
-        a = calm ? throwK : fit(throwK, 0.55, 0.85)   // the rest of the stock rises in among the landings, not after them
+        a = calm ? throwK : fit(throwK, 0.45 + Math.min(hd.i, 8) * 0.04, 0.78 + Math.min(hd.i, 8) * 0.04)   // the rest rises in place, one beat apart, among the landings
       }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
       if (Math.abs(lift - u.uLift.value) > 1e-3) dirty = true
