@@ -98,12 +98,6 @@ const wallTex = (rx: number) => canvasTex(256, 512, c => {
   for (const g of [120, 300]) for (let k = 0; k < 3; k++) c.fillRect(0, g + k * 14, 256, 2)
 }, [rx, 1])
 
-const stripeTex = () => canvasTex(64, 256, c => {
-  c.clearRect(0, 0, 64, 256)
-  c.fillStyle = 'rgba(255,255,255,.55)'
-  for (let k = 0; k < 6; k++) c.fillRect(0, 96 + k * 9, 64, 5)
-})
-
 // Tilt-shift: blur grows toward the top and bottom of the frame
 // (Bruno Simon's cheapDOF: smoothstep(.2,.5,|uv.y-.5|), 12 taps here).
 const TiltShift = {
@@ -531,15 +525,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   glow('shadow', PR * 2.4, PR * 2.4, STAND.x, STAND.z, 0.003, 0.45)
   glow('light', PR * 2.6, PR * 2.6, STAND.x, STAND.z, 0.084, 0.42)   // the light on the plinth goes out with the hall
 
-  // ─── Back: glass offices with frosted bands ───
-  // the glass wall stands against the back wall: its frames meet the ceiling line
-  // (4 m in front of it, seen from below they rose past that line)
-  const officeZ = FRONT - D + 0.15
-  // frames set symmetric about the hall's centre line, the stand's axis
-  for (const x of [-8, -4.8, -1.6, 1.6, 4.8, 8]) box(0.06, H, 0.08, mats.metal, x, H / 2, officeZ)
-  const frosted = new THREE.MeshBasicMaterial({ map: stripeTex(), transparent: true, opacity: 0.55, depthWrite: false })
-  const og = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), frosted); og.position.set(0, H / 2, officeZ); scene.add(og)
-  const og2 = new THREE.Mesh(new THREE.PlaneGeometry(W - 4, H), mats.glass); og2.position.set(0, H / 2, officeZ + 0.01); scene.add(og2)
+  // (no glass offices at the back: the back wall is plain)
   // ─── The gallery: cards bent along the ring. Each card is designed, not a
   //     pasted photo: the car's photograph in a rounded frame, a band with the
   //     model and price, a hairline edge. Unlit, so the photos keep their
