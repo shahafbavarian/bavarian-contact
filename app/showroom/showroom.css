@@ -2,8 +2,11 @@
    natively — the scroll is what drives the scene. */
 html:has(.sr), html:has(.sr) body {
   position: static; height: auto; overflow: visible; touch-action: auto; overscroll-behavior: auto;
-  background: #06080c;
+  background: #06080c; transition: background-color 700ms ease;
 }
+/* the bright trial, inside: the page itself turns light — the iPhone's top
+   and bottom areas take their colour from here, not only from the strips */
+html:has(.sr[data-theme="light"][data-bright]), html:has(.sr[data-theme="light"][data-bright]) body { background: #f5f6f7; }
 html:has(.sr) { overflow: auto; }
 
 .sr {

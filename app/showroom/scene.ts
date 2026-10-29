@@ -1044,17 +1044,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     }
     wasFull = full
     if (opts.light) {
-      // once the walk in has ended the hall brightens to the light template's
-      // background, and darkens again the moment you turn back — eased both ways
+      // the hall brightens over the walk's last stretch — gradual, never a
+      // snap — and only part way: the hall stays clearly itself, just light
       const b0 = briK
-      briK = Math.min(1, Math.max(0, briK + (full ? dt / 0.45 : -dt / 0.3)))
+      const want = calm ? (full ? 1 : 0) : smooth(fit(throwK, 0.68, 1))
+      briK += (want - briK) * (1 - Math.exp(-dt * 3))
+      if (Math.abs(want - briK) < 1e-3) briK = want
       if (briK !== b0) dirty = true
-      const k = smooth(briK)
-      renderer.toneMappingExposure *= 1 + 0.9 * k
-      dayFill.intensity = 2.2 * k
+      const k = briK
+      renderer.toneMappingExposure *= 1 + 0.85 * k
+      dayFill.intensity = 2.6 * k
       scene.environmentIntensity = 0.35 + 0.9 * k
       bloom.strength *= 1 - k
-      const va = (opts.veil ?? 0.88) * k
+      const va = (opts.veil ?? 0.55) * k
       veil.material.uniforms.uA.value = va; veil.material.uniforms.uExp.value = renderer.toneMappingExposure; veil.visible = va > 0.002
     }
     if (!holding) {

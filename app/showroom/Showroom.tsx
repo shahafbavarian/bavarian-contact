@@ -199,7 +199,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
       // the bright trial: the page's chrome follows the hall's own brightening
-      if (light) root.current?.toggleAttribute('data-bright', current > 0.96)
+      if (light) root.current?.toggleAttribute('data-bright', current > 0.9)
       // the street's buttons give way as soon as you step in
       if (floor.current) { const f = 1 - fit(current, 0.02, 0.1); floor.current.style.opacity = String(f); floor.current.style.visibility = f > 0.01 ? 'visible' : 'hidden' }
     }
