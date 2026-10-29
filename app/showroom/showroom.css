@@ -53,8 +53,8 @@ html:has(.sr) { overflow: auto; }
 }
 /* coming on: smaller and dim, then grown to full size and full light, on the
    buttons' beat (opacity and scale only: cheap on any phone) */
-.sr[data-state="ready"] .sr-sign-img { animation: sr-sign-on 700ms cubic-bezier(.23,1,.32,1) 150ms both; }
-@keyframes sr-sign-on { from { opacity: 0; } to { opacity: 1; } }
+.sr[data-state="ready"] .sr-sign-img { animation: sr-sign-on 1000ms cubic-bezier(.23,1,.32,1) 200ms both; }
+@keyframes sr-sign-on { from { opacity: .28; transform: scale(.9); } to { opacity: 1; transform: none; } }
 
 .sr-top {
   position: absolute; inset: 0 0 auto 0; z-index: 5;
