@@ -21,7 +21,12 @@ html:has(.sr) { overflow: auto; }
 /* The page never scrolls: the stage is pinned to the whole window, in any
    orientation (a fixed box follows Safari's real viewport, svh did not) */
 .sr-track { position: relative; height: 100%; }
-.sr-stage { position: fixed; inset: 0; overflow: hidden; background: transparent; touch-action: none; overscroll-behavior: none; pointer-events: none; }
+/* Behind the clock: Safari 26 paints a flat strip for a fixed layer at the top
+   edge, but shows the page itself when that layer is visibility: hidden and its
+   content visible (Hawkshift's iOS 26 tests: "pinned scroll scene with
+   visibility: hidden and its content visible", the page, reliably) */
+.sr-stage { position: fixed; inset: 0; overflow: hidden; background: transparent; touch-action: none; overscroll-behavior: none; pointer-events: none; visibility: hidden; }
+.sr-stage > * { visibility: visible; }
 /* the stage and the canvas let touches through (the scene listens on the
    window); only buttons and links take them */
 .sr-stage a, .sr-stage button, .sr-stage .sr-menu { pointer-events: auto; }
@@ -31,10 +36,9 @@ html:has(.sr) { overflow: auto; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
    which also keeps the eye off the unimportant background at the margins */
 .sr-canvas {
-  /* no fade at the top: the stone meets the strip behind the clock, which Safari
-     fills with the page's colour, set to the stone's while you are outside */
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 86%, transparent 100%);
-          mask-image: linear-gradient(to bottom, #000 0, #000 86%, transparent 100%);
+  /* the top fades softly, the stone still showing behind the clock */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.3) 0, #000 10%, #000 86%, transparent 100%);
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,.3) 0, #000 10%, #000 86%, transparent 100%);
 }
 
 /* The sign on the building: the live header's lit look, moved every frame by
