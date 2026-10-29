@@ -27,6 +27,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const nav = useRef<HTMLElement>(null)
   const arrows = useRef<HTMLDivElement>(null)
   const sign = useRef<HTMLDivElement>(null)
+  const strip = useRef<HTMLDivElement>(null)
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [front, setFront] = useState(0)
@@ -68,6 +69,8 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       current = Math.min(1, Math.max(0, target + (off + tmp) * e))
       if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
+      // the clock strip follows the view: stone outside, the hall's dark inside
+      if (strip.current) strip.current.style.background = current < 0.25 ? '#45403c' : '#06080c'
       const c = cap.current
       if (c) {
         const s = fit(current, 0.86, 0.93)
@@ -177,7 +180,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     <div ref={root} className="sr" data-state={state}>
       {/* Safari 26 looks at what is fixed at the very top edge to decide what to draw
           behind the clock; a transparent, click-through strip there lets the page show */}
-      <div className="sr-safari-strip" aria-hidden="true" />
+      <div ref={strip} className="sr-safari-strip" aria-hidden="true" />
       <div className="sr-track">
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />

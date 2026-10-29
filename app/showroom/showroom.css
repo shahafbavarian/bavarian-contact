@@ -25,7 +25,12 @@ html:has(.sr) { overflow: auto; }
 /* the stage and the canvas let touches through (the scene listens on the
    window); only buttons and links take them */
 .sr-stage a, .sr-stage button, .sr-stage .sr-menu { pointer-events: auto; }
-.sr-safari-strip { position: fixed; top: 0; left: 0; width: 100%; height: 12px; background: transparent; pointer-events: none; z-index: 2147483647; }
+/* Safari 26 paints the strip behind the iPhone clock with the colour of a
+   full-width fixed element at least 6px tall at the top edge (theme-color is
+   ignored; without one it takes the body colour). This strip hands it the
+   stone's tone at the joint, switched to the hall's dark on the way in; the
+   body stays black so the bottom bar keeps its black */
+.sr-safari-strip { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #45403c; pointer-events: none; z-index: 2147483647; }
 .sr-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; touch-action: pan-y; cursor: grab; transition: opacity 400ms cubic-bezier(.22,1,.36,1); }
 .sr[data-state="ready"] .sr-canvas { opacity: 1; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
