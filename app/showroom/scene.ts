@@ -1007,6 +1007,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       srcP.set(0, 0, R).applyMatrix4(m.matrixWorld); m.getWorldQuaternion(srcQ)
       endP.copy(srcP).applyMatrix4(invLay).applyMatrix4(camera.matrixWorld)
       endQ.copy(camera.quaternion).multiply(tmpQ.copy(layQi).multiply(srcQ))
+      // and pulled in toward you, so the street screens stand as large as the
+      // frame allows — a zoom about the camera, which keeps their arrangement
+      endP.sub(camera.position).multiplyScalar(mobile ? 0.74 : 0.8).add(camera.position)
       // already outside as it starts: it sits on your own line of sight to
       // the real screen, out at the end pose's distance, scaled to cover it
       // exactly — then grows along that line, never passing the door's posts
