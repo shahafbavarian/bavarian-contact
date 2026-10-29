@@ -138,11 +138,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     const qs = new URLSearchParams(location.search), light = qs.get('theme') === 'light'
     if (light) {
       root.current!.dataset.theme = 'light'
-      // body's colour is what Safari watches live for the phone's edges; the
-      // fixed strips would outrank it with a colour sampled once, so in the
-      // bright trial they go away and body alone carries both bars — which
-      // lets the black-to-white cross glide, frame by frame
-      document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = 'none' })
       document.documentElement.style.transition = 'background-color 0s'
       document.body.style.transition = 'background-color 0s'
     }
@@ -166,7 +161,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
-    let capIn = false, arrived = false, wasBright = false, lastK = -1
+    let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = -1
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -207,9 +202,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
-      // The bright trial: the page itself crosses from the hall's dark to
-      // the light ground frame by frame over the walk's last stretch — and
-      // Safari, watching body live, glides the phone's edges with it
+      // The bright trial, by the Safari rulebook in CLAUDE.md: the phone's
+      // edges obey the fixed strips, and a strip's colour counts only when
+      // the strip is taken out and put back (display off, then on) — the one
+      // mechanism proven on the device. The cross glides by stepping the
+      // strips through the blend a few times, body and the sheets riding
+      // the same factor
       if (light) {
         const sm = (x: number) => x * x * (3 - 2 * x)
         const k = sm(fit(current, 0.78, 1))
@@ -220,6 +218,14 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           document.documentElement.style.backgroundColor = col
           document.body.style.backgroundColor = col
           root.current?.style.setProperty('--br', k.toFixed(3))   // the white sheets ride the same move
+        }
+        if (Math.abs(k - stripK) > 0.18 || ((k === 0 || k === 1) && k !== stripK)) {
+          stripK = k
+          const ch = (a: number, b: number) => Math.round(a + (b - a) * k)
+          const col = `rgb(${ch(6, 245)}, ${ch(8, 246)}, ${ch(12, 247)})`
+          const strips = document.querySelectorAll<HTMLElement>('.sr-safari-strip')
+          strips.forEach(el => { el.style.display = 'none' })
+          requestAnimationFrame(() => strips.forEach(el => { el.style.backgroundColor = col; el.style.display = 'block' }))
         }
         const bright = current > 0.88
         if (bright !== wasBright) { wasBright = bright; root.current?.toggleAttribute('data-bright', bright) }
@@ -361,7 +367,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut)
       if (light) {   // leaving the page: everything back as it was
-        document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = '' })
+        document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = ''; el.style.backgroundColor = '' })
         document.documentElement.style.backgroundColor = ''; document.body.style.backgroundColor = ''
         document.documentElement.style.transition = ''; document.body.style.transition = ''
       }
