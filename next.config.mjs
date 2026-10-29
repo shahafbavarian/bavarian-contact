@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    minimumCacheTTL: 86400,
+    // 7 days: car photos are immutable per URL, so re-transforming them every
+    // day only spent transformations for nothing
+    minimumCacheTTL: 604800,
     // Every (source image × width × format) combination is billed as a separate
     // image transformation, and the defaults emit 8 device widths up to 3840px.
     // This ladder is trimmed to the widths our layouts actually select, keeping

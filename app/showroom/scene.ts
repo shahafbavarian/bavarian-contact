@@ -517,7 +517,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // The ring grows with the number of cars: every card gets a clear gap of
   // 35% of its width on each side, so no two cars ever touch
   // the ring holds a fixed 8 slots; the stock streams through them
-  const SLOTS = Math.max(1, Math.min(8, N))
+  // 6 slots: the neighbours stay in frame beside the front screen
+  const SLOTS = Math.max(1, Math.min(6, N))
   const R = Math.max(3.0, (SLOTS * CW * 1.35) / (Math.PI * 2))
   const PR = R + 0.7                              // plinth radius
   // satin, not piano gloss: a mirror-bright edge caught the lamps as a stray streak by the ring
@@ -732,7 +733,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the screen facing the street is on from the start (once everything
       // has loaded); the other screens come on only inside and go off on the
       // way out. Ramped per frame, so a slow device still reaches full
-      const onNow = p > LIT ? tvClock > 0.15 + i * 0.05 : screenOn && Math.abs(th) < 1.4
+      // once ignited at load, the screens simply stay on: no switch-off on
+      // the way out and no re-ignition on the way in
+      const onNow = screenOn
       const before = u.uPower.value
       u.uPower.value = Math.min(1, Math.max(0, before + (onNow ? dt / 0.35 : -dt / 0.25)))
       if (u.uPower.value !== before) dirty = true
@@ -747,8 +750,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const u = m.material.uniforms
       if (m.userData.car !== car) { m.userData.car = car; u.map.value = ensureTex(car).tex }
       u.uReady.value = texCache.get(car)?.ready ? 1 : 0
-      // outside, the photo keeps a bezel of screen around it; inside it fills
-      u.uFill.value += ((p < 0.5 ? 0.84 : 1) - u.uFill.value) * (1 - Math.exp(-dt * 6))
+      u.uFill.value = 1   // the photo fills the whole screen, both views
     })
     // outside, the screens step to the next car by themselves
     if (p < 0.45 && N > 1) {

@@ -31,6 +31,12 @@ export default function Showroom({ cards }: { cards: Card[] }) {
   const handle = useRef<SceneHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const [front, setFront] = useState(0)
+  // a fresh random order on every refresh: stock and on-the-way, mixed
+  const [deck] = useState(() => {
+    const d = [...cards]
+    for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); ;[d[i], d[j]] = [d[j], d[i]] }
+    return d
+  })
   const [menu, setMenu] = useState(false)
   const menuOpen = useRef(false)
   menuOpen.current = menu
@@ -129,7 +135,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       if (!alive) return
       try {
         handle.current = createShowroom(cv, {
-          mobile, cards,
+          mobile, cards: deck,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {
@@ -150,7 +156,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
           onReady: () => setState('ready'),
           onEnter: () => goRef.current(1),
           onFront: setFront,
-          onOpen: i => { const c = cards[i]; if (c.external) location.href = c.href; else router.push(c.href) },
+          onOpen: i => { const c = deck[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
       } catch { setState('fallback') }
@@ -174,9 +180,9 @@ export default function Showroom({ cards }: { cards: Card[] }) {
       removeEventListener('pointermove', onPointer)
       handle.current?.dispose(); handle.current = null
     }
-  }, [cards, router])
+  }, [deck, router])
 
-  const card = cards[front]
+  const card = deck[front]
 
   return (
     <div ref={root} className="sr" data-state={state}>
@@ -274,7 +280,6 @@ export default function Showroom({ cards }: { cards: Card[] }) {
             <div ref={cap} className="sr-cap" aria-live="polite">
               {/* keyed by the card: a short fade from blur as the next one comes to the front */}
               <div key={front} className="sr-cap-in">
-              <p className="sr-count"><bdi>{front + 1} / {cards.length}</bdi></p>
               {card.external
                 ? <a href={card.href} className="sr-name" target="_blank" rel="noopener noreferrer">{card.title}</a>
                 : <Link href={card.href} className="sr-name">{card.title}</Link>}
