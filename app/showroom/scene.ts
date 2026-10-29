@@ -354,8 +354,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // ends, so the lit sign stands out without darkening the whole facade
   // a wide, soft-edged shade (a gaussian, no visible border)
   const shadeFrag = 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ vec2 p = (vUv - .5) * 2.; float a = exp(-(p.x * p.x * 2.2 + p.y * p.y * 3.2)) - exp(-5.4); gl_FragColor = vec4(uColor, max(a, 0.) * uOpacity); }'
-  const signShade = new THREE.Mesh(new THREE.PlaneGeometry(signW * 2.3, 2.9), new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color('#000000') }, uOpacity: { value: 0.44 } },
+  const signShade = new THREE.Mesh(new THREE.PlaneGeometry(signW * 2.1, 2.6), new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color('#000000') }, uOpacity: { value: 0.32 } },
     vertexShader: radialVert, fragmentShader: shadeFrag, transparent: true, depthWrite: false,
   }))
   signShade.position.set(0, SIGN_Y, SIGN_Z + 0.003); scene.add(signShade)
@@ -375,7 +375,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // letters had faded. They die away while the sign is still well ahead
     const near = fit(camera.position.z, SIGN_Z + 4, SIGN_Z + 7)
     ;(signWash.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.12 * signOnK * near
-    ;(signShade.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.44 * near
+    ;(signShade.material as THREE.ShaderMaterial).uniforms.uOpacity.value = 0.32 * near
     // as you come under the canopy its edge hides the sign: the page's sign (drawn
     // over the scene, so it knows nothing of that) fades out before its glow could show
     const fade = signL.z < 1 && signR.z < 1 ? fit(camera.position.z, SIGN_Z + 0.6, SIGN_Z + 3.2) : 0

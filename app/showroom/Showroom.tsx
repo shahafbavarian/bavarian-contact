@@ -40,7 +40,10 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     if (!cv.getContext('webgl2')) { setState('fallback'); return }
 
     const mobile = matchMedia('(pointer: coarse)').matches || innerWidth < 900
-    let current = 0, vel = 0, target = 0, last = performance.now(), raf = 0, alive = true
+    // two remembered states: a refresh while inside opens inside
+    let inside = false
+    try { inside = sessionStorage.getItem('sr-view') === 'in' } catch {}
+    let current = inside ? 1 : 0, vel = 0, target = inside ? 1 : 0, last = performance.now(), raf = 0, alive = true
     // the walk: a timed ease of the target from where it is to 0 (outside) or
     // 1 (inside). A gesture the other way turns it around at any moment.
     let from = 0, to = 0, t0 = 0, dur = 0
@@ -50,6 +53,7 @@ export default function Showroom({ cards }: { cards: Card[] }) {
     const go = (dest: 0 | 1) => {
       if (dur ? to === dest : target === dest) return
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
+      try { sessionStorage.setItem('sr-view', dest === 1 ? 'in' : 'out') } catch {}
     }
     goRef.current = go
     const frame = (now: number) => {
