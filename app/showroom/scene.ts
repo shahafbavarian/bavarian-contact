@@ -750,10 +750,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
-      // mid-flight the card is a turning screen: before the half-way it
-      // shows its screen's photo (map2), after it the car — the turn itself
-      // is a flat cosine squash, so nothing smears in perspective
-      vec3 ph = (uFlip > .5) ? texture2D(map2, uv).rgb : texture2D(map, uv).rgb;
+      // Mid-flight the card is a turning screen: before the half-way it
+      // shows its screen's photo, after it the car. THE OLD FAULT: the
+      // screen's 3:2 photo was stretched over the card's taller quad; it is
+      // sampled now only across the card's own photo region — exactly 3:2 —
+      // so the picture is true from the first frame to the last
+      float m2y = clamp((p.y + uSize.y * .5 - uStripH) / max(uSize.y - uStripH, 1e-4), 0., 1.);
+      vec3 ph = (uFlip > .5) ? texture2D(map2, vec2(uv.x, m2y)).rgb : texture2D(map, uv).rgb;
       vec3 col = mix(uBase, ph, uReady) * uBright;
       // a hairline of light at the edge, like the screens' (brighter under the hand)
       col = mix(col, uEdgeC, (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (uEdgeK + .16 * uLift));
@@ -1006,12 +1009,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const maxScroll = () => Math.max(0, Math.ceil(N / gcols) - rowsFit)
   // the screens out in front of you: from their place on the ring to the same
   // place as seen from the hall's middle, carried with you
-  const placeShow = (dt: number) => {
+  const placeShow = (p: number, dt: number) => {
     // growing out: on the clock (a slow frame jumps ahead instead of dragging
     // the move), quick off the mark and easing into place
     const gt = growAt < 0 ? 0 : Math.min(1, (performance.now() - growAt) / GROW_MS)
     if (gt > 0 && gt < 1) dirty = true
-    const g = calm ? (gt > 0 ? 1 : 0) : 1 - (1 - gt) ** 4
+    const g0 = calm ? (gt > 0 ? 1 : 0) : 1 - (1 - gt) ** 4
+    // the big screens belong to the street: as the walk begins they shrink
+    // back through the doors onto the ring (and come out again only at its
+    // very end on the way home) — carried with the camera they crossed it
+    // mid-walk as giant smears, both ways
+    const g = g0 * (1 - smooth(fit(p, 0.02, 0.2)))
     ring.updateMatrixWorld(true); camera.updateMatrixWorld()
     invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
     cardMeshes.forEach((m, i) => {
@@ -1405,7 +1413,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     })
     const f = onStreet ? -1 : carAt(Math.round(angle / STEP))
     if (f !== front) { front = f; opts.onFront(f) }
-    placeWall(p, dt); placeShow(dt); placeCards(dt)
+    placeWall(p, dt); placeShow(p, dt); placeCards(dt)
   }
 
   function setSize() {
