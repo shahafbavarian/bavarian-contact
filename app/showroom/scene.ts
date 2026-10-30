@@ -638,7 +638,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float open = smoothstep(0., .55, uPower);
       float pic = step(abs(vUv.y - .5), open * .5 + .004) * step(.001, uPower);
       col = mix(vec3(.018, .019, .022), col + (1. - smoothstep(.35, 1., uPower)) * .6, pic);
-      col += smoothstep(-.012, -.002, d) * .10 * uPower;  // hairline edge, only on a lit screen (dark, it read as a stray line of light)
       col = mix(col, vec3(.018, .019, .022), uSwap);      // mid-change, the glass goes dark
       col *= mix(1., .28, uDim);                          // cards away from the front recede
       col = min(acesInv(max(col, vec3(0.))), vec3(uCap)); // capped where bloom runs, so white photos don't flare
@@ -737,8 +736,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   let STRIP = 0.26                      // its info band, as a share of its width (set by layout)
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
-    uniform sampler2D map; uniform sampler2D map2; uniform float uFlip; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
-    uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; uniform vec3 uBase; uniform vec3 uEdgeC; uniform float uEdgeK; uniform float uShade; varying vec2 vUv;
+    uniform sampler2D map; uniform sampler2D map2; uniform float uFlip; uniform sampler2D pillMap; uniform float uPill; uniform vec4 uPillR; uniform float uAlpha; uniform float uReady; uniform float uExp; uniform float uLift; uniform vec2 uSize; uniform float uPad;
+    uniform float uStrip; uniform float uStripH; uniform float uBright; uniform vec3 uClip; uniform float uClipOn; uniform vec3 uBase; uniform vec3 uEdgeC; uniform float uEdgeK; uniform float uShade; uniform float uRad; varying vec2 vUv;
     float rbox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
     vec3 odtInv(vec3 y){
       vec3 a = 1. - .983729 * y;
@@ -756,7 +755,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the band under the photo opens as a screen becomes a card
       float hv = uSize.y - uStripH * (1. - uStrip);
       vec2 c = vec2(0., (uSize.y - hv) * .5);
-      float d = rbox(p - c, vec2(uSize.x, hv) * .5, uSize.x * .028);
+      float d = rbox(p - c, vec2(uSize.x, hv) * .5, uRad);
       float aa = max(fwidth(d), 1e-5);
       float inCard = 1. - smoothstep(-aa, aa, d);
       vec2 uv = clamp(p / uSize + .5, 0., 1.);
@@ -768,6 +767,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       float m2y = clamp((p.y + uSize.y * .5 - uStripH) / max(uSize.y - uStripH, 1e-4), 0., 1.);
       vec3 ph = (uFlip > .5) ? texture2D(map2, vec2(uv.x, m2y)).rgb : texture2D(map, uv).rgb;
       vec3 col = mix(uBase, ph, uReady) * uBright;
+      // the status pill, its own layer on the photo's corner (uPillR: its box
+      // in card space — left, bottom, width, height)
+      vec2 pq = (p - uPillR.xy) / uPillR.zw;
+      if (uPill > .001 && pq.x >= 0. && pq.x <= 1. && pq.y >= 0. && pq.y <= 1.) {
+        vec4 pc = texture2D(pillMap, pq);
+        col = mix(col, pc.rgb, pc.a * uPill);
+      }
       // a hairline of light at the edge, like the screens' (brighter under the hand)
       col = mix(col, uEdgeC, (1. - smoothstep(0., 1.6 * aa, abs(d + aa))) * (uEdgeK + .16 * uLift));
       col = acesInv(max(col, vec3(0.)));   // the photo exactly as it is (the frame is tone-mapped after)
@@ -806,7 +812,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (f) return f
     const m = new THREE.Mesh(wallGeo, new THREE.ShaderMaterial({
       uniforms: {
-        map: { value: null }, map2: { value: null }, uFlip: { value: 0 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
+        map: { value: null }, map2: { value: null }, uFlip: { value: 0 }, pillMap: { value: null }, uPill: { value: 0 }, uPillR: { value: new THREE.Vector4(0, 0, 1, 1) }, uRad: { value: 0.04 }, uAlpha: { value: 0 }, uReady: { value: 0 }, uExp: { value: 1 }, uLift: { value: 0 },
         uSize: { value: new THREE.Vector2(1, 1) }, uPad: { value: 0.05 }, uStrip: { value: 1 }, uStripH: { value: 0.3 },
         uBright: { value: 1 }, uClip: { value: new THREE.Vector3(0, 1e5, 1) }, uClipOn: { value: 1 },
         uBase: { value: new THREE.Color(opts.light ? '#e9ecef' : '#0d0e11') }, uEdgeC: { value: new THREE.Color(opts.light ? '#000000' : '#ffffff') },
@@ -886,7 +892,31 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // card's strongest line, and the facts as small line icons with their
   // values — a calendar for the year, a gauge for the km, a person for the
   // hand. One design in every size; the band is fixed in css px
-  const BAND_CSS = 96
+  const BAND_CSS = 96, BAND_WIDE = 78
+  // the status pill, its own layer: drawn once per status (in stock / on the
+  // way) at 4x, laid on the photo's top corner by the card's shader, and shown
+  // only once the card has landed — it never rides the scatter or the walk out
+  const PILL_H = 19, PILL_S = 4
+  const pills: Record<'stock' | 'way', { tex: THREE.CanvasTexture; w: number } | null> = { stock: null, way: null }
+  const pillOf = (stock: boolean) => {
+    const key = stock ? 'stock' : 'way'
+    if (pills[key]) return pills[key]!
+    const word = stock ? 'במלאי' : 'בדרך לארץ', font = opts.font
+    const m = document.createElement('canvas').getContext('2d')!
+    m.font = `600 ${10 * PILL_S}px ${font}`; m.direction = 'rtl'
+    const w = m.measureText(word).width / PILL_S + 22
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * PILL_S); cv.height = PILL_H * PILL_S
+    const c = cv.getContext('2d')!, H = cv.height, W = cv.width
+    c.fillStyle = opts.light ? 'rgba(255,255,255,.92)' : 'rgba(13,15,19,.8)'
+    c.beginPath(); c.roundRect(0, 0, W, H, H / 2); c.fill()
+    c.fillStyle = stock ? face.green : face.gold
+    c.beginPath(); c.arc(W - 9 * PILL_S, H / 2, 2.6 * PILL_S, 0, Math.PI * 2); c.fill()
+    c.fillStyle = face.ink; c.font = `600 ${10 * PILL_S}px ${font}`; c.direction = 'rtl'; c.textAlign = 'right'; c.textBaseline = 'middle'
+    c.fillText(word, W - 15 * PILL_S, H / 2 + 0.5 * PILL_S)
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter
+    pills[key] = { tex, w }
+    return pills[key]!
+  }
   // the facts' little icons, drawn as lines at (x right edge, baseline y), size s
   const icon = (c: CanvasRenderingContext2D, kind: 'year' | 'km' | 'hand', xr: number, yb: number, s: number, col: string) => {
     const x = xr - s, y = yb - s * 0.92
@@ -914,22 +944,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const px = (v: number) => v * k, font = opts.font
     const pad = px(11), maxW = Wc - pad * 2
 
-    // the status: a small pill on the photo's top corner (where reading starts)
-    if (card.make) {
-      const stock = card.stock !== false, word = stock ? 'במלאי' : 'בדרך לארץ'
-      c.font = `600 ${px(10)}px ${font}`; c.direction = 'rtl'
-      const tw = c.measureText(word).width, ph = px(19), pw = tw + px(22)
-      const pxr = Wc - px(8), py = px(8)
-      c.save()
-      c.fillStyle = opts.light ? 'rgba(255,255,255,.9)' : 'rgba(13,15,19,.78)'
-      c.beginPath(); c.roundRect(pxr - pw, py, pw, ph, ph / 2); c.fill()
-      c.fillStyle = stock ? GREEN : GOLD
-      c.beginPath(); c.arc(pxr - px(9), py + ph / 2, px(2.6), 0, Math.PI * 2); c.fill()
-      c.fillStyle = face.ink; c.textAlign = 'right'; c.textBaseline = 'middle'
-      c.fillText(word, pxr - px(15), py + ph / 2 + px(0.5))
-      c.restore()
-    }
-
+    // (the status pill is not baked into the face: it is its own layer, so it
+    // never flies with the card — see pillTex)
     c.fillStyle = face.bg; c.fillRect(0, y0, Wc, Hs)
     c.textBaseline = 'alphabetic'
 
@@ -952,7 +968,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       return lines
     }
     let fn = 12.5, lines = wrap(px(fn))
-    while (lines.length > 2 && fn > 10) { fn -= 0.5; lines = wrap(px(fn)) }
+    const maxLines = Hs / k < 90 ? 1 : 2   // the low band (wide cards) keeps the name to one line
+    while (lines.length > maxLines && fn > 10) { fn -= 0.5; lines = wrap(px(fn)) }
     c.direction = 'ltr'; c.textAlign = 'left'
     let y = y0 + px(10) + px(fn)
     for (const line of lines) {
@@ -1044,7 +1061,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // handful of cars) as wide as the view — one design, the compact band
     const W = gcols === 1 ? Math.min(availW, 430 * mpp) : Math.min((availW - gap) / 2, 420 * mpp)
     const css = W / mpp, wide = false
-    const strip = BAND_CSS / css
+    // a wide card (one a row) holds its name on one line: a lower band, no gap
+    const strip = (gcols === 1 ? BAND_WIDE : BAND_CSS) / css
     const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
     STRIP = strip; cardCss = css; wideFace = wide
     cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : (W + gap) / 2
@@ -1287,12 +1305,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const off = hd.pr - scrollPos
       let bright = 1
       let sc = 1, sx = 1, a = 1, strip = 1
+      let flying = false, flyE = 1   // in flight (the scatter, the walk out), and how far along
       const fly = FLY.find(f => anchor + f.at === hd.i)
       const rel = fly ? fly.rel : 99
       if (mapped && fly && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
+        flying = true; flyE = fe
         // the big screen IS the card: its carried pose is camera-glued, so
         // the glide from full size into the grid cell is steady on screen
         srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
@@ -1337,8 +1357,23 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         m.position.copy(tmpV); m.quaternion.copy(tmpQ)
         u.uFlip.value = 0   // settled: the card shows its own face, no turn
         u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
-        a = calm ? throwK : smooth(fit(throwK, 0.5 + Math.min(hd.i, 8) * 0.022, 0.8 + Math.min(hd.i, 8) * 0.022))   // the rest rises in place as one soft group, a breath apart — and leaves the same way
-        if (!calm && a < 1) m.position.addScaledVector(tmpV2.set(0, -1, 0).applyQuaternion(camera.quaternion), (1 - a) * cardH * 0.12)
+        const ri = hd.i - anchor - FLY.length
+        if (calm) a = throwK
+        else if (mapped && throwK < 1 && ri >= 0) {
+          // the rest of the stock is DEALT out of the main screen: each card
+          // leaves its centre small, flies to its cell growing to full size
+          // and turns to you — the screens' own move, a beat apart; walking
+          // out they fly back into it the same way
+          const o = 0.22 + Math.min(ri, 9) * 0.035
+          const fe = easeInOut(fit(throwK, o, o + 0.45)), sl = slotOf(0)
+          srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
+          m.position.lerpVectors(srcP, tmpV, fe); m.position.y += Math.sin(Math.PI * fe) * 0.04
+          m.quaternion.slerpQuaternions(srcQ, tmpQ, fe)
+          sc = 0.35 + 0.65 * fe
+          strip = fit(fe, 0.75, 1)   // the band unfolds on landing, as on the screens
+          a = smooth(fit(fe, 0, 0.18))
+          flying = true; flyE = fe
+        }
       }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
       if (Math.abs(lift - u.uLift.value) > 1e-3) dirty = true
@@ -1361,6 +1396,26 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         } else a *= 1 - openK
       } else m.renderOrder = 0
       u.uAlpha.value = a; u.uBright.value = bright; u.uStrip.value = strip
+      {
+        // corners and edge: a landed card has its own; in flight they morph to
+        // the screen's (its rounded corners, no edge line), so the hand-off to
+        // or from the big screen shows no frame popping in or out
+        const own = cardW * 0.028, scr = 0.055 / Math.max(CW / cardW, 1e-3)
+        const f = flying ? smooth(fit(flyE, 0.55, 1)) : 1
+        u.uRad.value = scr + (own - scr) * f
+        u.uEdgeK.value = (opts.light ? 0.06 : 0.14) * f
+      }
+      {
+        const card = cards[hd.car], k = cardW / cardCss   // metres per css px on the card
+        if (card?.make) {
+          const pl = pillOf(card.stock !== false)
+          u.pillMap.value = pl.tex
+          const w = pl.w * k, h = PILL_H * k
+          u.uPillR.value.set(cardW / 2 - 8 * k - w, cardH / 2 - 8 * k - h, w, h)
+          // landed: on; in flight (the scatter, the walk out): off
+          u.uPill.value = flying ? smooth(fit(flyE, 0.88, 1)) : 1
+        } else u.uPill.value = 0
+      }
       m.visible = a > 0.002
       const pad = cardW * 0.07
       m.scale.set((cardW + pad * 2) * sc * sx, (cardH + pad * 2) * sc, 1)
