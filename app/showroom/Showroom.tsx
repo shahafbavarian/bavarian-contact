@@ -529,6 +529,11 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           behind the clock; a transparent, click-through strip there lets the page show */}
       <div ref={strip} className="sr-safari-strip" aria-hidden="true" />
       <div className="sr-safari-strip sr-strip-b" aria-hidden="true" />
+      {/* the walk's progress: at the root, after the edge strips, so it paints
+          OVER the bottom strip — inside the stage (a fixed box, its own
+          stacking layer) no z-index could lift it above the strip. 2px: under
+          the 3px Safari samples (rule 5) */}
+      <div className="sr-progress" aria-hidden="true"><div ref={bar} /></div>
       <div className="sr-track">
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />
@@ -741,7 +746,6 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
             ))}
           </ul>}
 
-          <div className="sr-progress" aria-hidden="true"><div ref={bar} /></div>
           {state === 'fallback' && (
             <div className="sr-fallback">
               <p>האולם התלת-ממדי לא נתמך במכשיר הזה.</p>
