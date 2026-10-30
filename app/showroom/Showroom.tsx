@@ -566,6 +566,11 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
           onOpen: i => { const c = all[i]; if (c.person) openPersonRef.current(i); else if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
+        // the cards follow the native scroller, read by the scene once a frame
+        handle.current.setScrollSource(() => {
+          const sc = scroller.current
+          return sc && sc.style.display === 'block' ? sc.scrollTop / rowPx.current : null
+        })
         insets()
         if (viewRef.current) handle.current.setView(viewRef.current, true)
       } catch { setState('fallback') }
@@ -715,7 +720,6 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
               low and tight, so the cards keep the screen */}
           {/* the cards' native scroller (transparent; a tap opens the card under it) */}
           <div ref={scroller} className="sr-scroller" aria-hidden="true"
-            onScroll={e => handle.current?.setScroll((e.currentTarget as HTMLDivElement).scrollTop / rowPx.current)}
             onClick={e => handle.current?.tapAt(e.clientX, e.clientY)}>
             <div ref={scrollFill} />
           </div>

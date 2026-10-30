@@ -39,6 +39,9 @@ export type SceneHandle = {
   toTop: () => void
   /** a native page scroller drives the list: its position, in rows */
   setScroll: (rows: number) => void
+  /** the native scroller, read once per frame (null while it is off): the
+   *  cards then move in even steps, in time with the drawing */
+  setScrollSource: (read: () => number | null) => void
   /** a tap at a screen point (from the native scroller): opens the card there */
   tapAt: (x: number, y: number) => void
   atTop: () => boolean
@@ -749,7 +752,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     showing above and below; up and down runs through the whole stock ───
   const wallScene = new THREE.Scene()
   const WALL_R = 3                      // the cards' distance from you (m)
-  const CARD_PX = 768                   // a card's face, in canvas pixels
+  // a card's face, in canvas pixels: on a phone a card is ~350 device pixels
+  // wide (the pixel ratio is capped at 2), so 512 keeps it sharp at a little
+  // over half the GPU memory and upload of 768 — every card entering the list
+  // is uploaded mid-scroll
+  const CARD_PX = mobile ? 512 : 768
   let STRIP = 0.26                      // its info band, as a share of its width (set by layout)
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
@@ -1344,7 +1351,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
-      const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
+      // two rows ahead on each side, always: with the native scroller the
+      // scene's own finger speed is 0, and faces were drawn only as their row
+      // came into view — mid-scroll
+      const ahead = 2
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (const f of FLY) { const i = anchor + f.at; if (i >= 0 && i < N) want.set(listCar(i), i) }
@@ -1582,6 +1592,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // stand. That is where the page scroll ends: the gallery itself only turns
   // sideways — finger, mouse or arrows — and always rests on a card.
   const WALK = 0.82
+  let scrollSource: (() => number | null) | null = null, lastSr: number | null = null
   let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0, autoT = 0, swapHold = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
@@ -1807,6 +1818,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
+    // the native scroller's position, read here, once a frame: scroll events
+    // come at the screen's rate (up to 120 a second), not the drawing's, and
+    // left some frames two steps and some none — the tremble
+    // Only when the scroller itself moved: the arrows, the keys and a wheel
+    // off the list move the list through the scene, and must not be pulled back
+    const sr = scrollSource?.() ?? null
+    if (sr != null && sr !== lastSr) { scrollPos = scrollTarget = sr; scrollAt = performance.now(); fling = false; dirty = true }
+    lastSr = sr
     // the kick wakes the render loop so the switch-on plays even at rest
     if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
     if (growAt < 0 && readyAt >= 0) {
@@ -1825,7 +1844,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     loadCards()
     let signRising = false
     if (readyAt >= 0 && !signDone) { const k = smooth(fit(now - readyAt, 200, 1200)); signLight(0.28 + 0.72 * k); signDone = k >= 1; signRising = !signDone }
-    const floating = progress > 0.7
+    // the stand's ring floats only while it is part of the walk; inside, at
+    // rest, nothing moves — the hall is drawn only when something changes
+    // (it was redrawn every frame for a ring that is not on show)
+    const floating = progress > 0.7 && progress < 0.999
     const moving = signRising || floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return
     dirty = false
@@ -1847,6 +1869,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     toTop() { if (!wallOn) return; fling = false; scrollTarget = 0; dirty = true },
     // the native scroller's position, followed exactly — its own momentum and
     // its own give at the ends (a negative or overshooting value) included
+    setScrollSource(read) { scrollSource = read },
     setScroll(rows) { if (rows === scrollPos && rows === scrollTarget) return; scrollPos = scrollTarget = rows; scrollAt = performance.now(); fling = false; dirty = true },
     tapAt(x, y) { if (!wallOn || opening) return; const o = wallHit({ clientX: x, clientY: y } as PointerEvent); if (o) openCard(o) },
     atTop: () => scrollTarget <= 0.001,
