@@ -41,7 +41,7 @@ export type SceneHandle = {
   /** Offline rendering: place the camera at p and draw one frame now */
   renderFrame: (p: number) => void
   dispose: () => void
-  stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number; born: number }
+  stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number; born: number; walk?: { throwK: number; walkU: number; mapped: boolean; wallOn: boolean; exitRide: boolean } }
 }
 
 // A card on the floating gallery: one of the site's destinations. One image
@@ -1837,7 +1837,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     stats() {
       const s = [...frames].sort((a, b) => a - b)
       return {
-        born, frames: s.length, avg: s.reduce((a, b) => a + b, 0) / (s.length || 1), p95: s[Math.floor(s.length * 0.95)] ?? 0,
+        born, walk: { throwK, walkU, mapped, wallOn, exitRide }, frames: s.length, avg: s.reduce((a, b) => a + b, 0) / (s.length || 1), p95: s[Math.floor(s.length * 0.95)] ?? 0,
         calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr,
         angle: angle / STEP, drag: drag / STEP, progress, front,
       }
