@@ -1843,8 +1843,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     },
     hideCards(on) { hideT = on; dirty = true },
     cardRect(ci) {
+      // (a card stepped out for a person is still in its place: the person
+      // closes back into it, so no visibility test here)
       const hd = held.get(ci)
-      if (!hd || !hd.m.visible) return null
+      if (!hd) return null
       const m = hd.m, pad = cardW * 0.07
       // the face within the mesh (the mesh carries a shadow margin), and of it
       // the photo: the top 2/3 of a car's card, all but the band on a person's

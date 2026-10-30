@@ -7,23 +7,18 @@ type Rect = { x: number; y: number; w: number; h: number; r: number }
 
 // A team card opened in the hall: the person's page, opening out of the card
 // itself. The portrait starts exactly where the card's photo is on screen and
-// grows into its place on the page (transform + clip-path, top-anchored like
-// the card), the page's light comes up under it, then the name and the ways to
-// talk follow. Closing plays it back into the card. Nothing is fetched: the
+// grows into its place on the page — transform only, so Safari runs it on the
+// compositor and the hall's own frames can never make it stutter — the page's
+// light comes up under it, then the name and the ways to talk follow. Closing plays it back into the card. Nothing is fetched: the
 // card already carries the person.
 const OPEN_MS = 560, CLOSE_MS = 420
 const EASE_OUT = 'cubic-bezier(.22,1,.36,1)', EASE_IO = 'cubic-bezier(.77,0,.175,1)'
 
-// from the photo's place on the page back to the card's: scale to cover the
-// card, cut to it (sides evenly, the bottom — both are anchored at the top)
+// from the photo's place on the page back to the card's: one uniform scale
+// to the card's width, the tops aligned (both are anchored at the top)
 function fromCard(final: DOMRect, card: Rect) {
-  const k = Math.max(card.w / final.width, card.h / final.height)
-  const padX = (final.width - card.w / k) / 2
-  const padB = final.height - card.h / k
-  return {
-    transform: `translate(${card.x - final.left - padX * k}px, ${card.y - final.top}px) scale(${k})`,
-    clipPath: `inset(0px ${padX}px ${padB}px ${padX}px round ${card.r / k}px)`,
-  }
+  const k = card.w / final.width
+  return { transform: `translate(${card.x - final.left}px, ${card.y - final.top}px) scale(${k})` }
 }
 
 export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
@@ -55,7 +50,7 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
       root.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT })
     } else {
       const start = fromCard(ph.getBoundingClientRect(), card)
-      ph.animate([start, { transform: 'none', clipPath: 'inset(0px 0px 0px 0px round 24px)' }], { duration: OPEN_MS, easing: EASE_OUT })
+      ph.animate([start, { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
       bg.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: EASE_OUT })
       parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
         { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
@@ -78,7 +73,7 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
     root.current?.querySelector('.pv-over')?.scrollTo({ top: 0 })
     parts().forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: EASE_OUT, fill: 'forwards' }))
     bg.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
-    const a = ph.animate([{ transform: 'none', clipPath: 'inset(0px 0px 0px 0px round 24px)' }, fromCard(ph.getBoundingClientRect(), card)],
+    const a = ph.animate([{ transform: 'none' }, fromCard(ph.getBoundingClientRect(), card)],
       { duration: CLOSE_MS, easing: EASE_IO, fill: 'forwards' })
     a.onfinish = end
     const t = setTimeout(end, CLOSE_MS + 200)   // never left open if a frame is dropped

@@ -23,7 +23,12 @@ html:has(.pv-page), html:has(.pv-page) body {
 /* over the hall: the hall itself is the background (its cards step out), under
    a light veil that keeps the name and the buttons calm and readable; the veil
    runs on under Safari's floating bar (the large viewport) */
-.pv-over > .pv-bg { position: fixed; inset: 0 0 auto; height: 100lvh; background: rgba(245,246,247,.42); }
+.pv-over > .pv-bg {
+  position: fixed; inset: calc(60px + env(safe-area-inset-top)) 0 auto; height: 100lvh; background: rgba(245,246,247,.42);
+}
+/* the hall's own bar stays above the veil, its logo crisp; the close takes
+   the place of its menu, exactly */
+.pv-over .pv-close { position: fixed; z-index: 2; top: calc(env(safe-area-inset-top) + 8px); inset-inline-start: clamp(14px, calc(4vw - 2px), 54px); }
 .pv-page { min-height: 100dvh; background: var(--canvas); }
 .pv-over {
   position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
