@@ -60,7 +60,8 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
       parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
         { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
     }
-    root.current?.querySelector<HTMLElement>('.pv-close')?.focus({ preventScroll: true })
+    // the keyboard lands on the close (a computer); a touch screen shows no ring
+    if (matchMedia('(pointer: fine)').matches) root.current?.querySelector<HTMLElement>('.pv-close')?.focus({ preventScroll: true })
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // close: the same move played back into the card
@@ -83,6 +84,30 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
     const t = setTimeout(end, CLOSE_MS + 200)   // never left open if a frame is dropped
     return () => clearTimeout(t)
   }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pulling down never reloads the page or stretches it; only a strong swipe
+  // down — far and fast — from the top closes the person. On a screen too
+  // small for the page it still scrolls as usual
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEffect(() => {
+    const el = root.current?.querySelector<HTMLElement>('.pv-over')
+    if (!el) return
+    let y0 = 0, t0 = 0, fromTop = true
+    const start = (e: TouchEvent) => { y0 = e.touches[0].clientY; t0 = performance.now(); fromTop = el.scrollTop <= 0 }
+    const move = (e: TouchEvent) => {
+      const dy = e.touches[0].clientY - y0, still = el.scrollHeight <= el.clientHeight + 1
+      if (e.cancelable && (still || (el.scrollTop <= 0 && dy > 0))) e.preventDefault()
+    }
+    const end = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - y0, dt = Math.max(1, performance.now() - t0)
+      if (fromTop && dy > 110 && dy / dt > 0.6) closeRef.current()
+    }
+    el.addEventListener('touchstart', start, { passive: true })
+    el.addEventListener('touchmove', move, { passive: false })
+    el.addEventListener('touchend', end)
+    return () => { el.removeEventListener('touchstart', start); el.removeEventListener('touchmove', move); el.removeEventListener('touchend', end) }
+  }, [])
 
   // Escape closes, like the button
   useEffect(() => {

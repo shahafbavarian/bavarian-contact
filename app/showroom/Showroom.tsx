@@ -33,7 +33,7 @@ const VIEW_RE = /^\/showroom\/(cars|team)\/?$/
 const pathView = () => (location.pathname.match(VIEW_RE)?.[1] ?? null) as 'cars' | 'team' | null
 const onHallPath = () => /^\/showroom(\/|$)/.test(location.pathname)
 
-export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Card[]; team?: Card[]; street?: Card[] }) {
+export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars' }: { cards: Card[]; team?: Card[]; street?: Card[]; start?: 'cars' | 'team' }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -75,14 +75,16 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   const all = useMemo(() => [...deck, ...team], [deck, team])
   const carIds = useMemo(() => deck.map((_, i) => i), [deck])
   const teamIds = useMemo(() => team.map((_, i) => deck.length + i), [deck, team])
-  const [set, setSet] = useState<'cars' | 'team'>('cars')
+  // the set to start on comes with the page (each address is its own page), so
+  // a refresh of /showroom/team never shows the cars first
+  const [set, setSet] = useState<'cars' | 'team'>(start === 'team' && team.length ? 'team' : 'cars')
   const setRef = useRef(set)
   setRef.current = set
-  // a refresh inside opens on the set it was showing: the address says which,
-  // or (a plain /showroom) the remembered one
+  // a plain /showroom that was left inside opens on the set it was showing
   useEffect(() => {
-    let s = pathView()
-    if (!s) try { if (sessionStorage.getItem('sr-set') === 'team') s = 'team' } catch {}
+    if (pathView()) return   // the address already said which, with the page
+    let s: string | null = null
+    try { s = sessionStorage.getItem('sr-set') } catch {}
     if (s === 'team' && team.length) { setRef.current = 'team'; setSet('team') }
   }, [team.length])
   // where the walk is (0 street … 1 inside), for the choice of an instant swap

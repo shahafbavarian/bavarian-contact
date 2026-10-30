@@ -1,7 +1,8 @@
 /* A person's page — DESIGN.md palette ד׳, IBM Plex Sans Hebrew. Scoped under
    .pv; the only page-level rule below unlocks scrolling for the standalone
    page (the site's global sheet locks html/body for the car page). The layer
-   over the hall (.pv-over) scrolls inside itself and leaves the hall alone. */
+   over the hall (.pv-over) scrolls inside itself and leaves the hall alone;
+   a strong swipe down closes it (PersonOverlay). */
 
 html:has(.pv-page), html:has(.pv-page) body {
   position: static; height: auto; overflow: visible; touch-action: auto; overscroll-behavior: auto;
@@ -17,11 +18,14 @@ html:has(.pv-page), html:has(.pv-page) body {
   font-family: var(--font-plex), system-ui, sans-serif; -webkit-text-size-adjust: 100%;
 }
 .pv a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
-.pv :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 8px; }
+.pv :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+/* the layer's light runs on under Safari's floating bar (the large viewport),
+   so the glass shows the card's own colour, not the hall behind it */
 .pv-bg { position: absolute; inset: 0; background: var(--canvas); }
+.pv-over > .pv-bg { position: fixed; inset: 0 0 auto; height: 100lvh; }
 .pv-page { min-height: 100dvh; background: var(--canvas); }
 .pv-over {
-  position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 .pv-frame {
@@ -33,19 +37,24 @@ html:has(.pv-page), html:has(.pv-page) body {
 /* the bar: the way back at the start, the brand's long mark at the end */
 .pv-bar { display: flex; align-items: center; justify-content: space-between; height: 64px; flex-shrink: 0; }
 .pv-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding-inline: 2px 8px; font-size: 16px; font-weight: 500; }
+/* a light round close: a hairline and a soft shadow, the tap area a full 44px */
 .pv-close {
-  width: 44px; height: 44px; border: 0; border-radius: 50%; cursor: pointer; display: grid; place-items: center;
-  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  position: relative; width: 40px; height: 40px; margin: 2px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; background: rgba(255,255,255,.92); color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(20,23,26,.08), 0 6px 16px -8px rgba(20,23,26,.28);
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; outline-offset: 2px;
 }
+.pv-close::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
 .pv-logo { display: block; height: 22px; width: auto; }
 
-/* the portrait leads: on a phone its height is taken from the screen, so the
-   name and the three ways to talk all sit on the first screen */
-.pv-main { flex: 1; display: flex; flex-direction: column; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+/* the portrait leads, square like the card it grows out of; the name and the
+   three ways to talk follow right under it, the whole group in the middle of
+   the screen. On a phone the portrait's size is taken from the screen, so it
+   all sits on the first screen */
+.pv-main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 .pv-photo {
-  position: relative; align-self: center; aspect-ratio: 4 / 5; max-width: 100%; margin-top: 4px;
-  height: clamp(220px, calc(100dvh - 404px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 560px);
+  position: relative; align-self: center; aspect-ratio: 1 / 1; height: auto;
+  width: min(100%, clamp(220px, calc(100dvh - 400px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 520px));
   border-radius: 24px; overflow: hidden; background: var(--soft); box-shadow: var(--shadow);
   transform-origin: 0 0;
 }
@@ -60,7 +69,8 @@ html:has(.pv-page), html:has(.pv-page) body {
 .pv-role { margin: 6px 0 0; font-size: 17px; line-height: 1.4; color: var(--muted); }
 
 /* one strong way to talk, two quiet ones beside each other */
-.pv-actions { margin-top: auto; padding-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pv-actions { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pv-btn:focus-visible { border-radius: 16px; }
 .pv-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border-radius: 16px;
   font-size: 16px; font-weight: 500; white-space: nowrap;
