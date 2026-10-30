@@ -29,7 +29,6 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   const root = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const cap = useRef<HTMLDivElement>(null)
-  const bar = useRef<HTMLDivElement>(null)
   const floor = useRef<HTMLDivElement>(null)
   const goRef = useRef<(dest: 0 | 1) => void>(() => {})
   const nav = useRef<HTMLElement>(null)
@@ -274,10 +273,6 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           const vb = Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop))
           if (Math.abs(vb - lastVb) > 1) {
             lastVb = vb; c.style.bottom = `${vb + 4}px`; insets()
-            // the walk's progress bar rides the same visible edge: at the
-            // layout's bottom it sat behind Safari's floating bar, unseen
-            const pb = bar.current?.parentElement
-            if (pb) pb.style.bottom = `${vb}px`
           }
         }
         c.style.transform = `translateY(${(1 - s) * 14}px)`
@@ -292,14 +287,6 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
         const l = fit(current, 0.42, 0.6)
         nav.current.style.opacity = String(l); nav.current.style.visibility = l > 0.01 ? 'visible' : 'hidden'
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
-      }
-      if (bar.current) {
-        bar.current.style.transform = `scaleX(${current})`
-        // shown only while the walk moves — at rest (street or hall) the foot
-        // keeps its own look
-        const pv = Math.min(1, current * 25, (1 - current) * 25)
-        const pb = bar.current.parentElement
-        if (pb) pb.style.opacity = String(pv)
       }
       const scOn = current > 0.95 && !!handle.current?.inside()
       if (scOn !== wasScOn && scroller.current) { wasScOn = scOn; scroller.current.style.display = scOn ? 'block' : 'none'; if (scOn) scroller.current.scrollTop = 0 }
@@ -529,11 +516,6 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           behind the clock; a transparent, click-through strip there lets the page show */}
       <div ref={strip} className="sr-safari-strip" aria-hidden="true" />
       <div className="sr-safari-strip sr-strip-b" aria-hidden="true" />
-      {/* the walk's progress: at the root, after the edge strips, so it paints
-          OVER the bottom strip — inside the stage (a fixed box, its own
-          stacking layer) no z-index could lift it above the strip. 2px: under
-          the 3px Safari samples (rule 5) */}
-      <div className="sr-progress" aria-hidden="true"><div ref={bar} /></div>
       <div className="sr-track">
         <div className="sr-stage">
           <canvas ref={canvas} className="sr-canvas" aria-label="אולם התצוגה של בוואריאן מוטורס" role="img" />
