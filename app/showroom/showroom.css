@@ -203,6 +203,8 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
   opacity: 0; visibility: hidden; font-variant-numeric: tabular-nums; pointer-events: none;
 }
 .sr-cap > * { pointer-events: auto; }
+/* the team has no search: its foot stays out (over the inline style the walk sets) */
+.sr[data-set="team"] .sr-cap { visibility: hidden !important; }
 /* Lit like the street's buttons and the sign: white light, zero-offset glows
    stacked from a tight edge to a wide soft halo (no frame; the dark floor
    behind is what lets the glow read), and a short line of light between name

@@ -56,10 +56,11 @@ export function newPublicId(len = 6): string {
   return s
 }
 
-// Purge the CDN copies of the team page and this agent's page after an edit.
+// Purge the CDN copies of the team page, this agent's page and the hall after an edit.
 export function revalidateAgent(publicId: string) {
   revalidatePath('/team')
   revalidatePath(`/team/${publicId}`)
+  revalidatePath('/showroom')   // the hall carries the team's cards too
 }
 
 export type AgentFields = {
