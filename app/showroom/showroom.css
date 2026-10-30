@@ -213,6 +213,9 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 .sr-cap > * { pointer-events: auto; }
 /* the team has no search: its foot stays out (over the inline style the walk sets) */
 .sr[data-set="team"] .sr-cap { visibility: hidden !important; }
+/* a person open over the hall: the bar keeps its logo, its menu gives way to
+   the person's close (in the same place) */
+.sr[data-person] .sr-burger, .sr[data-person] .sr-menu { visibility: hidden !important; }
 /* Lit like the street's buttons and the sign: white light, zero-offset glows
    stacked from a tight edge to a wide soft halo (no frame; the dark floor
    behind is what lets the glow read), and a short line of light between name

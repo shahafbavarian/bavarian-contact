@@ -50,8 +50,12 @@ export default function PersonView({ p, mode, onClose, refs }: {
               הצוות
             </a>
           )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="pv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} />
+          {/* over the hall, the hall's own bar keeps its logo in place (only its
+              menu gives way to the close): no second logo on top of it */}
+          {mode === 'page' && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="pv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} />
+          )}
         </div>
 
         <main className="pv-main">

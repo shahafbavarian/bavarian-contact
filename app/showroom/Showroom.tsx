@@ -112,6 +112,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const openPerson = (i: number, push = true) => {
     if (personRef.current) return
     setPerson({ i, closing: false })
+    handle.current?.hideCards(true)   // the cards step out; the hall stays behind the person
     if (push) { history.pushState(null, '', all[i].href); pushedPerson.current = true }
   }
   const openPersonRef = useRef(openPerson)
@@ -119,7 +120,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const closePerson = () => {
     if (!personRef.current || personRef.current.closing) return
     if (pushedPerson.current) history.back()   // the address goes home; popstate plays the close
-    else setPerson(p => p && { ...p, closing: true })
+    else { setPerson(p => p && { ...p, closing: true }); handle.current?.hideCards(false) }
   }
   const personData = (c: Card) => {
     const id = c.href.split('/').pop() ?? ''
@@ -204,7 +205,14 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     const v = s === 'team' ? teamIds : (found ?? carIds)
     viewRef.current = v
     handle.current?.setView(v, progress.current < 0.02)   // before the first step maps the cards
-    goRef.current(1)
+    // from the street, the walk sets off once the first faces of the set are
+    // drawn and on the GPU (a few frames at most) — nothing is born mid-walk
+    const h = handle.current, t0 = performance.now()
+    const setOff = () => {
+      if (!h || progress.current > 0.02 || h.prepare(v) || performance.now() - t0 > 1500) goRef.current(1)
+      else requestAnimationFrame(setOff)
+    }
+    setOff()
     syncRef.current(true)   // already inside (a set switched): the address still follows
   }
   enterRef.current = enter
@@ -301,6 +309,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       if (personRef.current && !location.pathname.startsWith('/team/')) {
         pushedPerson.current = false
         setPerson(p => p && { ...p, closing: true })
+        handle.current?.hideCards(false)
         return
       }
       // forward to a person opened before: open them again
@@ -449,8 +458,11 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       // above, the search sheet's top edge below (it rises 12px over the row)
       const top = n ? n.offsetTop + n.offsetHeight : 64
       // from the screen's bottom edge to the foot's top, plus a breath; the
-      // team has no search row, so its cards take that room too
-      const bottom = !c ? 150 : setRef.current === 'team' ? cv.clientHeight - (c.offsetTop + c.offsetHeight) + 12 : cv.clientHeight - c.offsetTop + (light ? 12 : 0)
+      // team has no search row: its cards run down to Safari's real bottom edge
+      // (its floating bar), the same line the street's fade ends on
+      const vv = visualViewport
+      const vbNow = vv ? Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop)) : 0
+      const bottom = !c ? 150 : setRef.current === 'team' ? vbNow : cv.clientHeight - c.offsetTop + (light ? 12 : 0)
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
@@ -599,7 +611,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   }, [all, teamIds, streetDeck, router])
 
   return (
-    <div ref={root} className="sr" data-state={state} data-set={set}>
+    <div ref={root} className="sr" data-state={state} data-set={set} data-person={person ? '' : undefined}>
       {/* Safari 26 looks at what is fixed at the very top edge to decide what to draw
           behind the clock; a transparent, click-through strip there lets the page show */}
       <div ref={strip} className="sr-safari-strip" aria-hidden="true" />

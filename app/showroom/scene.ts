@@ -26,6 +26,11 @@ export type SceneHandle = {
   setView: (ids: number[] | null, instant?: boolean) => void
   /** where a card's photo is on screen (css px, and its corner radius), while it is on show */
   cardRect: (ci: number) => { x: number; y: number; w: number; h: number; r: number } | null
+  /** draws (if needed) the faces the first view of these cards needs; true once
+   *  all are drawn and on the GPU — a walk started then births nothing */
+  prepare: (ids: number[]) => boolean
+  /** the cards step out of the hall (a person is open over it) or come back */
+  hideCards: (on: boolean) => void
   /** The screen's edges the cards keep clear of (css px): the bar above, the search below, the sides */
   setInsets: (top: number, bottom: number, side: number) => void
   /** inside, with the cards out: up and down is theirs */
@@ -1231,11 +1236,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // every card the first view of the hall will hold, faces drawn ahead
       const ahead = Math.min(N, (rowsFit + 2) * gcols)
       for (let d = 0; d < ahead; d++) ensureCard(view[mod(r0 - base + d, N)])
-      // the other set (the team) too, so the street can walk straight into it
-      if (opts.preload) for (const ci of opts.preload.slice(0, ahead)) ensureCard(ci)
       // and the gallery's own next photos, so a slide never starts a texture
       if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
     }
+    // the other set (the team): drawn as soon as the street is up, not after
+    // the idle beat, so "הצוות" pressed at once still walks into ready faces
+    if (!mapped && opts.preload && readyAt >= 0) for (const ci of opts.preload.slice(0, 12)) ensureCard(ci)
     if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
     // heading out only: it stayed on after the walk home, and every later
     // walk in then skipped the main screen's turn
@@ -1319,7 +1325,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const dayFill = new THREE.HemisphereLight('#ffffff', '#e8eaee', 0)
   if (opts.light) scene.add(dayFill)
   let briK = 0
+  // a person open over the hall: the cards step out, the room stays
+  let hideT = false, hideK = 0
   const placeCards = (dt: number) => {
+    const hk = hideK
+    hideK += ((hideT ? 1 : 0) - hideK) * (1 - Math.exp(-dt * 10))
+    if (Math.abs(hideK - (hideT ? 1 : 0)) < 2e-3) hideK = hideT ? 1 : 0
+    if (hideK !== hk) dirty = true
     // the column count follows the stock on show
     const wc = N <= 5 ? 1 : 2
     if (wc !== gcols) { gcols = wc; layout() }
@@ -1474,6 +1486,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           m.renderOrder = 1
         } else a *= 1 - openK
       } else m.renderOrder = 0
+      a *= 1 - hideK
       u.uAlpha.value = a; u.uBright.value = bright; u.uStrip.value = strip
       {
         // corners and edge: a landed card has its own; in flight they morph to
@@ -1824,6 +1837,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       return true
     },
     setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
+    prepare(ids) {
+      const first = ids.slice(0, (rowsFit + 1) * gcols)
+      return first.every(ci => { const e = ensureCard(ci); return e.ready && !uploadQ.includes(e.tex) })
+    },
+    hideCards(on) { hideT = on; dirty = true },
     cardRect(ci) {
       const hd = held.get(ci)
       if (!hd || !hd.m.visible) return null
