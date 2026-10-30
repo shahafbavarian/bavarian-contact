@@ -31,13 +31,18 @@ export const viewport: Viewport = {
 // Decided before the first paint (an inline script, no React): a refresh of
 // the bright inside view must not open on black edges and repaint — the
 // CLAUDE.md Safari rulebook, first-paint clause
-const FIRST_PAINT = `try{if(location.search.indexOf('theme=dark')<0&&sessionStorage.getItem('sr-view')==='in')document.documentElement.setAttribute('data-sr-bright','')}catch(e){}`
+// (inside: the address says so — /showroom/cars, /showroom/team — or the
+// remembered state does)
+const FIRST_PAINT = `try{if(location.search.indexOf('theme=dark')<0&&(/^\\/showroom\\/(cars|team)\\/?$/.test(location.pathname)||sessionStorage.getItem('sr-view')==='in'))document.documentElement.setAttribute('data-sr-bright','')}catch(e){}`
 
-export default function ShowroomLayout({ children }: { children: React.ReactNode }) {
+// `sheet`: a person opened from the hall (/team/<id>), laid over the hall while
+// it stays alive behind; empty everywhere else
+export default function ShowroomLayout({ children, sheet }: { children: React.ReactNode; sheet: React.ReactNode }) {
   return (
     <div className={plex.variable}>
       <script dangerouslySetInnerHTML={{ __html: FIRST_PAINT }} />
       {children}
+      {sheet}
     </div>
   )
 }

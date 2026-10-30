@@ -1,5 +1,5 @@
 import { randomInt } from 'crypto'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getSupabaseAdmin } from './supabase'
 import { isValidEmail, normalizePhone, type Agent } from './agent-format'
 
@@ -60,7 +60,8 @@ export function newPublicId(len = 6): string {
 export function revalidateAgent(publicId: string) {
   revalidatePath('/team')
   revalidatePath(`/team/${publicId}`)
-  revalidatePath('/showroom')   // the hall carries the team's cards too
+  revalidatePath('/showroom', 'layout')   // the hall (all its addresses) carries the team's cards too
+  revalidateTag('agents')               // and a person opened over it (cached per person)
 }
 
 export type AgentFields = {

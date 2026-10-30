@@ -1728,11 +1728,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses
   // on the page's own buttons and links are theirs
-  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap, .sr-scroller')) onDown(e) }
+  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap, .sr-scroller, .sr-sheet')) onDown(e) }
   const onHover = (e: PointerEvent) => {
     if (mobile || e.pointerType !== 'mouse') return
     let next: THREE.Object3D | null = null
-    if (wallOn && !opening) next = wallHit(e)
+    if (wallOn && !opening && !(e.target as Element | null)?.closest?.('.sr-sheet')) next = wallHit(e)
     if (next !== hovered) { hovered = next; document.body.style.cursor = next ? 'pointer' : ''; dirty = true }
   }
   addEventListener('pointerdown', onDownAny)
