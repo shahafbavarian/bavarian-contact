@@ -24,6 +24,8 @@ export type SceneHandle = {
   step: (dir: 1 | -1) => void
   /** Show only these cars (indices into cards), or the whole stock (null) */
   setView: (ids: number[] | null, instant?: boolean) => void
+  /** where a card's photo is on screen (css px, and its corner radius), while it is on show */
+  cardRect: (ci: number) => { x: number; y: number; w: number; h: number; r: number } | null
   /** The screen's edges the cards keep clear of (css px): the bar above, the search below, the sides */
   setInsets: (top: number, bottom: number, side: number) => void
   /** inside, with the cards out: up and down is theirs */
@@ -52,6 +54,8 @@ export type Card = {
   make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string; yad?: string
   /** a member of the team, not a car: the face carries the name (title) and role (sub) */
   person?: boolean
+  /** a person's sharp portrait for their page (the card carries the small copy) */
+  hero?: string
 }
 type Opts = {
   mobile: boolean; logoUrl: string; cards: Card[]; font: string
@@ -1506,7 +1510,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const car = o.userData.car as number
     const hd = held.get(car)
     if (!hd || opening) return
-    if (calm) { opts.onOpen(car); return }
+    // a person opens at once: their page grows out of this very card (the
+    // hall's layer takes the card's place on screen — see cardRect)
+    if (calm || cards[car]?.person) { opts.onOpen(car); return }
     opening = { h: hd, t: 0, fired: false }; dirty = true
   }
 
@@ -1818,6 +1824,25 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       return true
     },
     setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
+    cardRect(ci) {
+      const hd = held.get(ci)
+      if (!hd || !hd.m.visible) return null
+      const m = hd.m, pad = cardW * 0.07
+      // the face within the mesh (the mesh carries a shadow margin), and of it
+      // the photo: the top 2/3 of a car's card, all but the band on a person's
+      const fx = cardW / (cardW + pad * 2) / 2, fy = cardH / (cardH + pad * 2) / 2
+      const photoH = cards[ci]?.person ? cardH - CARD_PX * 58 / cardCss / (CARD_PX * (2 / 3 + STRIP)) * cardH : cardW * 2 / 3
+      const yb = fy - (photoH / (cardH + pad * 2))
+      m.updateMatrixWorld()
+      const r = canvas.getBoundingClientRect()
+      const pts = [[-fx, fy], [fx, fy], [-fx, yb], [fx, yb]].map(([x, y]) => {
+        const v = tmpV.set(x, y, 0).applyMatrix4(m.matrixWorld).project(camera)
+        return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]
+      })
+      const xs = pts.map(q => q[0]), ys = pts.map(q => q[1])
+      const x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x
+      return { x, y, w, h: Math.max(...ys) - y, r: w * 0.028 }
+    },
     setView(ids, instant) {
       const next = ids ?? Array.from({ length: TOTAL }, (_, i) => i)
       const cur = pendingView ?? view

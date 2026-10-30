@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
+import PersonOverlay from './PersonOverlay'
 
 // the 3D module starts downloading the moment this file is parsed, in
 // parallel with hydration — not only once the effect runs
@@ -99,6 +100,33 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   }
   const syncRef = useRef(syncUrl)
   syncRef.current = syncUrl
+
+  // A team card opens the person's page out of the card itself, over the hall
+  // (which stays as it is), at the person's own address — /team/<id>; a shared
+  // link or a refresh there renders the full page. Back or close plays it home
+  const [person, setPerson] = useState<{ i: number; closing: boolean } | null>(null)
+  const personRef = useRef(person)
+  personRef.current = person
+  const pushedPerson = useRef(false)
+  const openPerson = (i: number, push = true) => {
+    if (personRef.current) return
+    setPerson({ i, closing: false })
+    if (push) { history.pushState(null, '', all[i].href); pushedPerson.current = true }
+  }
+  const openPersonRef = useRef(openPerson)
+  openPersonRef.current = openPerson
+  const closePerson = () => {
+    if (!personRef.current || personRef.current.closing) return
+    if (pushedPerson.current) history.back()   // the address goes home; popstate plays the close
+    else setPerson(p => p && { ...p, closing: true })
+  }
+  const personData = (c: Card) => {
+    const id = c.href.split('/').pop() ?? ''
+    return {
+      name: c.title, role: c.sub || null, photo: c.hero ?? c.images[0] ?? null, quick: c.images[0] ?? null,
+      whatsapp: `/api/agents/${id}/whatsapp`, vcard: `/api/agents/${id}/vcard`, instagram: INSTAGRAM_URL,
+    }
+  }
   const [menu, setMenu] = useState(false)
   const menuOpen = useRef(false)
   menuOpen.current = menu
@@ -266,6 +294,18 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     // back / forward: the address changed under the hall — play the walk (or
     // the change of set) it asks for, without writing the history again
     const onPop = () => {
+      // a person open over the hall: back closes them, and only that
+      if (personRef.current && !location.pathname.startsWith('/team/')) {
+        pushedPerson.current = false
+        setPerson(p => p && { ...p, closing: true })
+        return
+      }
+      // forward to a person opened before: open them again
+      if (!personRef.current && location.pathname.startsWith('/team/')) {
+        const i = all.findIndex(c => c.person && c.href === location.pathname.replace(/\/$/, ''))
+        if (i >= 0 && current > 0.95) { pushedPerson.current = true; openPersonRef.current(i, false) }
+        return
+      }
       if (!onHallPath()) return
       popping.current = true
       try { const pv = pathView(); if (pv) enterRef.current(pv); else go(0) } finally { popping.current = false }
@@ -521,7 +561,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           onReady: () => setState('ready'),
           onEnter: () => enterRef.current('cars'),
           onFront: setFront,
-          onOpen: i => { const c = all[i]; if (c.external) location.href = c.href; else router.push(c.href) },
+          onOpen: i => { const c = all[i]; if (c.person) openPersonRef.current(i); else if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
         insets()
@@ -796,6 +836,16 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           )}
         </div>
       </div>
+      {person && (
+        <PersonOverlay
+          key={person.i}
+          p={personData(all[person.i])}
+          from={() => handle.current?.cardRect(person.i) ?? null}
+          closing={person.closing}
+          onClosed={() => setPerson(null)}
+          onClose={closePerson}
+        />
+      )}
     </div>
   )
 }

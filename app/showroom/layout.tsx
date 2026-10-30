@@ -35,14 +35,11 @@ export const viewport: Viewport = {
 // remembered state does)
 const FIRST_PAINT = `try{if(location.search.indexOf('theme=dark')<0&&(/^\\/showroom\\/(cars|team)\\/?$/.test(location.pathname)||sessionStorage.getItem('sr-view')==='in'))document.documentElement.setAttribute('data-sr-bright','')}catch(e){}`
 
-// `sheet`: a person opened from the hall (/team/<id>), laid over the hall while
-// it stays alive behind; empty everywhere else
-export default function ShowroomLayout({ children, sheet }: { children: React.ReactNode; sheet: React.ReactNode }) {
+export default function ShowroomLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={plex.variable}>
       <script dangerouslySetInnerHTML={{ __html: FIRST_PAINT }} />
       {children}
-      {sheet}
     </div>
   )
 }

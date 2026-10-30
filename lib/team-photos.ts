@@ -19,3 +19,12 @@ const LOCAL_PHOTOS: Record<number, string> = {
 export function agentPhoto(a: Pick<Agent, 'source_rec_no' | 'photo_url'>): string | null {
   return (a.source_rec_no && LOCAL_PHOTOS[a.source_rec_no]) || a.photo_url
 }
+
+// The committed portraits' framed copies (scripts/team-cards.mjs): the 768px
+// card copy and the 1200px page copy, both cut to the same margin above the
+// hair. A photo without committed copies is returned as it is
+export function teamPhotoCopy(url: string, kind: 'card' | 'hero'): string {
+  return url.startsWith('/team/') && !url.startsWith('/team/card/') && !url.startsWith('/team/hero/')
+    ? url.replace('/team/', `/team/${kind}/`)
+    : url
+}
