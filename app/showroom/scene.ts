@@ -168,6 +168,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const dpr = opts.dpr ?? Math.min(window.devicePixelRatio || 1, 2)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', precision: 'highp', preserveDrawingBuffer: !!opts.manual })
+  // the shader error checks read the GPU's logs, which makes the browser wait
+  // for every compile right there in the frame: a debugging aid only
+  renderer.debug.checkShaderErrors = process.env.NODE_ENV !== 'production'
   renderer.setPixelRatio(dpr)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
@@ -1541,6 +1544,27 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   wallPass.clear = false
   composer.addPass(wallPass)
   composer.addPass(new OutputPass())
+  // Every shader the walk draws with, prepared on the street ahead of time.
+  // Measured (a performance trace of the walk): two were built mid-walk and
+  // froze it — the cards' own, because the load-time compile above was made
+  // for the screen while the cards are drawn into the composer's target (a
+  // different version of the shader), at ~0.16; and the hall's veil, invisible
+  // at load and so skipped, at ~0.91, just before the end. Prepared for the
+  // composer's target, with the veil shown for the compile only; compileAsync
+  // lets the GPU build them in the background
+  let warmed = false
+  const warmShaders = () => {
+    warmed = true
+    const prev = renderer.getRenderTarget(), vv = veil.visible
+    const w = takeMesh(); w.visible = true; veil.visible = true
+    const shown = showMeshes.map(sm => sm.visible); showMeshes.forEach(sm => { sm.visible = true })
+    renderer.setRenderTarget(composer.readBuffer)
+    renderer.compileAsync(wallScene, camera).catch(() => {})
+    renderer.compileAsync(scene, camera).catch(() => {})
+    renderer.setRenderTarget(prev)
+    veil.visible = vv; w.visible = false; freeMeshes.push(w)
+    showMeshes.forEach((sm, i) => { sm.visible = shown[i] })
+  }
 
   // ─── Camera: street → doors → inside → stops facing the stand. A narrow
   //     (portrait) screen stops further back so the front card and its
@@ -1795,6 +1819,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // picture moves on and its neighbour takes the middle
     if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 5) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
+    if (!warmed && readyAt >= 0 && performance.now() - readyAt > 600 && progress < 0.02) warmShaders()
     const uq = uploadQ.shift()
     if (uq) { renderer.initTexture(uq); dirty = true }
     loadCards()

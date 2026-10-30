@@ -39,6 +39,8 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 /* the strip behind the iPhone clock stays black (it takes this colour) */
 .sr-safari-strip { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #06080c; pointer-events: none; z-index: 2147483647; transition: background-color 500ms ease; }
 .sr-strip-b { top: auto; bottom: 0; }
+/* not Safari (Chrome, Firefox, Edge on the iPhone): no strips — see the layout */
+html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
 .sr-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; touch-action: pan-y; cursor: grab; transition: opacity 400ms cubic-bezier(.22,1,.36,1); }
 .sr[data-state="ready"] .sr-canvas { opacity: 1; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
