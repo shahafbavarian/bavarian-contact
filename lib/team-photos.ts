@@ -4,7 +4,7 @@ import type { Agent } from './agent-format'
 // by the person's recNo on the main site. They win over whatever photo_url the
 // import scraped; people without a new portrait fall back to that.
 const LOCAL_PHOTOS: Record<number, string> = {
-  256441: '/team/256441.jpg', // רוברט אנוקוב (cut from an event photo on the main site)
+  256441: '/team/256441.jpg', // רוברט אנוקוב
   257080: '/team/257080.jpg', // ארז שליחוב
   257075: '/team/257075.jpg', // ים מכלוף
   257076: '/team/257076.jpg', // חיים אברהמי

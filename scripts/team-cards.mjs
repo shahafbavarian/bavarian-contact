@@ -14,7 +14,7 @@ import { mkdirSync } from 'fs'
 
 // where the hair starts, in pixels from the top of each square original
 const HAIR_TOP = {
-  256441: 15,   // רוברט אנוקוב: cut from an event photo on the main site (560px)
+  256441: 58,   // רוברט אנוקוב
   257075: 85,
   257076: 78,
   257077: 80,
