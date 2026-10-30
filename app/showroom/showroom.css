@@ -213,8 +213,10 @@ html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
   opacity: 0; visibility: hidden; font-variant-numeric: tabular-nums; pointer-events: none;
 }
 .sr-cap > * { pointer-events: auto; }
-/* the team has no search: its foot stays out (over the inline style the walk sets) */
-.sr[data-set="team"] .sr-cap { visibility: hidden !important; }
+/* the team has no search: the foot's sheet and its dividing line stay, exactly
+   as over the stock (the cards end on the same line, the same short fade, top
+   and bottom alike); only what is on it gives way */
+.sr[data-set="team"] .sr-cap > * { visibility: hidden !important; }
 /* a person open over the hall: the bar keeps its logo, its menu gives way to
    the person's close (in the same place) */
 .sr[data-person] .sr-burger, .sr[data-person] .sr-menu { visibility: hidden !important; }

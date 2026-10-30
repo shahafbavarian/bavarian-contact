@@ -457,12 +457,9 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       // the cards are cut exactly at the dividing lines: the bar's bottom edge
       // above, the search sheet's top edge below (it rises 12px over the row)
       const top = n ? n.offsetTop + n.offsetHeight : 64
-      // from the screen's bottom edge to the foot's top, plus a breath; the
-      // team has no search row: its cards run down to Safari's real bottom edge
-      // (its floating bar), the same line the street's fade ends on
-      const vv = visualViewport
-      const vbNow = vv ? Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop)) : 0
-      const bottom = !c ? 150 : setRef.current === 'team' ? vbNow : cv.clientHeight - c.offsetTop + (light ? 12 : 0)
+      // from the screen's bottom edge to the foot's top, plus a breath: the
+      // same line for the stock and the team (the team's foot keeps its sheet)
+      const bottom = !c ? 150 : cv.clientHeight - c.offsetTop + (light ? 12 : 0)
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
