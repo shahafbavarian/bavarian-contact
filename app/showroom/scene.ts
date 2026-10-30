@@ -1140,12 +1140,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // second and then crawled. The scatter runs on the walk's own TIME: the
     // ease is undone per direction (in: p = 1-(1-x)^3; out: p = (1-x)^3),
     // blended softly if the walk turns round mid-way
-    if (p > lastP + 1e-5) walkDir = 1
-    else if (p < lastP - 1e-5) walkDir = -1
-    lastP = p
-    const uTarget = walkDir > 0 ? 1 - Math.cbrt(Math.max(0, 1 - p)) : Math.cbrt(Math.max(0, p))
-    walkU += (uTarget - walkU) * (1 - Math.exp(-dt * 18))
-    if (p >= 1 || p <= 0) walkU = p
+    // The timeline ADVANCES from where it is, by each frame's step mapped
+    // through the current direction's undoing of the ease — never jumps to
+    // the other direction's mapping: a walk turned round mid-way (in: p = 1 -
+    // (1-x)^3 → u = 1 - cbrt(1-p); out: p = (1-x)^3 → u = cbrt(p) — at
+    // p = .5 those read .21 and .79) leapt the cards almost into the grid
+    if (p !== lastP) {
+      walkDir = p > lastP ? 1 : -1
+      const map = walkDir > 0 ? (q: number) => 1 - Math.cbrt(Math.max(0, 1 - q)) : (q: number) => Math.cbrt(Math.max(0, q))
+      walkU = Math.min(1, Math.max(0, walkU + map(p) - map(lastP)))
+      lastP = p
+    }
+    if (p >= 1) walkU = 1
+    else if (p <= 0) walkU = 0
     const tk = throwK
     throwK = fit(walkU, 0.04, 0.88)
     if (throwK !== tk) dirty = true
