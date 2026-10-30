@@ -1380,6 +1380,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           strip = fit(fe, 0.75, 1)   // the band unfolds on landing, as on the screens
           a = smooth(fit(fe, 0, 0.18))
           flying = true; flyE = fe
+        } else if (throwK < 1) {
+          // not in flight and not fully inside: never shown. The walk out's
+          // last frame unmaps the scene while cards are still fading, and
+          // without this they fell back to their grid places at full alpha —
+          // the grid flashed over the street
+          a = 0
         }
       }
       const lift = u.uLift.value + ((m === hovered ? 1 : 0) - u.uLift.value) * (1 - Math.exp(-dt * 14))
