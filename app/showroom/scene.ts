@@ -880,20 +880,61 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     ? { bg: '#ffffff', ink: '#14171A', muted: '#5A6169', line: 'rgba(0,0,0,.08)', green: '#1F4D3A', gold: '#A8862F' }
     : { bg: '#111318', ink: '#ffffff', muted: 'rgba(255,255,255,.62)', line: 'rgba(255,255,255,.07)', green: '#7fcf9f', gold: '#d8b360' }
   const GREEN = face.green, GOLD = face.gold
-  // The band under the photo — compact, nothing in it that does not earn its
-  // place: the name (maker bold, model after it, one flowing line that may
-  // wrap once), then the price with the availability on the same line, then
-  // the facts (year · km · hand). One design in every size; fixed in css px
-  const BAND_CSS = 90
+  // The card, to the baseline of the best marketplace cards: the status as a
+  // small pill on the photo's corner; under the photo the name (maker bold,
+  // model after it, one flowing line that may wrap once), the PRICE as the
+  // card's strongest line, and the facts as small line icons with their
+  // values — a calendar for the year, a gauge for the km, a person for the
+  // hand. One design in every size; the band is fixed in css px
+  const BAND_CSS = 96
+  // the facts' little icons, drawn as lines at (x right edge, baseline y), size s
+  const icon = (c: CanvasRenderingContext2D, kind: 'year' | 'km' | 'hand', xr: number, yb: number, s: number, col: string) => {
+    const x = xr - s, y = yb - s * 0.92
+    c.save(); c.strokeStyle = col; c.lineWidth = Math.max(1, s * 0.11); c.lineCap = 'round'; c.lineJoin = 'round'
+    c.beginPath()
+    if (kind === 'year') {
+      const r = s * 0.16
+      c.moveTo(x + r, y + s * 0.14); c.lineTo(x + s - r, y + s * 0.14); c.quadraticCurveTo(x + s, y + s * 0.14, x + s, y + s * 0.14 + r)
+      c.lineTo(x + s, y + s - r); c.quadraticCurveTo(x + s, y + s, x + s - r, y + s); c.lineTo(x + r, y + s); c.quadraticCurveTo(x, y + s, x, y + s - r)
+      c.lineTo(x, y + s * 0.14 + r); c.quadraticCurveTo(x, y + s * 0.14, x + r, y + s * 0.14)
+      c.moveTo(x, y + s * 0.4); c.lineTo(x + s, y + s * 0.4)
+      c.moveTo(x + s * 0.3, y); c.lineTo(x + s * 0.3, y + s * 0.24); c.moveTo(x + s * 0.7, y); c.lineTo(x + s * 0.7, y + s * 0.24)
+    } else if (kind === 'km') {
+      const cx = x + s / 2, cy = y + s * 0.62, r = s * 0.48
+      c.arc(cx, cy, r, Math.PI * 0.85, Math.PI * 2.15)
+      c.moveTo(cx, cy); c.lineTo(cx + r * 0.55, cy - r * 0.55)
+    } else {
+      c.arc(x + s / 2, y + s * 0.3, s * 0.22, 0, Math.PI * 2)
+      c.moveTo(x + s * 0.08, y + s); c.quadraticCurveTo(x + s / 2, y + s * 0.42, x + s * 0.92, y + s)
+    }
+    c.stroke(); c.restore()
+  }
   const drawInfo = (c: CanvasRenderingContext2D, card: Card, y0: number) => {
     const Wc = CARD_PX, Hs = c.canvas.height - y0, k = Wc / cardCss
     const px = (v: number) => v * k, font = opts.font
-    const pad = px(10), maxW = Wc - pad * 2
+    const pad = px(11), maxW = Wc - pad * 2
+
+    // the status: a small pill on the photo's top corner (where reading starts)
+    if (card.make) {
+      const stock = card.stock !== false, word = stock ? 'במלאי' : 'בדרך לארץ'
+      c.font = `600 ${px(10)}px ${font}`; c.direction = 'rtl'
+      const tw = c.measureText(word).width, ph = px(19), pw = tw + px(22)
+      const pxr = Wc - px(8), py = px(8)
+      c.save()
+      c.fillStyle = opts.light ? 'rgba(255,255,255,.9)' : 'rgba(13,15,19,.78)'
+      c.beginPath(); c.roundRect(pxr - pw, py, pw, ph, ph / 2); c.fill()
+      c.fillStyle = stock ? GREEN : GOLD
+      c.beginPath(); c.arc(pxr - px(9), py + ph / 2, px(2.6), 0, Math.PI * 2); c.fill()
+      c.fillStyle = face.ink; c.textAlign = 'right'; c.textBaseline = 'middle'
+      c.fillText(word, pxr - px(15), py + ph / 2 + px(0.5))
+      c.restore()
+    }
+
     c.fillStyle = face.bg; c.fillRect(0, y0, Wc, Hs)
     c.textBaseline = 'alphabetic'
 
-    // 1 · the name: maker bold, model regular, wrapped to at most two lines;
-    //     the type steps down a little before anything would be cut
+    // the name: maker bold, model regular, wrapped to at most two lines;
+    // the type steps down a little before anything would be cut
     const words = [
       ...(card.make ?? card.title).split(/\s+/).filter(Boolean).map(t => ({ t, b: true })),
       ...(card.model ?? '').split(/\s+/).filter(Boolean).map(t => ({ t, b: false })),
@@ -910,10 +951,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       }
       return lines
     }
-    let fn = 13, lines = wrap(px(fn))
+    let fn = 12.5, lines = wrap(px(fn))
     while (lines.length > 2 && fn > 10) { fn -= 0.5; lines = wrap(px(fn)) }
     c.direction = 'ltr'; c.textAlign = 'left'
-    let y = y0 + px(9) + px(fn)
+    let y = y0 + px(10) + px(fn)
     for (const line of lines) {
       let x = pad
       line.forEach((wd, n) => {
@@ -922,49 +963,37 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const t = (n ? ' ' : '') + wd.t
         c.fillText(t, x, y); x += c.measureText(t).width
       })
-      y += px(fn * 1.28)
+      y += px(fn * 1.3)
     }
 
-    // 3 · the facts, on the band's last line: a muted label and its value in
-    //     ink, parted by a small dot — right to left
-    const facts: { l: string; v: string }[] = []
-    if (card.year) facts.push(/^\d/.test(card.year) ? { l: 'שנה', v: card.year } : { l: '', v: card.year })
-    if (card.km) { if (card.km !== 'חדש') facts.push({ l: 'ק״מ', v: card.km }); else if (!/חדש/.test(card.year ?? '')) facts.push({ l: '', v: 'חדש' }) }
-    if (card.yad) facts.push({ l: 'יד', v: card.yad })
-    const SEP = 12
+    // the facts, the band's last line: icon + value, right to left
+    const facts: { k: 'year' | 'km' | 'hand'; v: string }[] = []
+    if (card.year) facts.push({ k: 'year', v: card.year })
+    if (card.km && !(card.km === 'חדש' && /חדש/.test(card.year ?? ''))) facts.push({ k: 'km', v: card.km === 'חדש' ? 'חדש' : card.km })
+    if (card.yad) facts.push({ k: 'hand', v: `יד ${card.yad}` })
+    const GAP = 12, ICON = 11, IG = 4
     const factsW = (fs: number) => facts.reduce((a, f, n) => {
-      c.direction = 'rtl'; c.font = `400 ${px(fs)}px ${font}`; const wl = f.l ? c.measureText(f.l + ' ').width : 0
-      c.direction = 'ltr'; c.font = `600 ${px(fs)}px ${font}`; const wv = c.measureText(f.v).width
-      return a + wl + wv + (n ? px(SEP) : 0)
+      c.direction = f.k === 'hand' ? 'rtl' : 'ltr'; c.font = `500 ${px(fs)}px ${font}`
+      return a + px(ICON + IG) + c.measureText(f.v).width + (n ? px(GAP) : 0)
     }, 0)
     let ff = 11
     while (factsW(ff) > maxW && ff > 9) ff -= 0.5
-    const yFacts = y0 + Hs - px(9)
-    c.textAlign = 'right'
+    const yFacts = y0 + Hs - px(10)
     let fx = Wc - pad
+    c.textAlign = 'right'
     facts.forEach((f, n) => {
-      if (n) {
-        c.fillStyle = face.muted; c.globalAlpha = 0.5
-        c.beginPath(); c.arc(fx - px(SEP / 2), yFacts - px(ff * 0.32), px(1.3), 0, Math.PI * 2); c.fill()
-        c.globalAlpha = 1; fx -= px(SEP)
-      }
-      if (f.l) { c.direction = 'rtl'; c.font = `400 ${px(ff)}px ${font}`; c.fillStyle = face.muted; c.fillText(f.l + ' ', fx, yFacts); fx -= c.measureText(f.l + ' ').width }
-      c.direction = 'ltr'; c.font = `600 ${px(ff)}px ${font}`; c.fillStyle = face.ink; c.fillText(f.v, fx, yFacts); fx -= c.measureText(f.v).width
+      if (n) fx -= px(GAP)
+      icon(c, f.k, fx, yFacts, px(ICON * ff / 11), face.muted)
+      fx -= px(ICON + IG)
+      c.direction = f.k === 'hand' ? 'rtl' : 'ltr'; c.font = `500 ${px(ff)}px ${font}`; c.fillStyle = face.ink
+      c.fillText(f.v, fx, yFacts); fx -= c.measureText(f.v).width
     })
 
-    // 2 · the price (right) and the availability (left), one line above
-    const yPrice = yFacts - px(ff * 1.25) - px(5)
+    // the price: the card's strongest line, right above the facts
     if (card.price) {
-      c.direction = 'ltr'; c.textAlign = 'right'; c.font = `700 ${px(14.5)}px ${font}`; c.fillStyle = face.ink
+      const yPrice = yFacts - px(ff * 1.25) - px(7)
+      c.direction = 'ltr'; c.textAlign = 'right'; c.font = `700 ${px(16)}px ${font}`; c.fillStyle = face.ink
       c.fillText(card.price, Wc - pad, yPrice)
-    }
-    if (card.make) {
-      const stock = card.stock !== false
-      const word = stock ? 'במלאי' : 'בדרך לארץ'
-      c.direction = 'rtl'; c.textAlign = 'left'; c.font = `600 ${px(10.5)}px ${font}`; c.fillStyle = stock ? GREEN : GOLD
-      const ww = c.measureText(word).width
-      c.fillText(word, pad, yPrice)
-      c.beginPath(); c.arc(pad + ww + px(6), yPrice - px(10.5 * 0.34), px(2.6), 0, Math.PI * 2); c.fill()
     }
     c.direction = 'ltr'; c.textAlign = 'left'
   }
