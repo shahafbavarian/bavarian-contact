@@ -21,7 +21,10 @@ const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a)
 // whole entrance (street → doors → the stand) as one continuous move; the
 // opposite gesture walks you back out. The page itself never scrolls. Inside,
 // the gallery turns only sideways: finger, mouse or the arrows.
-export default function Showroom({ cards, street }: { cards: Card[]; street?: Card[] }) {
+// a fixed empty set, so a page without a team never rebuilds the scene
+const NO_TEAM: Card[] = []
+
+export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Card[]; team?: Card[]; street?: Card[] }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -59,6 +62,19 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); ;[d[i], d[j]] = [d[j], d[i]] }
     return d
   })
+  // The hall holds two sets on the same stand: the stock, and the team (in its
+  // own order). The scene gets both as one list; the view picks the set
+  const all = useMemo(() => [...deck, ...team], [deck, team])
+  const carIds = useMemo(() => deck.map((_, i) => i), [deck])
+  const teamIds = useMemo(() => team.map((_, i) => deck.length + i), [deck, team])
+  const [set, setSet] = useState<'cars' | 'team'>('cars')
+  const setRef = useRef(set)
+  setRef.current = set
+  // a refresh inside opens on the set it was showing
+  useEffect(() => { try { if (sessionStorage.getItem('sr-set') === 'team' && team.length) setSet('team') } catch {} }, [team.length])
+  // where the walk is (0 street … 1 inside), for the choice of an instant swap
+  const progress = useRef(0)
+  const insetsRef = useRef(() => {})
   const [menu, setMenu] = useState(false)
   const menuOpen = useRef(false)
   menuOpen.current = menu
@@ -119,8 +135,29 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
   }, [searchable, hays, make, model, term, query, avail, price, sort, filtersOn])
+  const view = set === 'team' && teamIds.length ? teamIds : (found ?? carIds)
   const viewRef = useRef<number[] | null>(null)
-  useEffect(() => { viewRef.current = found; handle.current?.setView(found) }, [found])
+  // on the street the set changes at once (the screens show the history, and
+  // the walk must map the new set's cards); inside, as a change of channel
+  useEffect(() => { viewRef.current = view; handle.current?.setView(view, progress.current < 0.02) }, [view])
+  useEffect(() => { insetsRef.current() }, [set])
+  // "the team" / "all the cars": the set, then the walk in — from the street
+  // the screens fly into its first cards, exactly as they do for the stock
+  const enter = (s: 'cars' | 'team') => {
+    if (s === 'team' && !teamIds.length) { router.push('/team'); return }
+    setSet(s); setMenu(false)
+    try { sessionStorage.setItem('sr-set', s) } catch {}
+    if (s === 'team') { input.current?.blur(); setPanel(null) }
+    const v = s === 'team' ? teamIds : (found ?? carIds)
+    viewRef.current = v
+    handle.current?.setView(v, progress.current < 0.02)   // before the first step maps the cards
+    goRef.current(1)
+  }
+  // a page link that, once the hall runs, is a set of the hall instead
+  const viaHall = (s: 'cars' | 'team') => (e: React.MouseEvent) => {
+    if (state !== 'ready' || e.metaKey || e.ctrlKey) return
+    e.preventDefault(); enter(s)
+  }
   const pick = (o: Option) => {
     setText(''); setQuery('')
     if (stage === 'make') { setMake(o.key); return }           // on to its models: the field stays open
@@ -215,6 +252,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       current = Math.min(1, Math.max(0, target + (off + tmp) * e))
       if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
+      progress.current = current
       const c = cap.current
       if (c) {
         const s = fit(current, 0.86, 0.93)
@@ -232,7 +270,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         }
         c.style.transform = `translateY(${(1 - s) * 14}px)`
         if (target === 1 && !dur && current > 0.97) {
-          if (!arrived) { arrived = true; if (!mobile) input.current?.focus({ preventScroll: true }) }
+          if (!arrived) { arrived = true; if (!mobile && setRef.current !== 'team') input.current?.focus({ preventScroll: true }) }
         } else if (target === 0) arrived = false
         const a = arrows.current
         if (a) { a.style.opacity = String(s); a.style.visibility = s > 0.01 ? 'visible' : 'hidden' }
@@ -317,8 +355,9 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     const insets = () => {
       const n = nav.current, c = cap.current
       const top = (n ? n.offsetTop + n.offsetHeight : 64) + 4
-      // from the screen's bottom edge to the foot's top, plus a breath
-      const bottom = c ? cv.clientHeight - c.offsetTop + 6 : 150
+      // from the screen's bottom edge to the foot's top, plus a breath; the
+      // team has no search row, so its cards take that room too
+      const bottom = !c ? 150 : setRef.current === 'team' ? cv.clientHeight - (c.offsetTop + c.offsetHeight) + 12 : cv.clientHeight - c.offsetTop + 6
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
@@ -327,6 +366,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       if (sc) { sc.style.top = `${top}px`; sc.style.bottom = `${bottom}px` }
       zonePx.current = Math.max(0, cv.clientHeight - top - bottom); sizeFill()
     }
+    insetsRef.current = insets
     const onResize = () => {
       // Safari leaves the page scrolled after its keyboard closes, and the
       // field's touch area with it: back to the top whenever it is down
@@ -384,7 +424,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       if (!alive) return
       try {
         handle.current = createShowroom(cv, {
-          mobile, cards: deck, street: streetDeck, light, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
+          mobile, cards: all, street: streetDeck, light, preload: teamIds, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {
@@ -419,11 +459,11 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
           onReady: () => setState('ready'),
           onEnter: () => goRef.current(1),
           onFront: setFront,
-          onOpen: i => { const c = deck[i]; if (c.external) location.href = c.href; else router.push(c.href) },
+          onOpen: i => { const c = all[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
         insets()
-        if (viewRef.current) handle.current.setView(viewRef.current)
+        if (viewRef.current) handle.current.setView(viewRef.current, true)
       } catch { setState('fallback') }
     })
 
@@ -460,10 +500,10 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       }
       handle.current?.dispose(); handle.current = null
     }
-  }, [deck, streetDeck, router])
+  }, [all, teamIds, streetDeck, router])
 
   return (
-    <div ref={root} className="sr" data-state={state}>
+    <div ref={root} className="sr" data-state={state} data-set={set}>
       {/* Safari 26 looks at what is fixed at the very top edge to decide what to draw
           behind the clock; a transparent, click-through strip there lets the page show */}
       <div ref={strip} className="sr-safari-strip" aria-hidden="true" />
@@ -500,9 +540,9 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
 
           {/* the menu: the site's pages */}
           <nav id="sr-menu" className="sr-menu" data-open={menu} aria-label="ניווט ראשי" hidden={!menu}>
-            <Link href="/cars" onClick={() => setMenu(false)}>הרכבים</Link>
+            <Link href="/cars" onClick={e => { setMenu(false); viaHall('cars')(e) }}>הרכבים</Link>
             <Link href="/sold" onClick={() => setMenu(false)}>רכבים שנמכרו</Link>
-            <Link href="/team" onClick={() => setMenu(false)}>הצוות</Link>
+            <Link href="/team" onClick={e => { setMenu(false); viaHall('team')(e) }}>הצוות</Link>
             <Link href="/contact" onClick={() => setMenu(false)}>צרו קשר</Link>
           </nav>
 
@@ -511,7 +551,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
           <div ref={floor} className="sr-floor">
             {/* only the way in hovers; the line of words below stays put */}
             <div className="sr-hover">
-              <button type="button" className="sr-enter" onClick={() => goRef.current(1)}>
+              <button type="button" className="sr-enter" onClick={() => enter('cars')}>
                 כל הרכבים
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
@@ -520,7 +560,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
             <div className="sr-line">
             <nav className="sr-doors" aria-label="עמודי האתר">
               <Link href="/sold">רכבים שנמכרו</Link>
-              <Link href="/team">הצוות</Link>
+              <Link href="/team" onClick={viaHall('team')}>הצוות</Link>
               <Link href="/contact">צרו קשר</Link>
             </nav>
             <div className="sr-social">
@@ -674,9 +714,9 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
           </div>
 
           {/* for screen readers: the cars on show, as plain links (client only: the order is per visit) */}
-          {state !== 'loading' && <ul className="sr-vh" aria-label="הרכבים">
-            {(found ?? deck.map((_, i) => i)).map(i => (
-              <li key={deck[i].href}><Link href={deck[i].href} tabIndex={-1}>{[deck[i].title, deck[i].sub].filter(Boolean).join(' · ')}</Link></li>
+          {state !== 'loading' && <ul className="sr-vh" aria-label={set === 'team' ? 'הצוות' : 'הרכבים'}>
+            {view.map(i => (
+              <li key={all[i].href}><Link href={all[i].href} tabIndex={-1}>{[all[i].title, all[i].sub].filter(Boolean).join(' · ')}</Link></li>
             ))}
           </ul>}
 

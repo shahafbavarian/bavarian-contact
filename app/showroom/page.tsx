@@ -1,6 +1,7 @@
 import { fetchCarList } from '@/lib/scraper'
 import { getCachedImageUrls, freshImage } from '@/lib/image-sync'
-import { INSTAGRAM_URL } from '@/lib/agent-format'
+import { getActiveAgents } from '@/lib/agents'
+import { agentPhoto } from '@/lib/team-photos'
 import Showroom from './Showroom'
 import { HISTORY } from './history'
 // The owner's hand ("יד") for the MOCK site: a one-off snapshot taken from
@@ -16,8 +17,11 @@ export const revalidate = 300
 // <Image quality={85}> with ~100vw sizes), so every car reuses the one
 // transformation already cached — never a second variant per car
 const img = (url: string) => `/_next/image?url=${encodeURIComponent(url)}&w=828&q=85`
-// The new portraits committed under /public/team
-const PORTRAITS = ['257080', '257075', '257076', '257077', '258775', '259104', '260394', '281088'].map(n => `/team/${n}.jpg`)
+// The team's faces are drawn ahead for every visitor (so the walk to them never
+// stutters): the committed portraits come as static 768px copies — no image
+// transformation, no optimizer cache read, no Supabase egress per visit. Only
+// a photo without a committed copy goes through the optimizer
+const teamImg = (url: string) => (url.startsWith('/team/') ? url.replace('/team/', '/team/card/') : img(url))
 
 // The gallery is the inventory: one card per car, in stock and on the way as
 // one list, shuffled afresh on every visit (client side). The caption carries
@@ -52,7 +56,16 @@ export default async function ShowroomPage() {
   } catch {}
   // no stock reachable: one quiet card that still leads somewhere
   if (!cards.length) cards = [{ title: 'הרכבים שלנו', sub: '', href: '/cars', images: [] }]
+  // the team: the same hall, the same cards, one per person — name, role and
+  // photo only (phone numbers never reach this page), opening their own page
+  let team: Card[] = []
+  try {
+    team = (await getActiveAgents()).map(a => {
+      const photo = agentPhoto(a)
+      return { title: a.full_name, sub: a.title ?? '', href: `/team/${a.public_id}`, images: photo ? [teamImg(photo)] : [], person: true }
+    })
+  } catch {}
   // the street gallery: history photos on the big screens outside
   const street: Card[] = HISTORY.map(src => ({ title: '', sub: '', href: '/cars', images: [src] }))
-  return <Showroom cards={cards} street={street} />
+  return <Showroom cards={cards} team={team} street={street} />
 }

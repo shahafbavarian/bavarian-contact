@@ -23,7 +23,7 @@ export type SceneHandle = {
   /** Rotate the ring by whole cards (buttons, keyboard). */
   step: (dir: 1 | -1) => void
   /** Show only these cars (indices into cards), or the whole stock (null) */
-  setView: (ids: number[] | null) => void
+  setView: (ids: number[] | null, instant?: boolean) => void
   /** The screen's edges the cards keep clear of (css px): the bar above, the search below, the sides */
   setInsets: (top: number, bottom: number, side: number) => void
   /** inside, with the cards out: up and down is theirs */
@@ -50,6 +50,8 @@ export type Card = {
   title: string; sub: string; href: string; external?: boolean; images: string[]
   /** the car's own fields, for search: maker, model, year, price, in stock */
   make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string; yad?: string
+  /** a member of the team, not a car: the face carries the name (title) and role (sub) */
+  person?: boolean
 }
 type Opts = {
   mobile: boolean; logoUrl: string; cards: Card[]; font: string
@@ -78,6 +80,9 @@ type Opts = {
   /** Offline rendering: no loop, fixed pixel ratio, full-resolution reflections */
   manual?: boolean
   dpr?: number
+  /** cards whose faces are drawn ahead in idle time too (the team), so a walk
+   *  in straight to them births nothing */
+  preload?: number[]
 }
 
 const fit = (v: number, a: number, b: number, from = 0, to = 1) => {
@@ -690,7 +695,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     e = { tex, ready: false, used: time }; texCache.set(ci, e); born++
     const src = cards[ci]?.images[0]
     const done = (im: HTMLImageElement | null) => {
-      if (im) cover(c, im, 0, 0, 1280, 853)
+      if (im) cover(c, im, 0, 0, 1280, 853, cards[ci]?.person ? 0 : 0.5)
       else {   // no photo: the quiet brand mark
         const gr = c.createLinearGradient(0, 0, 1280, 853)
         gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
@@ -949,6 +954,33 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     c.fillStyle = face.bg; c.fillRect(0, y0, Wc, Hs)
     c.textBaseline = 'alphabetic'
 
+    // a person: the name and, under it, the role — Hebrew, from the right,
+    // centred in the band (no empty white under a short role)
+    if (card.person) {
+      const fit1 = (t: string, weight: number, size: number, lines: number) => {
+        let f = size, out: string[] = []
+        for (; f >= 10; f -= 0.5) {
+          c.font = `${weight} ${px(f)}px ${font}`; out = []
+          for (const w of t.split(/\s+/).filter(Boolean)) {
+            const cur = out[out.length - 1]
+            if (cur !== undefined && c.measureText(cur + ' ' + w).width <= maxW) out[out.length - 1] = cur + ' ' + w
+            else out.push(w)
+          }
+          if (out.length <= lines && out.every(l => c.measureText(l).width <= maxW)) break
+        }
+        return { f, lines: out.slice(0, lines) }
+      }
+      c.direction = 'rtl'; c.textAlign = 'right'
+      const nm = fit1(card.title, 600, 15, 1), rl = card.sub ? fit1(card.sub, 400, 12.5, 2) : { f: 12.5, lines: [] as string[] }
+      const textH = px(nm.f * 1.25) + rl.lines.length * px(rl.f * 1.34)
+      let y = y0 + Math.max(px(6), (Hs - textH) / 2 - px(2)) + px(nm.f)
+      c.font = `600 ${px(nm.f)}px ${font}`; c.fillStyle = face.ink; c.fillText(nm.lines.join(' '), Wc - pad, y)
+      c.font = `400 ${px(rl.f)}px ${font}`; c.fillStyle = face.muted
+      for (const l of rl.lines) { y += px(rl.f * 1.34); c.fillText(l, Wc - pad, y) }
+      c.direction = 'ltr'; c.textAlign = 'left'
+      return
+    }
+
     // the name: maker bold, model regular, wrapped to at most two lines;
     // the type steps down a little before anything would be cut
     const words = [
@@ -1024,19 +1056,32 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const tex = new THREE.CanvasTexture(cv)
     tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4
     const entry = { tex, ready: false, used: time }; e = entry; wallCache.set(ci, entry); born++
-    const card = cards[ci], ph = Math.round(CARD_PX * 2 / 3)
+    // a person's card is mostly their photo: the band holds just the name and
+    // role (the card's own size and place are the cars' exactly)
+    const card = cards[ci], ph = card?.person ? cv.height - Math.round(CARD_PX * 58 / cardCss) : Math.round(CARD_PX * 2 / 3)
     const src = card?.images[0]
     Promise.all([src ? loadImg(src) : Promise.resolve(null), document.fonts?.ready]).then(([im]) => {
-      if (im) cover(c, im as HTMLImageElement, 0, 0, CARD_PX, ph)
+      // a portrait is anchored at its top (each one is cut to the same margin
+      // above the hair, scripts/team-cards.mjs): only the chest is ever trimmed
+      if (im) cover(c, im as HTMLImageElement, 0, 0, CARD_PX, ph, card?.person ? 0 : 0.5)
       else {
         const gr = c.createLinearGradient(0, 0, CARD_PX, ph)
         gr.addColorStop(0, '#1c1f24'); gr.addColorStop(1, '#0e0f12')
         c.fillStyle = gr; c.fillRect(0, 0, CARD_PX, ph)
+        // no photo of a person: their initials, as on the team page
+        if (card?.person) {
+          const ini = card.title.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('')
+          c.fillStyle = 'rgba(255,255,255,.55)'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.direction = 'rtl'
+          c.font = `600 ${Math.round(ph * 0.28)}px ${opts.font}`; c.fillText(ini, CARD_PX / 2, ph / 2)
+          c.textBaseline = 'alphabetic'; c.direction = 'ltr'; c.textAlign = 'left'
+        }
       }
       if (card) drawInfo(c, card, ph)
       tex.needsUpdate = true; uploadQ.push(tex); entry.ready = true; dirty = true
     })
-    if (wallCache.size > 26) {   // let go of the card shown longest ago (never one on show)
+    // room for the faces drawn ahead of the other set (the team) too, so they
+    // never push out a face the walk is about to need
+    if (wallCache.size > 26 + Math.min(opts.preload?.length ?? 0, 12)) {   // let go of the card shown longest ago (never one on show)
       let worst = -1, wd = Infinity
       wallCache.forEach((v, k) => { if (k !== ci && !held.has(k) && v.used < wd) { wd = v.used; worst = k } })
       const w = wallCache.get(worst)
@@ -1172,6 +1217,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // every card the first view of the hall will hold, faces drawn ahead
       const ahead = Math.min(N, (rowsFit + 2) * gcols)
       for (let d = 0; d < ahead; d++) ensureCard(view[mod(r0 - base + d, N)])
+      // the other set (the team) too, so the street can walk straight into it
+      if (opts.preload) for (const ci of opts.preload.slice(0, ahead)) ensureCard(ci)
       // and the gallery's own next photos, so a slide never starts a texture
       if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
     }
@@ -1187,8 +1234,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       anchor = i0; base = r0m - listStart - anchor; dirty = true
       // walking out, the first card in view grows back into the big screen
       // still wearing its car: only that one face is needed, made ready now
-      exitRide = true
-      ensureTex(listCar(anchor))   // already made while browsing — a no-op
+      // A person is never left on the street: their card turns home to the
+      // history like the others
+      exitRide = !cards[listCar(anchor)]?.person
+      if (exitRide) ensureTex(listCar(anchor))   // already made while browsing — a no-op
     }
     if (full) {
       exitRide = false
@@ -1196,7 +1245,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // big screen is made ready in idle time, so the walk out births nothing
       if (p >= 1 && !holding && !fling && Math.abs(scrollTarget - scrollPos) < 1e-3 && performance.now() - scrollAt > 400 && N) {   // only once the walk, and the list, have come to rest
         const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
-        if (!texCache.has(listCar(i0))) ensureTex(listCar(i0))
+        if (!texCache.has(listCar(i0)) && !cards[listCar(i0)]?.person) ensureTex(listCar(i0))
       }
     }
     wasFull = full
@@ -1756,10 +1805,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       return true
     },
     setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
-    setView(ids) {
+    setView(ids, instant) {
       const next = ids ?? Array.from({ length: TOTAL }, (_, i) => i)
       const cur = pendingView ?? view
       if (next.length === cur.length && next.every((v, i) => v === cur[i])) return
+      // instant: on the street (the screens show the history, not the set) and
+      // before a walk maps its first cards — no channel change to watch
+      if (instant && !mapped) {
+        // the same reset as the end of a change of channel
+        view = next; pendingView = null; N = view.length
+        drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
+        listStart = 0; scrollTarget = 0; scrollPos = 0; viewChanged = true; infoReset = true; dirty = true
+        return
+      }
       pendingView = next; dirty = true
     },
     resize: setSize,
