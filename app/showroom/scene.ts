@@ -30,6 +30,10 @@ export type SceneHandle = {
   inside: () => boolean
   /** the clock was tapped: the list goes back to its top */
   toTop: () => void
+  /** a native page scroller drives the list: its position, in rows */
+  setScroll: (rows: number) => void
+  /** a tap at a screen point (from the native scroller): opens the card there */
+  tapAt: (x: number, y: number) => void
   atTop: () => boolean
   /** a wheel turn inside; false: it was a pull out at the top */
   wheel: (dy: number) => boolean
@@ -54,6 +58,8 @@ type Opts = {
   onPull?: (k: number) => void
   /** the pull at the top was let go past its mark: walk out */
   onExit?: () => void
+  /** the list's scroll length changed (css px past one view, px per row); reset: back to its top */
+  onScrollInfo?: (maxPx: number, rowPx: number, reset: boolean) => void
   /** the street gallery: the agency's own history, shown on the big screens outside */
   street?: Card[]
   /** a trial: a bright theme — at the end of the walk in, the whole hall comes up bright to carry it */
@@ -786,6 +792,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // a pool of card meshes; each car on show holds one while it is there
   const allMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
   const freeMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
+  let zoneH = 1, gapM = 0.02
   let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 8, pitchPx = 300, cardCss = 170, cy = 0, gridTop = 1, colX = 0.9, rowsFit = 2, wideFace = false, gcols = 2
   let insetTop = 80, insetBottom = 170, insetSide = 16
   const dress = (m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>) => {
@@ -821,6 +828,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
   let walkDir = 1, lastP = 0, walkU = 0
+  let scrollAt = -1e9, infoKey = '', infoReset = false
   let throwK = 0, growAt = -1, viewChanged = false, exitRide = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
@@ -832,13 +840,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
   const mod = (a: number, n: number) => ((a % n) + n) % n
   const listCar = (i: number) => (N ? view[mod(listStart + i, N)] : -1)
-  // Two screens fly, each to its own place, on paths that never cross: the
+  // All three screens you see turn into cards, each to its own cell, on
+  // paths that never cross. A screen shows a history photo and turns into
+  // whichever car it is given, so places are chosen for the paths: the
   // middle screen becomes the first card (top right, where reading starts),
-  // the screen on its left the second (top left). Everything else fades
-  const FLY = [0, 1]
+  // the left screen the second (top left), the right screen the third (the
+  // next row's right) — middle and left rise, right sinks; none cross.
+  // rel: the screen (0 middle, +1 left, -1 right); at: its place in the list
+  const FLY = [{ rel: 0, at: 0, o: 0 }, { rel: 1, at: 1, o: 0.06 }, { rel: -1, at: 2, o: 0.12 }]
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
-    const o = rel === 0 ? 0 : 0.08
+    const o = FLY.find(f => f.rel === rel)?.o ?? 0
     return easeInOut(fit(throwK, o, o + 0.6))
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
@@ -850,9 +862,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   const relOfSlot = (sIdx: number) => {
     if (!mapped) return null
-    for (const rel of FLY) {
-      const li = anchor + rel
-      if (li >= 0 && li < N && slotOf(rel) === sIdx) return rel
+    for (const f of FLY) {
+      const li = anchor + f.at
+      if (li >= 0 && li < N && slotOf(f.rel) === sIdx) return f.rel
     }
     return null
   }
@@ -868,85 +880,93 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     ? { bg: '#ffffff', ink: '#14171A', muted: '#5A6169', line: 'rgba(0,0,0,.08)', green: '#1F4D3A', gold: '#A8862F' }
     : { bg: '#111318', ink: '#ffffff', muted: 'rgba(255,255,255,.62)', line: 'rgba(255,255,255,.07)', green: '#7fcf9f', gold: '#d8b360' }
   const GREEN = face.green, GOLD = face.gold
+  // The band under the photo — compact, nothing in it that does not earn its
+  // place: the name (maker bold, model after it, one flowing line that may
+  // wrap once), then the price with the availability on the same line, then
+  // the facts (year · km · hand). One design in every size; fixed in css px
+  const BAND_CSS = 90
   const drawInfo = (c: CanvasRenderingContext2D, card: Card, y0: number) => {
     const Wc = CARD_PX, Hs = c.canvas.height - y0, k = Wc / cardCss
+    const px = (v: number) => v * k, font = opts.font
+    const pad = px(10), maxW = Wc - pad * 2
     c.fillStyle = face.bg; c.fillRect(0, y0, Wc, Hs)
-    const font = opts.font
-    const px = (v: number) => v * k
     c.textBaseline = 'alphabetic'
-    const wrapTo = (t: string, weight: number, size: number, maxW: number) => {
-      c.font = `${weight} ${size}px ${font}`
-      const lines: string[] = []
-      for (const w of t.split(/\s+/).filter(Boolean)) {
-        const cur = lines[lines.length - 1]
-        if (cur !== undefined && c.measureText(cur + ' ' + w).width <= maxW) lines[lines.length - 1] = cur + ' ' + w
-        else lines.push(w)
+
+    // 1 · the name: maker bold, model regular, wrapped to at most two lines;
+    //     the type steps down a little before anything would be cut
+    const words = [
+      ...(card.make ?? card.title).split(/\s+/).filter(Boolean).map(t => ({ t, b: true })),
+      ...(card.model ?? '').split(/\s+/).filter(Boolean).map(t => ({ t, b: false })),
+    ]
+    const wrap = (fs: number) => {
+      const lines: { t: string; b: boolean }[][] = [[]]
+      let w = 0
+      for (const wd of words) {
+        c.font = `${wd.b ? 600 : 400} ${fs}px ${font}`
+        const ww = c.measureText(wd.t).width, sp = c.measureText(' ').width
+        if (lines[lines.length - 1].length && w + sp + ww > maxW) { lines.push([]); w = 0 }
+        w += (lines[lines.length - 1].length ? sp : 0) + ww
+        lines[lines.length - 1].push(wd)
       }
-      return { lines, fits: lines.every(l => c.measureText(l).width <= maxW) }
+      return lines
     }
-    // the Hebrew side: price; year, km, hand; availability
-    const meta: string[] = []
-    if (card.year) meta.push(/^\d/.test(card.year) ? `שנה ${card.year}` : card.year)
-    // "new" once: not again for the km when the year already says so
-    if (card.km) { if (card.km !== 'חדש') meta.push(`ק״מ ${card.km}`); else if (!/חדש/.test(card.year ?? '')) meta.push('חדש') }
-    if (card.yad) meta.push(`יד ${card.yad}`)
-    const stock = card.stock !== false
-    const heLines = (size: number) => {
-      const pr = size * 1.13, mt = size * 0.82, av = size * 0.8
-      c.font = `600 ${px(pr)}px ${font}`; const wp = card.price ? c.measureText(card.price).width : 0
-      c.direction = 'rtl'; c.font = `400 ${px(mt)}px ${font}`
-      const wm = meta.reduce((a, m, n) => a + c.measureText(m).width + (n ? px(10) : 0), 0)
-      c.font = `600 ${px(av)}px ${font}`; const wa = card.make ? c.measureText(stock ? 'במלאי' : 'בדרך לארץ').width + px(11) : 0
-      c.direction = 'ltr'
-      return { pr, mt, av, w: Math.max(wp, wm, wa) }
+    let fn = 13, lines = wrap(px(fn))
+    while (lines.length > 2 && fn > 10) { fn -= 0.5; lines = wrap(px(fn)) }
+    c.direction = 'ltr'; c.textAlign = 'left'
+    let y = y0 + px(9) + px(fn)
+    for (const line of lines) {
+      let x = pad
+      line.forEach((wd, n) => {
+        c.font = `${wd.b ? 600 : 400} ${px(fn)}px ${font}`
+        c.fillStyle = wd.b ? face.ink : face.muted
+        const t = (n ? ' ' : '') + wd.t
+        c.fillText(t, x, y); x += c.measureText(t).width
+      })
+      y += px(fn * 1.28)
     }
-    const drawHe = (x: number, y: number, h: ReturnType<typeof heLines>) => {
-      c.textAlign = 'right'
-      y += px(h.pr * 1.22)
-      if (card.price) { c.direction = 'ltr'; c.font = `600 ${px(h.pr)}px ${font}`; c.fillStyle = face.ink; c.fillText(card.price, x, y) }
-      y += px(h.mt * 1.5)
-      if (meta.length) {
-        c.direction = 'rtl'; c.font = `400 ${px(h.mt)}px ${font}`; c.fillStyle = face.muted
-        let mx = x
-        for (const m of meta) { c.fillText(m, mx, y); mx -= c.measureText(m).width + px(10) }
+
+    // 3 · the facts, on the band's last line: a muted label and its value in
+    //     ink, parted by a small dot — right to left
+    const facts: { l: string; v: string }[] = []
+    if (card.year) facts.push(/^\d/.test(card.year) ? { l: 'שנה', v: card.year } : { l: '', v: card.year })
+    if (card.km) { if (card.km !== 'חדש') facts.push({ l: 'ק״מ', v: card.km }); else if (!/חדש/.test(card.year ?? '')) facts.push({ l: '', v: 'חדש' }) }
+    if (card.yad) facts.push({ l: 'יד', v: card.yad })
+    const SEP = 12
+    const factsW = (fs: number) => facts.reduce((a, f, n) => {
+      c.direction = 'rtl'; c.font = `400 ${px(fs)}px ${font}`; const wl = f.l ? c.measureText(f.l + ' ').width : 0
+      c.direction = 'ltr'; c.font = `600 ${px(fs)}px ${font}`; const wv = c.measureText(f.v).width
+      return a + wl + wv + (n ? px(SEP) : 0)
+    }, 0)
+    let ff = 11
+    while (factsW(ff) > maxW && ff > 9) ff -= 0.5
+    const yFacts = y0 + Hs - px(9)
+    c.textAlign = 'right'
+    let fx = Wc - pad
+    facts.forEach((f, n) => {
+      if (n) {
+        c.fillStyle = face.muted; c.globalAlpha = 0.5
+        c.beginPath(); c.arc(fx - px(SEP / 2), yFacts - px(ff * 0.32), px(1.3), 0, Math.PI * 2); c.fill()
+        c.globalAlpha = 1; fx -= px(SEP)
       }
-      if (card.make) {
-        y += px(h.av * 1.55)
-        c.fillStyle = stock ? GREEN : GOLD
-        c.beginPath(); c.arc(x - px(3), y - px(h.av * 0.34), px(3), 0, Math.PI * 2); c.fill()
-        c.direction = 'rtl'; c.font = `600 ${px(h.av)}px ${font}`
-        c.fillText(stock ? 'במלאי' : 'בדרך לארץ', x - px(11), y)
-      }
-      c.direction = 'ltr'
+      if (f.l) { c.direction = 'rtl'; c.font = `400 ${px(ff)}px ${font}`; c.fillStyle = face.muted; c.fillText(f.l + ' ', fx, yFacts); fx -= c.measureText(f.l + ' ').width }
+      c.direction = 'ltr'; c.font = `600 ${px(ff)}px ${font}`; c.fillStyle = face.ink; c.fillText(f.v, fx, yFacts); fx -= c.measureText(f.v).width
+    })
+
+    // 2 · the price (right) and the availability (left), one line above
+    const yPrice = yFacts - px(ff * 1.25) - px(5)
+    if (card.price) {
+      c.direction = 'ltr'; c.textAlign = 'right'; c.font = `700 ${px(14.5)}px ${font}`; c.fillStyle = face.ink
+      c.fillText(card.price, Wc - pad, yPrice)
     }
-    const drawEn = (x: number, y: number, maxW: number, mk: number, md: number) => {
-      c.textAlign = 'left'; c.direction = 'ltr'
-      const make = card.make ?? card.title
-      let f = mk, name = wrapTo(make, 600, px(f), maxW)
-      while ((!name.fits || name.lines.length > 1) && f > 11) { f -= 0.5; name = wrapTo(make, 600, px(f), maxW) }
-      y += px(f * 1.25); c.font = `600 ${px(f)}px ${font}`; c.fillStyle = face.ink; c.fillText(name.lines.join(' '), x, y)
-      if (card.model) {
-        let g = md, mdl = wrapTo(card.model, 400, px(g), maxW)
-        while ((!mdl.fits || mdl.lines.length > 2) && g > 10) { g -= 0.5; mdl = wrapTo(card.model, 400, px(g), maxW) }
-        c.font = `400 ${px(g)}px ${font}`; c.fillStyle = face.muted
-        for (const l of mdl.lines.slice(0, 3)) { y += px(g * 1.34); c.fillText(l, x, y) }
-      }
+    if (card.make) {
+      const stock = card.stock !== false
+      const word = stock ? 'במלאי' : 'בדרך לארץ'
+      c.direction = 'rtl'; c.textAlign = 'left'; c.font = `600 ${px(10.5)}px ${font}`; c.fillStyle = stock ? GREEN : GOLD
+      const ww = c.measureText(word).width
+      c.fillText(word, pad, yPrice)
+      c.beginPath(); c.arc(pad + ww + px(6), yPrice - px(10.5 * 0.34), px(2.6), 0, Math.PI * 2); c.fill()
     }
-    if (wideFace) {
-      const pad = px(16), he = heLines(15)
-      const heW = Math.min(he.w, (Wc - pad * 2) * 0.55)
-      drawHe(Wc - pad, y0 + px(12), he)
-      drawEn(pad, y0 + px(12), Wc - pad * 2 - heW - px(14), 18, 14)
-    } else {
-      const pad = px(11), maxW = Wc - pad * 2
-      let size = 13.5, he = heLines(size)
-      while (he.w > maxW && size > 10.5) { size -= 0.5; he = heLines(size) }
-      drawEn(pad, y0 + px(7), maxW, 15, 12.5)
-      // the Hebrew lines take the band's lower part, under a hairline
-      const yHe = y0 + Hs - px(10) - px(he.pr * 1.22 + he.mt * 1.5 + he.av * 1.55) - px(6)
-      c.fillStyle = face.line; c.fillRect(pad, yHe, maxW, Math.max(1, px(0.5)))
-      drawHe(Wc - pad, yHe + px(2), he)
-    }
+    c.direction = 'ltr'; c.textAlign = 'left'
   }
   const wallCache = new Map<number, { tex: THREE.CanvasTexture; ready: boolean; used: number }>()
   const ensureCard = (ci: number) => {
@@ -991,15 +1011,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const availW = 2 * hx - 2 * insetSide * mpp
     const top = hy - insetTop * mpp, bottom = -hy + insetBottom * mpp, availH = Math.max(0.2, top - bottom)
     const gap = 12 * mpp
-    // a handful of cars (a narrow filter): one a row, large; otherwise two
+    // the cards' sizes: two a row as wide as half the view, one a row (a
+    // handful of cars) as wide as the view — one design, the compact band
     const W = gcols === 1 ? Math.min(availW, 430 * mpp) : Math.min((availW - gap) / 2, 420 * mpp)
-    const css = W / mpp, wide = css >= 300
-    const strip = (wide ? 94 : 132) / css
+    const css = W / mpp, wide = false
+    const strip = BAND_CSS / css
     const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
     STRIP = strip; cardCss = css; wideFace = wide
     cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : (W + gap) / 2
     gridTop = top; cy = (top + bottom) / 2; drumR = pitch * 5; pitchPx = pitch / mpp
     rowsFit = Math.max(1, Math.floor((availH + gap) / pitch))
+    zoneH = availH; gapM = gap
     if (redraw) {   // the faces are drawn again at the new size
       wallCache.forEach(v => v.tex.dispose()); wallCache.clear()
       held.forEach(hd => { hd.m.material.uniforms.map.value = ensureCard(hd.car).tex })
@@ -1015,7 +1037,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     outP.set(colX * (1 - 2 * col), cy + drumR * Math.sin(u), -WALL_R - drumR * (1 - Math.cos(u))).applyMatrix4(camera.matrixWorld)
     outQ.copy(camera.quaternion).multiply(tmpQ2.setFromAxisAngle(xAxis, -u))
   }
-  const maxScroll = () => Math.max(0, Math.ceil(N / gcols) - rowsFit)
+  // in rows: how far the list can move before its last row sits on the bottom of the view
+  const maxScroll = () => Math.max(0, (Math.ceil(N / gcols) * pitch - gapM - zoneH) / pitch)
   // the screens out in front of you: from their place on the ring to the same
   // place as seen from the hall's middle, carried with you
   const placeShow = (p: number, dt: number) => {
@@ -1099,6 +1122,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
     }
     if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
+    // heading out only: it stayed on after the walk home, and every later
+    // walk in then skipped the main screen's turn
+    if (exitRide && (walkDir > 0 || !mapped)) exitRide = false
     const full = throwK >= 1
     if (wasFull && !full) {
       // walking out: the cards in front of you go back into the screens
@@ -1114,7 +1140,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       exitRide = false
       // while browsing, the face the first card in view would leave on the
       // big screen is made ready in idle time, so the walk out births nothing
-      if (p >= 1 && !holding && !fling && Math.abs(scrollTarget - scrollPos) < 1e-3 && N) {   // only once the walk has fully come to rest
+      if (p >= 1 && !holding && !fling && Math.abs(scrollTarget - scrollPos) < 1e-3 && performance.now() - scrollAt > 400 && N) {   // only once the walk, and the list, have come to rest
         const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
         if (!texCache.has(listCar(i0))) ensureTex(listCar(i0))
       }
@@ -1180,13 +1206,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // the column count follows the stock on show
     const wc = N <= 5 ? 1 : 2
     if (wc !== gcols) { gcols = wc; layout() }
+    // the native scroller's length follows the list
+    const key = `${N}|${gcols}|${pitchPx.toFixed(1)}|${maxScroll().toFixed(3)}`
+    if (key !== infoKey || infoReset) { infoKey = key; opts.onScrollInfo?.(maxScroll() * pitchPx, pitchPx, infoReset); infoReset = false }
 
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
       const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
-      if (throwK < 1) for (const rel of FLY) { const i = anchor + rel; if (i >= 0 && i < N) want.set(listCar(i), i) }
+      if (throwK < 1) for (const f of FLY) { const i = anchor + f.at; if (i >= 0 && i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
     const ease = 1 - Math.exp(-dt * 9)
@@ -1229,8 +1258,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const off = hd.pr - scrollPos
       let bright = 1
       let sc = 1, sx = 1, a = 1, strip = 1
-      const rel = hd.i - anchor
-      if (mapped && (rel === 0 || rel === 1) && throwK < 1) {
+      const fly = FLY.find(f => anchor + f.at === hd.i)
+      const rel = fly ? fly.rel : 99
+      if (mapped && fly && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
@@ -1251,8 +1281,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         // history seamlessly; ONLY the middle card skips the turn on the
         // way out, lands still wearing its car and leaves that photo on
         // the main screen — one guest in the gallery
-        if (S > 0 && !(exitRide && rel === 0)) {
-          const srcCar = cardMeshes[sl].userData.car as number
+        const srcCar = cardMeshes[sl].userData.car as number
+        if (S > 0 && !(exitRide && rel === 0) && srcCar !== hd.car) {
           if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
           // the turn, the native way: a cosine squash of the width with the
           // face swapped at the zero crossing — a 3D turn of a near-full
@@ -1415,7 +1445,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (swap >= 1) {
         view = pendingView; pendingView = null; N = view.length
         drag = Math.round(drag / STEP) * STEP; base = Math.round(drag / STEP); autoT = 0
-        listStart = 0; scrollTarget = 0; viewChanged = true
+        listStart = 0; scrollTarget = 0; scrollPos = 0; viewChanged = true; infoReset = true
       }
     } else if (swap > 0) {
       // hold the dark a moment for the front photo, never long
@@ -1512,7 +1542,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const dx = e.clientX - downX, dy = e.clientY - downY
     if (!moved) { if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) return; moved = true }
     const raw = scroll0 - dy / pitchPx, max = maxScroll()
-    scrollPos = raw < 0 ? raw * 0.35 : raw > max ? max + (raw - max) * 0.35 : raw
+    // everything in view: the list does not move at all; else a short give at the ends
+    scrollPos = max <= 0 ? 0 : raw < 0 ? raw * 0.25 : raw > max ? max + (raw - max) * 0.25 : raw
     scrollTarget = scrollPos
     const now = performance.now(), dtm = Math.max(8, now - lastMt)
     vy = vy * 0.5 + ((-(e.clientY - lastMy) / pitchPx) / (dtm / 1000)) * 0.5   // cards a second
@@ -1551,7 +1582,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses
   // on the page's own buttons and links are theirs
-  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap')) onDown(e) }
+  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap, .sr-scroller')) onDown(e) }
   const onHover = (e: PointerEvent) => {
     if (mobile || e.pointerType !== 'mouse') return
     let next: THREE.Object3D | null = null
@@ -1611,6 +1642,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     },
     inside: () => wallOn,
     toTop() { if (!wallOn) return; fling = false; scrollTarget = 0; dirty = true },
+    // the native scroller's position, followed exactly — its own momentum and
+    // its own give at the ends (a negative or overshooting value) included
+    setScroll(rows) { if (rows === scrollPos && rows === scrollTarget) return; scrollPos = scrollTarget = rows; scrollAt = performance.now(); fling = false; dirty = true },
+    tapAt(x, y) { if (!wallOn || opening) return; const o = wallHit({ clientX: x, clientY: y } as PointerEvent); if (o) openCard(o) },
     atTop: () => scrollTarget <= 0.001,
     wheel(dy) {
       if (!wallOn) return false

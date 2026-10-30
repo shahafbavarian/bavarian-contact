@@ -38,6 +38,15 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
   const [, setFront] = useState(0)
   // inside, at the top of the list: the hint for the pull out to the street
   const pull = useRef<HTMLDivElement>(null)
+  // TRIAL: the list scrolls as a page does — a real scroller over the cards'
+  // zone: its own momentum, its give at the ends, its indicator at the side;
+  // the 3D cards follow its position exactly
+  const scroller = useRef<HTMLDivElement>(null)
+  const scrollFill = useRef<HTMLDivElement>(null)
+  const rowPx = useRef(300)
+  const zonePx = useRef(0), maxPxRef = useRef(0)
+  // one view of the zone, plus how far the list runs past it
+  const sizeFill = () => { const f = scrollFill.current; if (f) f.style.height = `${zonePx.current + maxPxRef.current}px` }
   // a fresh random order on every refresh: stock and on-the-way, mixed
   const [deck] = useState(() => {
     const d = [...cards]
@@ -187,6 +196,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
+    let wasScOn = false
     let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0, prevK = bornBright ? 1 : 0, lastVb = -1
     const frame = (now: number) => {
       if (!alive) return
@@ -234,6 +244,8 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
       }
       if (bar.current) bar.current.style.transform = `scaleX(${current})`
+      const scOn = current > 0.95 && !!handle.current?.inside()
+      if (scOn !== wasScOn && scroller.current) { wasScOn = scOn; scroller.current.style.display = scOn ? 'block' : 'none'; if (scOn) scroller.current.scrollTop = 0 }
       // The bright trial, by the Safari rulebook in CLAUDE.md: the phone's
       // edges obey the fixed strips, and a strip's colour counts only when
       // the strip is taken out and put back (display off, then on) — the one
@@ -293,7 +305,7 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     const settleWin = () => { if (document.activeElement !== input.current) scrollTo(0, BASE) }
     const onWinScroll = () => {
       if (document.activeElement === input.current) return   // the keyboard moves the page; leave it be
-      if (scrollY === 0) { handle.current?.toTop(); requestAnimationFrame(settleWin) }
+      if (scrollY === 0) { scroller.current?.scrollTo({ top: 0, behavior: 'smooth' }); handle.current?.toTop(); requestAnimationFrame(settleWin) }
       else if (scrollY > BASE) settleWin()
     }
     let rTimer = 0
@@ -310,6 +322,10 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
+      // the native scroller spans exactly the cards' zone
+      const sc = scroller.current
+      if (sc) { sc.style.top = `${top}px`; sc.style.bottom = `${bottom}px` }
+      zonePx.current = Math.max(0, cv.clientHeight - top - bottom); sizeFill()
     }
     const onResize = () => {
       // Safari leaves the page scrolled after its keyboard closes, and the
@@ -339,7 +355,8 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
     let ty = 0, tx = 0
     const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
     // the line of words scrolls sideways on its own
-    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words')
+    // the line of words and the native list scroll on their own
+    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words, .sr-scroller')
     const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current && !inLine(e)) e.preventDefault() }
     const onTouchEnd = (e: TouchEvent) => {
       if (menuOpen.current || inLine(e)) return
@@ -355,8 +372,9 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
       if (e.target instanceof HTMLInputElement) return   // typing belongs to the field
       if (e.key === 'Escape') { setMenu(false); setPanel(null); return }
       if (menuOpen.current) return
-      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut()) handle.current?.step(1); else go(1) }
-      if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); if (cardsOut() && !handle.current?.atTop()) handle.current?.step(-1); else go(0) }
+      const sc = scroller.current
+      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc) sc.scrollBy({ top: rowPx.current, behavior: 'smooth' }); else go(1) }
+      if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc && sc.scrollTop > 1) sc.scrollBy({ top: -rowPx.current, behavior: 'smooth' }); else go(0) }
       // the street's screens, right to left: the left arrow brings the next
       if (current < 0.05 && e.key === 'ArrowLeft') handle.current?.step(1)
       if (current < 0.05 && e.key === 'ArrowRight') handle.current?.step(-1)
@@ -393,6 +411,11 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
             el.toggleAttribute('data-armed', k >= 1)
           },
           onExit: () => goRef.current(0),
+          // the native scroller's length follows the list
+          onScrollInfo: (maxPx, px, reset) => {
+            rowPx.current = px; maxPxRef.current = maxPx; sizeFill()
+            if (reset && scroller.current) scroller.current.scrollTop = 0
+          },
           onReady: () => setState('ready'),
           onEnter: () => goRef.current(1),
           onFront: setFront,
@@ -545,6 +568,13 @@ export default function Showroom({ cards, street }: { cards: Card[]; street?: Ca
           {/* The foot of the hall: the search row, and under it one line of lit
               words (the makers or models to pick from, the filter, the order) —
               low and tight, so the cards keep the screen */}
+          {/* the cards' native scroller (transparent; a tap opens the card under it) */}
+          <div ref={scroller} className="sr-scroller" aria-hidden="true"
+            onScroll={e => handle.current?.setScroll((e.currentTarget as HTMLDivElement).scrollTop / rowPx.current)}
+            onClick={e => handle.current?.tapAt(e.clientX, e.clientY)}>
+            <div ref={scrollFill} />
+          </div>
+
           <div ref={cap} className="sr-cap">
             <div className="sr-row">
               {/* the field: what has been picked sits in it as chips, then the next step */}
