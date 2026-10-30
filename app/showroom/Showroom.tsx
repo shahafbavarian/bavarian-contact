@@ -272,7 +272,13 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
         const vv = visualViewport
         if (vv) {
           const vb = Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop))
-          if (Math.abs(vb - lastVb) > 1) { lastVb = vb; c.style.bottom = `${vb + 4}px`; insets() }
+          if (Math.abs(vb - lastVb) > 1) {
+            lastVb = vb; c.style.bottom = `${vb + 4}px`; insets()
+            // the walk's progress bar rides the same visible edge: at the
+            // layout's bottom it sat behind Safari's floating bar, unseen
+            const pb = bar.current?.parentElement
+            if (pb) pb.style.bottom = `${vb}px`
+          }
         }
         c.style.transform = `translateY(${(1 - s) * 14}px)`
         if (target === 1 && !dur && current > 0.97) {
@@ -287,7 +293,14 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
         nav.current.style.opacity = String(l); nav.current.style.visibility = l > 0.01 ? 'visible' : 'hidden'
         nav.current.style.transform = `translateY(${(1 - l) * -10}px)`
       }
-      if (bar.current) bar.current.style.transform = `scaleX(${current})`
+      if (bar.current) {
+        bar.current.style.transform = `scaleX(${current})`
+        // shown only while the walk moves — at rest (street or hall) the foot
+        // keeps its own look
+        const pv = Math.min(1, current * 25, (1 - current) * 25)
+        const pb = bar.current.parentElement
+        if (pb) pb.style.opacity = String(pv)
+      }
       const scOn = current > 0.95 && !!handle.current?.inside()
       if (scOn !== wasScOn && scroller.current) { wasScOn = scOn; scroller.current.style.display = scOn ? 'block' : 'none'; if (scOn) scroller.current.scrollTop = 0 }
       // The bright trial, by the Safari rulebook in CLAUDE.md: the phone's
