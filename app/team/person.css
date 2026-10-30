@@ -1,0 +1,91 @@
+/* A person's page — DESIGN.md palette ד׳, IBM Plex Sans Hebrew. Scoped under
+   .pv; the only page-level rule below unlocks scrolling for the standalone
+   page (the site's global sheet locks html/body for the car page). The layer
+   over the hall (.pv-over) scrolls inside itself and leaves the hall alone. */
+
+html:has(.pv-page), html:has(.pv-page) body {
+  position: static; height: auto; overflow: visible; touch-action: auto; overscroll-behavior: auto;
+  background: #F5F6F7;
+}
+
+.pv {
+  --canvas: #F5F6F7; --surface: #FFFFFF; --soft: #E9ECEF; --ink: #14171A; --muted: #5A6169; --focus: #1A6BCC;
+  --shadow: 0 1px 2px rgba(20,23,26,.06), 0 12px 32px -12px rgba(20,23,26,.18);
+  --ease-out: cubic-bezier(.22,1,.36,1);
+  --gutter: 16px;
+  position: relative; color: var(--ink); direction: rtl;
+  font-family: var(--font-plex), system-ui, sans-serif; -webkit-text-size-adjust: 100%;
+}
+.pv a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.pv :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 8px; }
+.pv-bg { position: absolute; inset: 0; background: var(--canvas); }
+.pv-page { min-height: 100dvh; background: var(--canvas); }
+.pv-over {
+  position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.pv-frame {
+  position: relative; min-height: 100dvh; max-width: 1080px; margin: 0 auto;
+  padding: env(safe-area-inset-top) var(--gutter) 0;
+  display: flex; flex-direction: column;
+}
+
+/* the bar: the way back at the start, the brand's long mark at the end */
+.pv-bar { display: flex; align-items: center; justify-content: space-between; height: 64px; flex-shrink: 0; }
+.pv-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding-inline: 2px 8px; font-size: 16px; font-weight: 500; }
+.pv-close {
+  width: 44px; height: 44px; border: 0; border-radius: 50%; cursor: pointer; display: grid; place-items: center;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.pv-logo { display: block; height: 22px; width: auto; }
+
+/* the portrait leads: on a phone its height is taken from the screen, so the
+   name and the three ways to talk all sit on the first screen */
+.pv-main { flex: 1; display: flex; flex-direction: column; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.pv-photo {
+  position: relative; align-self: center; aspect-ratio: 4 / 5; max-width: 100%; margin-top: 4px;
+  height: clamp(220px, calc(100dvh - 404px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 560px);
+  border-radius: 24px; overflow: hidden; background: var(--soft); box-shadow: var(--shadow);
+  transform-origin: 0 0;
+}
+.pv-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; -webkit-user-drag: none; }
+/* the sharp copy comes up over the card's copy once it has loaded */
+.pv-hero[data-quick] { opacity: 0; transition: opacity 220ms var(--ease-out); }
+.pv-hero[data-quick].is-in { opacity: 1; }
+.pv-mono { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: clamp(64px, 22vw, 120px); font-weight: 600; letter-spacing: -.02em; }
+
+.pv-text { margin-top: 22px; }
+.pv-name { margin: 0; font-size: clamp(28px, 7.6vw, 40px); line-height: 1.12; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+.pv-role { margin: 6px 0 0; font-size: 17px; line-height: 1.4; color: var(--muted); }
+
+/* one strong way to talk, two quiet ones beside each other */
+.pv-actions { margin-top: auto; padding-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pv-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border-radius: 16px;
+  font-size: 16px; font-weight: 500; white-space: nowrap;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  transition: transform 120ms var(--ease-out);
+}
+.pv-primary { grid-column: 1 / -1; height: 56px; font-size: 17px; font-weight: 600; background: var(--ink); color: #fff !important; box-shadow: 0 14px 30px -14px rgba(20,23,26,.5); }
+.pv-btn:active, .pv-close:active { transform: scale(.97); }
+
+/* a computer: the portrait at the start, the person and the ways to talk beside it */
+@media (min-width: 900px) {
+  .pv { --gutter: 56px; }
+  .pv-bar { height: 80px; }
+  .pv-logo { height: 26px; }
+  .pv-main {
+    flex: 0 0 auto; margin: auto 0; padding-block: 24px 56px;
+    display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); column-gap: 64px; align-items: center;
+  }
+  .pv-photo { grid-row: 1 / span 2; height: auto; width: 100%; margin: 0; }
+  .pv-text { margin: 0; align-self: end; }
+  .pv-actions { margin: 0; padding-top: 32px; align-self: start; max-width: 420px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-btn:active, .pv-close:active { transform: none; }
+  .pv-hero[data-quick] { transition: none; }
+}

@@ -2,7 +2,7 @@ import { fetchCarList } from '@/lib/scraper'
 import { getCachedImageUrls, freshImage } from '@/lib/image-sync'
 import { notFound } from 'next/navigation'
 import { getActiveAgents } from '@/lib/agents'
-import { agentPhoto } from '@/lib/team-photos'
+import { agentPhoto, teamPhotoCopy } from '@/lib/team-photos'
 import Showroom from '../Showroom'
 import { HISTORY } from '../history'
 // The owner's hand ("יד") for the MOCK site: a one-off snapshot taken from
@@ -76,7 +76,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
   try {
     team = (await getActiveAgents()).map(a => {
       const photo = agentPhoto(a)
-      return { title: a.full_name, sub: a.title ?? '', href: `/team/${a.public_id}`, images: photo ? [teamImg(photo)] : [], person: true }
+      return { title: a.full_name, sub: a.title ?? '', href: `/team/${a.public_id}`, images: photo ? [teamImg(photo)] : [], hero: photo ? teamPhotoCopy(photo, 'hero') : undefined, person: true }
     })
   } catch {}
   // the street gallery: history photos on the big screens outside
