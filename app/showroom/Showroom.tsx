@@ -373,10 +373,12 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     let gridMid = 0
     const insets = () => {
       const n = nav.current, c = cap.current
-      const top = (n ? n.offsetTop + n.offsetHeight : 64) + 4
+      // the cards are cut exactly at the dividing lines: the bar's bottom edge
+      // above, the search sheet's top edge below (it rises 12px over the row)
+      const top = n ? n.offsetTop + n.offsetHeight : 64
       // from the screen's bottom edge to the foot's top, plus a breath; the
       // team has no search row, so its cards take that room too
-      const bottom = !c ? 150 : setRef.current === 'team' ? cv.clientHeight - (c.offsetTop + c.offsetHeight) + 12 : cv.clientHeight - c.offsetTop + 6
+      const bottom = !c ? 150 : setRef.current === 'team' ? cv.clientHeight - (c.offsetTop + c.offsetHeight) + 12 : cv.clientHeight - c.offsetTop + (light ? 12 : 0)
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
