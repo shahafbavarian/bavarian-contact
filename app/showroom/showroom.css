@@ -334,6 +334,15 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
   .sr-word:hover { color: #fff; }
   .sr-tool:hover { background: rgba(255,255,255,.08); }
 }
+/* TRIAL: the cards' native scroller — transparent, over the cards' zone; the
+   phone draws its own scroll indicator at the side */
+.sr-scroller {
+  position: absolute; z-index: 2; inset-inline: 0; top: 80px; bottom: 150px; display: none;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  scrollbar-width: thin; scrollbar-color: rgba(127,127,127,.45) transparent;
+}
+.sr-scroller > div { width: 1px; }
 /* the pull out, at the top of the list */
 .sr-pull {
   position: absolute; z-index: 3; inset-inline: 0; top: 80px; display: flex; align-items: center; justify-content: center; gap: 8px;
