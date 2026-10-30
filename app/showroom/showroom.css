@@ -52,9 +52,11 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
      hard line at the edge — a percentage put most of the fade under Safari's
      bars, tall yet unseen, and left the line bare */
   /* short and steep: 10px above, 9px below, more than half the way in the
-     first 3px — they only soften the hard line where Safari's dark bars end */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent env(safe-area-inset-top), rgba(0,0,0,.55) calc(env(safe-area-inset-top) + 3px), #000 calc(env(safe-area-inset-top) + 10px), #000 calc(100% - env(safe-area-inset-bottom) - 9px), rgba(0,0,0,.55) calc(100% - env(safe-area-inset-bottom) - 3px), transparent calc(100% - env(safe-area-inset-bottom)), transparent 100%);
-          mask-image: linear-gradient(to bottom, transparent 0, transparent env(safe-area-inset-top), rgba(0,0,0,.55) calc(env(safe-area-inset-top) + 3px), #000 calc(env(safe-area-inset-top) + 10px), #000 calc(100% - env(safe-area-inset-bottom) - 9px), rgba(0,0,0,.55) calc(100% - env(safe-area-inset-bottom) - 3px), transparent calc(100% - env(safe-area-inset-bottom)), transparent 100%);
+     first 3px — they only soften the hard line where Safari's dark bars end.
+     The top bar ends at the safe area; the BOTTOM bar is taller than its safe
+     area (the floating address bar): --vb is that real edge, measured live */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent env(safe-area-inset-top), rgba(0,0,0,.55) calc(env(safe-area-inset-top) + 3px), #000 calc(env(safe-area-inset-top) + 10px), #000 calc(100% - var(--vb, env(safe-area-inset-bottom)) - 9px), rgba(0,0,0,.55) calc(100% - var(--vb, env(safe-area-inset-bottom)) - 3px), transparent calc(100% - var(--vb, env(safe-area-inset-bottom))), transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, transparent env(safe-area-inset-top), rgba(0,0,0,.55) calc(env(safe-area-inset-top) + 3px), #000 calc(env(safe-area-inset-top) + 10px), #000 calc(100% - var(--vb, env(safe-area-inset-bottom)) - 9px), rgba(0,0,0,.55) calc(100% - var(--vb, env(safe-area-inset-bottom)) - 3px), transparent calc(100% - var(--vb, env(safe-area-inset-bottom))), transparent 100%);
 }
 
 /* The sign on the building: the live header's lit look, moved every frame by

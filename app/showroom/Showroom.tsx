@@ -312,6 +312,8 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           const vb = Math.max(0, document.documentElement.clientHeight - (vv.height + vv.offsetTop))
           if (Math.abs(vb - lastVb) > 1) {
             lastVb = vb; c.style.bottom = `${vb + 4}px`; insets()
+            // the street's bottom fade ends where Safari's bar really begins
+            root.current?.style.setProperty('--vb', `${vb}px`)
           }
         }
         c.style.transform = `translateY(${(1 - s) * 14}px)`
