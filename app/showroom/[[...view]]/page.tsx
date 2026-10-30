@@ -1,15 +1,16 @@
 import { fetchCarList } from '@/lib/scraper'
 import { getCachedImageUrls, freshImage } from '@/lib/image-sync'
+import { notFound } from 'next/navigation'
 import { getActiveAgents } from '@/lib/agents'
 import { agentPhoto } from '@/lib/team-photos'
-import Showroom from './Showroom'
-import { HISTORY } from './history'
+import Showroom from '../Showroom'
+import { HISTORY } from '../history'
 // The owner's hand ("יד") for the MOCK site: a one-off snapshot taken from
 // each car's own page (the list does not carry it) — read at build time, no
 // request at run time. The real site will take it from its live data source
-import HANDS from './hands.json'
+import HANDS from '../hands.json'
 const handOf = (recNo: string) => { const h = (HANDS as Record<string, string>)[recNo] ?? ''; return /^\d+$/.test(h) ? h : '' }
-import type { Card } from './scene'
+import type { Card } from '../scene'
 
 export const revalidate = 300
 
@@ -33,7 +34,20 @@ const km = (mileage?: string) => {
   return !isNaN(n) && n > 0 ? n.toLocaleString('en-US') : 'חדש'
 }
 
-export default async function ShowroomPage() {
+// One page for every place in the hall, each with its own address: the street
+// (/showroom), all the cars inside (/showroom/cars) and the team inside
+// (/showroom/team). The page is the same; the hall reads the address
+const VIEWS = ['cars', 'team']
+// all three are built ahead and served from the CDN, refreshed every 5 minutes
+// like the one page was — never rendered per visit
+export const dynamicParams = false
+export function generateStaticParams() {
+  return [{ view: [] as string[] }, ...VIEWS.map(v => ({ view: [v] }))]
+}
+
+export default async function ShowroomPage({ params }: { params: { view?: string[] } }) {
+  const v = params.view
+  if (v && (v.length !== 1 || !VIEWS.includes(v[0]))) notFound()
   let cards: Card[] = []
   try {
     const [list, cdn] = await Promise.all([fetchCarList(), getCachedImageUrls()])

@@ -24,6 +24,14 @@ const fit = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a)
 // a fixed empty set, so a page without a team never rebuilds the scene
 const NO_TEAM: Card[] = []
 
+// The hall's addresses: the street is /showroom, inside is /showroom/cars or
+// /showroom/team. They follow the hall as it moves (history.pushState: no
+// navigation, no reload — Next's router carries its own state across), and
+// back/forward play the very same walks
+const VIEW_RE = /^\/showroom\/(cars|team)\/?$/
+const pathView = () => (location.pathname.match(VIEW_RE)?.[1] ?? null) as 'cars' | 'team' | null
+const onHallPath = () => /^\/showroom(\/|$)/.test(location.pathname)
+
 export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Card[]; team?: Card[]; street?: Card[] }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
@@ -69,12 +77,27 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   const [set, setSet] = useState<'cars' | 'team'>('cars')
   const setRef = useRef(set)
   setRef.current = set
-  // a refresh inside opens on the set it was showing
-  useEffect(() => { try { if (sessionStorage.getItem('sr-set') === 'team' && team.length) setSet('team') } catch {} }, [team.length])
+  // a refresh inside opens on the set it was showing: the address says which,
+  // or (a plain /showroom) the remembered one
+  useEffect(() => {
+    let s = pathView()
+    if (!s) try { if (sessionStorage.getItem('sr-set') === 'team') s = 'team' } catch {}
+    if (s === 'team' && team.length) { setRef.current = 'team'; setSet('team') }
+  }, [team.length])
   // where the walk is (0 street … 1 inside), for the choice of an instant swap
   const progress = useRef(0)
   const insetsRef = useRef(() => {})
   const enterRef = useRef<(s: 'cars' | 'team') => void>(() => {})
+  // the address follows the hall; while a back/forward is being played,
+  // nothing new is written to the history
+  const popping = useRef(false)
+  const syncUrl = (inside: boolean) => {
+    if (popping.current || !onHallPath()) return
+    const url = inside ? `/showroom/${setRef.current}` : '/showroom'
+    if (location.pathname.replace(/\/$/, '') !== url) history.pushState(null, '', url + location.search)
+  }
+  const syncRef = useRef(syncUrl)
+  syncRef.current = syncUrl
   const [menu, setMenu] = useState(false)
   const menuOpen = useRef(false)
   menuOpen.current = menu
@@ -145,13 +168,14 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   // the screens fly into its first cards, exactly as they do for the stock
   const enter = (s: 'cars' | 'team') => {
     if (s === 'team' && !teamIds.length) { router.push('/team'); return }
-    setSet(s); setMenu(false)
+    setRef.current = s; setSet(s); setMenu(false)
     try { sessionStorage.setItem('sr-set', s) } catch {}
     if (s === 'team') { input.current?.blur(); setPanel(null) }
     const v = s === 'team' ? teamIds : (found ?? carIds)
     viewRef.current = v
     handle.current?.setView(v, progress.current < 0.02)   // before the first step maps the cards
     goRef.current(1)
+    syncRef.current(true)   // already inside (a set switched): the address still follows
   }
   enterRef.current = enter
   // a page link that, once the hall runs, is a set of the hall instead
@@ -214,9 +238,15 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     // born bright (the first-paint script saw a refresh into the inside view):
     // the strips already carry white, no first re-toggle is wanted
     const bornBright = document.documentElement.hasAttribute('data-sr-bright')
-    // two remembered states: a refresh while inside opens inside
-    let inside = false
-    try { inside = sessionStorage.getItem('sr-view') === 'in' } catch {}
+    // two remembered states: a refresh while inside opens inside — the
+    // address says so (/showroom/cars, /showroom/team), or the remembered state
+    let inside = !!pathView()
+    if (!inside) try { inside = sessionStorage.getItem('sr-view') === 'in' } catch {}
+    // a plain /showroom that opens inside takes its inside address (once Next's
+    // router has set up, so its own history state is carried over)
+    if (inside && !pathView()) requestAnimationFrame(() => {
+      if (onHallPath() && !pathView()) history.replaceState(null, '', `/showroom/${setRef.current}${location.search}`)
+    })
     let current = inside ? 1 : 0, vel = 0, target = inside ? 1 : 0, last = performance.now(), raf = 0, alive = true
     // the walk: a timed ease of the target from where it is to 0 (outside) or
     // 1 (inside). A gesture the other way turns it around at any moment.
@@ -229,8 +259,17 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
       if (dest === 0) { if (document.activeElement === input.current) input.current?.blur(); setPanel(null) }
       try { sessionStorage.setItem('sr-view', dest === 1 ? 'in' : 'out') } catch {}
+      syncRef.current(dest === 1)
     }
     goRef.current = go
+    // back / forward: the address changed under the hall — play the walk (or
+    // the change of set) it asks for, without writing the history again
+    const onPop = () => {
+      if (!onHallPath()) return
+      popping.current = true
+      try { const pv = pathView(); if (pv) enterRef.current(pv); else go(0) } finally { popping.current = false }
+    }
+    addEventListener('popstate', onPop)
     // a gesture into the hall from the street (a scroll, a swipe, a key, a tap
     // on the screen) always brings the stock: the team opens only from its own
     // button. A walk turned round mid-way keeps the set it was showing
@@ -404,7 +443,8 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
     // the line of words scrolls sideways on its own
     // the line of words and the native list scroll on their own
-    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words, .sr-scroller')
+    // (and a person opened over the hall: its gestures are its own)
+    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words, .sr-scroller, .sr-sheet')
     const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current && !inLine(e)) e.preventDefault() }
     const onTouchEnd = (e: TouchEvent) => {
       if (menuOpen.current || inLine(e)) return
@@ -418,6 +458,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return   // typing belongs to the field
+      if (document.querySelector('.sr-sheet')) return     // a person is open over the hall
       if (e.key === 'Escape') { setMenu(false); setPanel(null); return }
       if (menuOpen.current) return
       const sc = scroller.current
@@ -477,7 +518,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
 
     // a press anywhere else puts the keyboard and the panels away
     const onDownOut = (e: PointerEvent) => {
-      if ((e.target as Element | null)?.closest?.('.sr-cap')) return
+      if ((e.target as Element | null)?.closest?.('.sr-cap, .sr-sheet')) return
       if (document.activeElement === input.current) input.current?.blur()
       setPanel(null)
     }
@@ -500,6 +541,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut); removeEventListener('scroll', onWinScroll)
+      removeEventListener('popstate', onPop)
       if (light) {   // leaving the page: everything back as it was
         document.documentElement.removeAttribute('data-sr-bright')
         document.querySelectorAll<HTMLElement>('.sr-safari-strip').forEach(el => { el.style.display = ''; el.style.backgroundColor = '' })
