@@ -65,15 +65,33 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
     const ph = photo.current, card = from()
     let done = false
     const end = () => { if (!done) { done = true; onClosed() } }
+    // a close can come while the opening is still under way: every piece goes
+    // on from exactly where it is (read, then the opening stopped) — never a
+    // jump to full and back
+    const now = (el: HTMLElement) => {
+      const cs = getComputedStyle(el), v = { opacity: cs.opacity, transform: cs.transform }
+      el.getAnimations().forEach(x => x.cancel())
+      return v
+    }
     if (still() || !ph || !card) {
-      const a = root.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards' })
+      const r = root.current
+      const a = r?.animate([{ opacity: now(r).opacity }, { opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards' })
       if (a) a.onfinish = end; else end()
       return
     }
     root.current?.querySelector('.pv-over')?.scrollTo({ top: 0 })
-    parts().forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: EASE_OUT, fill: 'forwards' }))
-    bg.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
-    const a = ph.animate([{ transform: 'none' }, fromCard(ph.getBoundingClientRect(), card)],
+    parts().forEach(el => {
+      const v = now(el)
+      el.animate([{ opacity: v.opacity, transform: v.transform }, { opacity: 0, transform: v.transform }], { duration: 140, easing: EASE_OUT, fill: 'forwards' })
+    })
+    if (bg.current) {
+      const v = now(bg.current)
+      bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
+    }
+    const pv = now(ph)
+    // the photo's place on the page without any motion on it: the card's
+    // place is measured against that
+    const a = ph.animate([{ transform: pv.transform }, fromCard(ph.getBoundingClientRect(), card)],
       { duration: CLOSE_MS, easing: EASE_IO, fill: 'forwards' })
     a.onfinish = end
     const t = setTimeout(end, CLOSE_MS + 200)   // never left open if a frame is dropped
