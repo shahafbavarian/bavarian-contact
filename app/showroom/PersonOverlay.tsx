@@ -51,6 +51,9 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
     } else {
       const start = fromCard(ph.getBoundingClientRect(), card)
       ph.animate([start, { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
+      // it comes up over the card in its first instant: the square portrait and
+      // the card's slightly wider photo never meet as a snap
+      ph.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 110, easing: 'linear' })
       bg.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: EASE_OUT })
       parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
         { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
@@ -91,9 +94,13 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
     const pv = now(ph)
     // the photo's place on the page without any motion on it: the card's
     // place is measured against that
-    const a = ph.animate([{ transform: pv.transform }, fromCard(ph.getBoundingClientRect(), card)],
+    ph.animate([{ transform: pv.transform }, fromCard(ph.getBoundingClientRect(), card)],
       { duration: CLOSE_MS, easing: EASE_IO, fill: 'forwards' })
-    a.onfinish = end
+    // the last stretch: it fades onto the card (already back in its place
+    // underneath), so the two shapes never meet; the layer is taken away only
+    // once it is invisible, so that frame's work never shows
+    const f = ph.animate([{ opacity: pv.opacity }, { opacity: 0 }], { duration: 140, delay: CLOSE_MS - 140, easing: 'linear', fill: 'forwards' })
+    f.onfinish = () => requestAnimationFrame(end)
     const t = setTimeout(end, CLOSE_MS + 200)   // never left open if a frame is dropped
     return () => clearTimeout(t)
   }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
