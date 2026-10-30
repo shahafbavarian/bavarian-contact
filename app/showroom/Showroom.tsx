@@ -75,6 +75,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   // where the walk is (0 street … 1 inside), for the choice of an instant swap
   const progress = useRef(0)
   const insetsRef = useRef(() => {})
+  const enterRef = useRef<(s: 'cars' | 'team') => void>(() => {})
   const [menu, setMenu] = useState(false)
   const menuOpen = useRef(false)
   menuOpen.current = menu
@@ -153,6 +154,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     handle.current?.setView(v, progress.current < 0.02)   // before the first step maps the cards
     goRef.current(1)
   }
+  enterRef.current = enter
   // a page link that, once the hall runs, is a set of the hall instead
   const viaHall = (s: 'cars' | 'team') => (e: React.MouseEvent) => {
     if (state !== 'ready' || e.metaKey || e.ctrlKey) return
@@ -230,6 +232,10 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
       try { sessionStorage.setItem('sr-view', dest === 1 ? 'in' : 'out') } catch {}
     }
     goRef.current = go
+    // a gesture into the hall from the street (a scroll, a swipe, a key, a tap
+    // on the screen) always brings the stock: the team opens only from its own
+    // button. A walk turned round mid-way keeps the set it was showing
+    const walkIn = () => { if (current < 0.05 && setRef.current === 'team') enterRef.current('cars'); else go(1) }
     // capIn: the foot of the hall is on screen (its row pours in); arrived:
     // the walk in has ended, and on a computer the field takes the keyboard
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
@@ -390,7 +396,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
         return
       }
       if (cardsOut()) { if (!handle.current!.wheel(e.deltaY)) go(0); return }
-      if (Math.abs(e.deltaY) > 4) go(e.deltaY > 0 ? 1 : 0)
+      if (Math.abs(e.deltaY) > 4) { if (e.deltaY > 0) walkIn(); else go(0) }
     }
     let ty = 0, tx = 0
     const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; tx = e.touches[0].clientX }
@@ -405,7 +411,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
         // with the keyboard up, a swipe only puts it away
         if (document.activeElement === input.current) { input.current?.blur(); return }
         if (cardsOut()) return   // the cards take it (and the pull out at the top)
-        go(dy < 0 ? 1 : 0)
+        if (dy < 0) walkIn(); else go(0)
       }
     }
     const onKey = (e: KeyboardEvent) => {
@@ -413,7 +419,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
       if (e.key === 'Escape') { setMenu(false); setPanel(null); return }
       if (menuOpen.current) return
       const sc = scroller.current
-      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc) sc.scrollBy({ top: rowPx.current, behavior: 'smooth' }); else go(1) }
+      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc) sc.scrollBy({ top: rowPx.current, behavior: 'smooth' }); else walkIn() }
       if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc && sc.scrollTop > 1) sc.scrollBy({ top: -rowPx.current, behavior: 'smooth' }); else go(0) }
       // the street's screens, right to left: the left arrow brings the next
       if (current < 0.05 && e.key === 'ArrowLeft') handle.current?.step(1)
@@ -457,7 +463,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
             if (reset && scroller.current) scroller.current.scrollTop = 0
           },
           onReady: () => setState('ready'),
-          onEnter: () => goRef.current(1),
+          onEnter: () => enterRef.current('cars'),
           onFront: setFront,
           onOpen: i => { const c = all[i]; if (c.external) location.href = c.href; else router.push(c.href) },
         })

@@ -804,7 +804,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const allMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
   const freeMeshes: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>[] = []
   let zoneH = 1, gapM = 0.02
-  let cardW = 1.6, cardH = 1.5, pitch = 1.6, drumR = 8, pitchPx = 300, cardCss = 170, cy = 0, gridTop = 1, colX = 0.9, rowsFit = 2, wideFace = false, gcols = 2
+  let cardW = 1.6, cardH = 1.5, pitch = 1.6, pitchPx = 300, cardCss = 170, gridTop = 1, colX = 0.9, rowsFit = 2, wideFace = false, gcols = 2
   let insetTop = 80, insetBottom = 170, insetSide = 16
   const dress = (m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>) => {
     const u = m.material.uniforms, pad = cardW * 0.07
@@ -1111,7 +1111,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
     STRIP = strip; cardCss = css; wideFace = wide
     cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : (W + gap) / 2
-    gridTop = top; cy = (top + bottom) / 2; drumR = pitch * 5; pitchPx = pitch / mpp
+    gridTop = top; pitchPx = pitch / mpp
     rowsFit = Math.max(1, Math.floor((availH + gap) / pitch))
     zoneH = availH; gapM = gap
     if (redraw) {   // the faces are drawn again at the new size
@@ -1122,12 +1122,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     dirty = true
   }
   // a card's place: its row and column (RTL: the first on the right), the
-  // list scrolled to row `s`; the rows bend away a little above and below
+  // list scrolled to row `s`. Flat: every row square to you at one distance,
+  // moving only up and down — no drum, no lean at the top and bottom
   const gridPlace = (r: number, col: number, s: number, outP: THREE.Vector3, outQ: THREE.Quaternion) => {
     const yFlat = gridTop - cardH / 2 - (r - s) * pitch
-    const u = (yFlat - cy) / drumR
-    outP.set(colX * (1 - 2 * col), cy + drumR * Math.sin(u), -WALL_R - drumR * (1 - Math.cos(u))).applyMatrix4(camera.matrixWorld)
-    outQ.copy(camera.quaternion).multiply(tmpQ2.setFromAxisAngle(xAxis, -u))
+    outP.set(colX * (1 - 2 * col), yFlat, -WALL_R).applyMatrix4(camera.matrixWorld)
+    outQ.copy(camera.quaternion)
   }
   // in rows: how far the list can move before its last row sits on the bottom of the view
   const maxScroll = () => Math.max(0, (Math.ceil(N / gcols) * pitch - gapM - zoneH) / pitch)
