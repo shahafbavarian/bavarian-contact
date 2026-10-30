@@ -810,7 +810,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const u = m.material.uniforms, pad = cardW * 0.07
     u.uSize.value.set(cardW, cardH); u.uPad.value = pad; u.uStripH.value = cardW * STRIP
     const h = viewH || canvas.clientHeight
-    u.uClip.value.set(insetBottom * dpr, (h - insetTop) * dpr, 10 * dpr)
+    u.uClip.value.set(insetBottom * dpr, (h - insetTop) * dpr, 6 * dpr)   // a short, soft fade exactly at the dividing lines
   }
   const takeMesh = () => {
     const f = freeMeshes.pop()
@@ -838,7 +838,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   type Held = { m: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; car: number; i: number; pr: number; pc: number; vis: number; live: boolean }
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
-  let walkDir = 1, lastP = 0, walkU = 0
+  let walkDir = 1, lastP = 0, walkU = 0, lastWalkU = 0
   let scrollAt = -1e9, infoKey = '', infoReset = false
   let throwK = 0, growAt = -1, viewChanged = false, exitRide = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
@@ -862,7 +862,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
     const o = FLY.find(f => f.rel === rel)?.o ?? 0
-    return easeInOut(fit(throwK, o, o + 0.6))
+    // the window ends at the very end: walking in they land together, and
+    // walking out every one leaves the moment the walk turns
+    return easeInOut(fit(throwK, o, 1))
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
   const sIdxK = (sIdx: number) => { const pos = angle / STEP; return sIdx + SLOTS * Math.round((pos - sIdx) / SLOTS) }
@@ -1111,9 +1113,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
     STRIP = strip; cardCss = css; wideFace = wide
     cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : (W + gap) / 2
-    gridTop = top; pitchPx = pitch / mpp
-    rowsFit = Math.max(1, Math.floor((availH + gap) / pitch))
-    zoneH = availH; gapM = gap
+    // a small breath inside the zone: a card at rest never meets the fade
+    const PADV = 10 * mpp
+    gridTop = top - PADV; pitchPx = pitch / mpp
+    rowsFit = Math.max(1, Math.floor((availH - 2 * PADV + gap) / pitch))
+    zoneH = availH - 2 * PADV; gapM = gap
     if (redraw) {   // the faces are drawn again at the new size
       wallCache.forEach(v => v.tex.dispose()); wallCache.clear()
       held.forEach(hd => { hd.m.material.uniforms.map.value = ensureCard(hd.car).tex })
@@ -1199,7 +1203,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (p >= 1) walkU = 1
     else if (p <= 0) walkU = 0
     const tk = throwK
-    throwK = fit(walkU, 0.04, 0.88)
+    if (walkU !== lastWalkU) {
+      const m = walkU < lastWalkU ? (u: number) => fit(u, 0.2, 0.985) : (u: number) => fit(u, 0.04, 0.88)
+      throwK = Math.min(1, Math.max(0, throwK + m(walkU) - m(lastWalkU)))
+      lastWalkU = walkU
+    }
+    if (walkU >= 1) throwK = 1
+    else if (walkU <= 0) throwK = 0
     if (throwK !== tk) dirty = true
     wallOn = throwK >= 0.98
     // the screens facing you, frozen as the walk begins: their cars open the list
@@ -1420,8 +1430,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           // leaves its centre small, flies to its cell growing to full size
           // and turns to you — the screens' own move, a beat apart; walking
           // out they fly back into it the same way
-          const o = 0.22 + Math.min(ri, 9) * 0.035
-          const fe = easeInOut(fit(throwK, o, o + 0.45)), sl = slotOf(0)
+          const o = 0.2 + Math.min(ri, 9) * 0.03
+          const fe = easeInOut(fit(throwK, o, 1)), sl = slotOf(0)
           srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
           m.position.lerpVectors(srcP, tmpV, fe); m.position.y += Math.sin(Math.PI * fe) * 0.04
           m.quaternion.slerpQuaternions(srcQ, tmpQ, fe)
@@ -1443,7 +1453,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       sc *= 1 + lift * 0.02
       const vv = smooth(hd.vis)
       sc *= calm ? 1 : 0.86 + 0.14 * vv
-      a *= vv * (1 - smooth(fit(off, rowsFit + 0.9, rowsFit + 1.25))) * (1 - smooth(fit(-off, 0.78, 1.1)))
+      // no fade of whole rows: a row leaving the view is simply cut at the
+      // dividing line (the shader's short clip) — the row-wide fade washed out
+      // the top row across its whole height
+      a *= vv
       u.uClipOn.value = 1
       if (opening) {
         if (opening.h === hd) {

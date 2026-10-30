@@ -47,8 +47,12 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
   /* the top fades softly, the stone still showing behind the clock */
   /* a long fade into black at the top, so the joint with the clock strip is
      nowhere to be seen */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 95%, transparent 100%);
-          mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 95%, transparent 100%);
+  /* the fades sit exactly where Safari's own dark areas end (the clock above,
+     the bar below) and run a short way into the page: black meets black, no
+     hard line at the edge — a percentage put most of the fade under Safari's
+     bars, tall yet unseen, and left the line bare */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent env(safe-area-inset-top), #000 calc(env(safe-area-inset-top) + 30px), #000 calc(100% - env(safe-area-inset-bottom) - 24px), transparent calc(100% - env(safe-area-inset-bottom)), transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, transparent env(safe-area-inset-top), #000 calc(env(safe-area-inset-top) + 30px), #000 calc(100% - env(safe-area-inset-bottom) - 24px), transparent calc(100% - env(safe-area-inset-bottom)), transparent 100%);
 }
 
 /* The sign on the building: the live header's lit look, moved every frame by
@@ -386,7 +390,8 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 }
 .sr-cta:active { transform: scale(.97); }
 
-.sr-progress { position: absolute; z-index: 3; inset-inline: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.08); }
+/* above the bottom edge strip (it hid the bar); 2px, under the 3px Safari samples (rule 5) */
+.sr-progress { position: fixed; z-index: 2147483647; inset-inline: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.08); pointer-events: none; }
 .sr-progress > div { height: 100%; background: rgba(255,255,255,.7); transform-origin: right; transform: scaleX(0); }
 
 .sr-fallback { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; text-align: center; padding: 24px; z-index: 4; }
@@ -424,7 +429,7 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 .sr[data-theme="light"] .sr-top { background: none; }
 .sr[data-theme="light"] .sr-top::before {
   content: ''; position: absolute; inset: calc(-1 * env(safe-area-inset-top)) 0 0; z-index: -1;
-  background: #f5f6f7; box-shadow: 0 8px 28px rgba(0,0,0,.14);
+  background: #f5f6f7; box-shadow: 0 1px 0 rgba(20,23,26,.09);   /* a crisp divider, not a long shadow over the cards */
   opacity: var(--br, 0);
 }
 /* the ink logo exists only for the bright trial; everywhere else it stays away */
@@ -443,7 +448,7 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 /* the foot: a sheet in the page's colour behind the search, on the same move */
 .sr[data-theme="light"] .sr-cap::before {
   content: ''; position: absolute; z-index: -1; inset: -12px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
-  background: #f5f6f7; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgba(0,0,0,.14);
+  background: #f5f6f7; border-radius: 22px 22px 0 0; box-shadow: 0 -1px 0 rgba(20,23,26,.09);
   opacity: var(--br, 0);
 }
 /* on the sheet, the row needs no pour of its own: it rides the foot's one move */

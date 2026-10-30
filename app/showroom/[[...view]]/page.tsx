@@ -5,6 +5,11 @@ import { getActiveAgents } from '@/lib/agents'
 import { agentPhoto } from '@/lib/team-photos'
 import Showroom from '../Showroom'
 import { HISTORY } from '../history'
+// The owner's hand ("יד") for the MOCK site: a one-off snapshot taken from
+// each car's own page (the list does not carry it) — read at build time, no
+// request at run time. The real site will take it from its live data source
+import HANDS from '../hands.json'
+const handOf = (recNo: string) => { const h = (HANDS as Record<string, string>)[recNo] ?? ''; return /^\d+$/.test(h) ? h : '' }
 import type { Card } from '../scene'
 
 export const revalidate = 300
@@ -59,7 +64,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
         sub: [model, c.year, c.price, stock ? 'במלאי' : 'בדרך לארץ'].filter(Boolean).join(' · '),
         href: `/car/${c.recNo}`,
         images: [img(c.imageUrl)],
-        make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || '',
+        make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || handOf(c.recNo),
       }
     })
   } catch {}
