@@ -257,7 +257,9 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     const go = (dest: 0 | 1) => {
       if (dur ? to === dest : target === dest) return
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
-      if (dest === 0) { if (document.activeElement === input.current) input.current?.blur(); setPanel(null) }
+      // walking out: the keyboard, the panels and the menu close first — the
+      // street has no menu (left open, it darkened the street and stuck)
+      if (dest === 0) { if (document.activeElement === input.current) input.current?.blur(); setPanel(null); setMenu(false) }
       try { sessionStorage.setItem('sr-view', dest === 1 ? 'in' : 'out') } catch {}
       syncRef.current(dest === 1)
     }
@@ -591,7 +593,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           </header>
 
           {/* the menu: the site's pages */}
-          <nav id="sr-menu" className="sr-menu" data-open={menu} aria-label="ניווט ראשי" hidden={!menu}>
+          <nav id="sr-menu" className="sr-menu" data-open={menu} aria-label="ניווט ראשי" hidden={!menu || state === 'loading'}>
             <Link href="/cars" onClick={e => { setMenu(false); viaHall('cars')(e) }}>הרכבים</Link>
             <Link href="/sold" onClick={() => setMenu(false)}>רכבים שנמכרו</Link>
             <Link href="/team" onClick={e => { setMenu(false); viaHall('team')(e) }}>הצוות</Link>
