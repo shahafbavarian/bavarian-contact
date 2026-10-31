@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import CarView from '../cars/[slug]/CarView'
 import type { PublicCar } from '@/lib/car-public'
 
@@ -16,6 +16,9 @@ type Rect = { x: number; y: number; w: number; h: number; r: number }
 // car (its spec, offer, indices…) comes from /api/cars/<number> and rises in
 // below as soon as it is there.
 const OPEN_MS = 560, CLOSE_MS = 420
+// the opening's last piece lands by then (the photo 560ms; the bar, the strip,
+// the title and the ways to talk rising after it): only then is the page filled
+const SETTLED_MS = 820
 const EASE_OUT = 'cubic-bezier(.22,1,.36,1)', EASE_IO = 'cubic-bezier(.77,0,.175,1)'
 
 function fromCard(final: DOMRect, card: Rect) {
@@ -61,8 +64,9 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       // rebuilt under a moving photo is what made it stutter
       .then(d => {
         if (!d?.car) return
-        const wait = Math.max(0, OPEN_MS + 60 - (performance.now() - opened.current))
-        setTimeout(() => { if (!closingRef.current) setFull({ car: d.car, qr: d.qr ?? '' }) }, wait)
+        // (after the photo and every piece of the opening have landed)
+        const wait = Math.max(0, SETTLED_MS - (performance.now() - opened.current))
+        setTimeout(() => requestAnimationFrame(() => { if (!closingRef.current) setFull({ car: d.car, qr: d.qr ?? '' }) }), wait)
       })
       .catch(() => {})
     return () => ac.abort()
@@ -78,8 +82,12 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       const a = ph.animate([fromCard(ph.getBoundingClientRect(), card), { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
       a.onfinish = () => flying(false)
       bg.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: EASE_OUT })
-      parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
-        { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
+      parts().forEach((el, i) => {
+        // the bar of ways to talk rises from the bottom edge, solid — faded,
+        // the page showed through it
+        if (el.classList.contains('cv-talk-bar')) el.animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, delay: 220, easing: EASE_OUT, fill: 'backwards' })
+        else el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' })
+      })
     }
     if (matchMedia('(pointer: fine)').matches) root()?.querySelector<HTMLElement>('.cv-close')?.focus({ preventScroll: true })
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
@@ -115,8 +123,10 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     // page's light goes, and the last stretch fades onto the card. No jump to
     // the top: the photo flies from wherever it is on the screen (out of
     // view, it comes in as it flies)
-    const HEAD = 140
-    ph.setAttribute('data-closing', '')   // the cover — the card's own photo — over the gallery
+    // The photo flies home as it is on the screen (the cover, or the gallery's
+    // photo if it has turned — the last stretch fades it onto the card): no
+    // swap to another photo at the start of the move
+    const HEAD = 80
     // the details: gone at once, by a rule nothing can outweigh (on the
     // iPhone the script's fade did not always hold — the title card stayed
     // over the hall while the photo flew home)
@@ -127,7 +137,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     }
     const pv = now(ph)
     const at = ph.getBoundingClientRect()
-    flying(true)
+    ph.style.willChange = 'transform'
     ph.animate([{ transform: pv.transform }, fromCard(at, card)], { duration: CLOSE_MS, delay: HEAD, easing: EASE_IO, fill: 'both' })
     if (at.bottom < 0 || at.top > innerHeight) ph.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, delay: HEAD, easing: 'linear', fill: 'backwards' })
     // the last stretch fades onto the card (already back in its place), and
@@ -180,7 +190,13 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     return () => removeEventListener('keydown', onKey)
   }, [close])
 
-  const car = full?.car ?? q
+  // once the details are in, the main photo stays the very one already on the
+  // screen (the card's) — a new address for it would reload it in view
+  const car = useMemo(() => {
+    if (!full) return q
+    const hero = q.hero ?? full.car.hero
+    return { ...full.car, hero, images: full.car.images.filter(u => u !== hero && u !== full.car.hero) }
+  }, [full, q])
   return (
     <div ref={host} className="cv-host">
       <CarView car={car} url={url} qr={full?.qr ?? ''} mode="over" loading={!full} onClose={close} refs={viewRefs} />

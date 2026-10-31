@@ -98,7 +98,6 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
   opacity: 0; pointer-events: none; transition: opacity 450ms var(--ease);
 }
 .cv-photo[data-cover] .cv-cover { opacity: 1; }
-.cv-photo[data-closing] .cv-cover { opacity: 1; transition: none; }
 .cv-photo:not(:has(.cv-slide)) .cv-cover { pointer-events: auto; cursor: zoom-in; }
 /* in flight between the card and the page: the cover alone */
 .cv-photo[data-flying] .cv-track, .cv-photo[data-flying] .cv-count { visibility: hidden; }
@@ -138,7 +137,6 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-name { margin-top: 10px; font-size: 24px; font-weight: 500; line-height: 1.2; letter-spacing: -.01em; }
 .cv-name b { font-weight: 600; }
 .cv-name > bdi { display: block; text-align: right; }
-.cv-trim { margin-top: 4px; font-size: 15px; font-weight: 400; color: var(--muted); }
 .cv-price { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .cv-price strong { display: block; font-size: 30px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; text-align: right; }
 .cv-ask { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; color: var(--green); }
@@ -211,6 +209,8 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-na { font-size: 14.5px; color: var(--muted); }
 /* the spec's place, held while it loads: soft lines that breathe */
 .cv-skel { display: grid; gap: 14px; }
+.cv-tiles-ph li { animation: cv-breathe 1.2s ease-in-out infinite alternate; }
+.cv-tiles-ph li > * { visibility: hidden; }
 .cv-skel i { display: block; height: 14px; border-radius: 7px; background: var(--soft); animation: cv-breathe 1.2s ease-in-out infinite alternate; }
 .cv-skel i:nth-child(1) { width: 30%; height: 18px; }
 .cv-skel i:nth-child(even) { width: 82%; }

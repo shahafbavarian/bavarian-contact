@@ -4,6 +4,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PublicCar } from '@/lib/car-public'
 import './car.css'
 import { FAMILIES, familiesOf } from '@/app/showroom/colors'
+import { splitName } from '@/lib/car-name'
 
 // A car's page (docs/CAR_PAGE_SPEC.md), in order and in plain sight: the
 // gallery (a 3:2 main photo, its thumbnails under it), the name and the price
@@ -405,17 +406,16 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
         <aside className="cv-side cv-rest">
           <section className="cv-card cv-title">
             <p className="cv-status" data-s={car.status}><i />{statusWord}<span>מודעה <bdi dir="ltr">{car.recNo}</bdi></span></p>
-            <h1 className="cv-name">
-              <bdi dir="ltr"><b>{car.make}</b> {car.model}</bdi>
-              {car.trim && <bdi dir="ltr" className="cv-trim">{car.trim}</bdi>}
-            </h1>
+            {/* the full name in one line that wraps, its make in bold — split
+                one way only (lib/car-name), so it never changes as it loads */}
+            <h1 className="cv-name"><bdi dir="ltr"><b>{splitName(car.name)[0]}</b> {splitName(car.name)[1]}</bdi></h1>
             <div className="cv-price">
               {car.price ? <strong dir="ltr">{car.price}</strong> : (
                 <a className="cv-ask" href={waHref} target="_blank" rel="noopener noreferrer"><Icon k="wa" />בקשו מחיר ב-WhatsApp</a>
               )}
             </div>
             {car.finance && (
-              <button type="button" className="cv-monthly" onClick={() => openSheet('finance')}>
+              <button type="button" className="cv-monthly" onClick={() => { if (!loading) openSheet('finance') }}>
                 <span className="cv-monthly-v"><b dir="ltr">{car.finance.monthly}</b> לחודש</span>
                 <span className="cv-monthly-l">פרטי הצעת המימון<Icon k="chev" s={16} /></span>
               </button>
@@ -425,7 +425,13 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
         </aside>
 
         {/* ── the key facts ── */}
-        {tiles.length > 0 && (
+        {/* while loading: the tiles' place, tile for tile, the same size */}
+        {loading && (
+          <ul className="cv-tiles cv-tiles-ph" aria-hidden="true">
+            {(['year', 'km', 'hand', 'hp', 'fuel', 'body'] as IconK[]).map(k => <li key={k}><Icon k={k} s={22} /><small>&nbsp;</small><bdi>&nbsp;</bdi></li>)}
+          </ul>
+        )}
+        {!loading && tiles.length > 0 && (
           <ul className="cv-tiles" aria-label="נתונים עיקריים">
             {tiles.map(([k, l, v]) => (
               <li key={k}><Icon k={k} s={22} /><small>{l}</small><bdi>{v}</bdi></li>

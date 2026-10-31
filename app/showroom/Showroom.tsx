@@ -45,12 +45,15 @@ const SITE = 'https://contact.bavarian-motors.co.il'
 function quickCar(c: Card): PublicCar {
   const raw = (u?: string) => { if (!u) return null; try { return new URL(u, location.origin).searchParams.get('url') ?? u } catch { return u } }
   const hero = raw(c.images[0])
-  const [model = '', ...rest] = (c.model ?? '').split(/\s+/)
   const priceN = parseInt((c.price ?? '').replace(/\D/g, ''), 10) || null
+  const shekel = (n: number) => `${n.toLocaleString('he-IL')} ₪`
   return {
-    recNo: String(c.rec ?? ''), slug: c.slug ?? '', make: c.make ?? c.title, model, trim: rest.join(' ') || null,
+    recNo: String(c.rec ?? ''), slug: c.slug ?? '', make: c.make ?? c.title, model: c.model ?? '', trim: null,
     name: [c.make, c.model].filter(Boolean).join(' '), status: c.stock === false ? 'way' : 'stock',
-    price: priceN ? `${priceN.toLocaleString('he-IL')} ₪` : null, priceN, finance: null,
+    price: priceN ? shekel(priceN) : null, priceN,
+    // the monthly payment the card carries: its line is there from the first
+    // frame (its terms open once the car's details are in)
+    finance: priceN && c.monthly ? { down: null, monthly: shekel(c.monthly), months: 0, balloon: null, note: null } : null,
     year: c.year || null, km: c.km || null, hand: c.yad || null, ownership: null, engineCc: null, hp: c.hp ? String(c.hp) : null,
     fuel: null, body: null, colorExt: null, colorInt: null, listPrice: null, description: null,
     hero, images: [], pollution: null, safety: null, videos: [], agent: null,
