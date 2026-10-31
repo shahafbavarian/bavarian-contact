@@ -905,11 +905,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // are looking at, a beat apart; no two paths cross; nothing comes in from
   // the edges. Walking out plays it backwards, step for step.
   const FOLD = opts.walk === 'fold'
-  const FOLD_CARRY = 0.4     // act 1: on the stand (the camera arrives ~0.44)
-  const FOLD_GO = 0.32       // act 2: the middle screen sets off (overlapping the settle — no dead stop)
-  const FOLD_LEN = 0.32      // each card's move (~1 s)
-  const FOLD_NEXT = 0.1      // a card comes out from behind its parent once that one has turned
-  const FOLD_TURN = [0.04, 0.24] as const   // the middle screen's turn to its car, early in its move
+  // (in fold time, foldU: walking in, 0→1 over the walk's first 90%, ~3 s)
+  const FOLD_CARRY = 0.38    // act 1: on the stand
+  const FOLD_SHRINK = 0.72   // its size from the doorway on (fits the 2.4 m door)
+  const FOLD_TURN = [0.24, 0.4] as const   // the screen turns over to its car as it settles (~½ s, a stage of its own)
+  const FOLD_GO = 0.36       // act 2: it sets off for its cell as the turn ends
+  const FOLD_LEN = 0.3       // each card's move (~0.9 s)
+  const FOLD_NEXT = 0.08     // the next card sets off from behind it a beat later
   // k: the place from the first card in view; the middle screen is k 0. A
   // row's left card comes out from behind its right one; a right card from
   // behind the one above it (one column: each from behind the one above)
@@ -917,7 +919,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const foldParent = (k: number) => (k <= 0 ? -1 : gcols === 2 ? (k % 2 ? k - 1 : k - 2) : k - 1)
   const foldStart = (k: number, d = 0): number => {
     const par = foldParent(k)
-    return par < 0 || d > 12 ? FOLD_GO : Math.min(0.9, foldStart(par, d + 1) + FOLD_NEXT)
+    // (every card gets its whole move: the deepest start no later than 1 - FOLD_LEN)
+    return par < 0 || d > 12 ? FOLD_GO : Math.min(1 - FOLD_LEN, foldStart(par, d + 1) + FOLD_NEXT)
   }
   const foldDepth = (k: number, d = 0): number => { const par = foldParent(k); return par < 0 || d > 12 ? 0 : 1 + foldDepth(par, d + 1) }
   const foldE = (k: number) => { const t0 = foldStart(k); return smooth(fit(foldU, t0, Math.min(1, t0 + FOLD_LEN))) }
@@ -1286,8 +1289,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         tmpQ2.copy(camera.quaternion).multiply(tmpQ.copy(arrQi).multiply(tuck ? foldMidQ : ringQ[i]))
         if (tuck) tmpV.addScaledVector(fwd.set(0, 0, -1).applyQuaternion(camera.quaternion), 0.08)   // behind it
         showP[i].lerp(tmpV, carry); showQ[i].slerp(tmpQ2, carry)
-        const s1 = tuck ? 0.96 : 1
-        sm.scale.setScalar(sm.scale.x + (s1 - sm.scale.x) * carry)
+        // it narrows early to pass through the doorway (3 m of screen, 2.4 m of
+        // door) and keeps that size: on screen it only ever grows smaller, and
+        // lands about the size of the card it becomes
+        const s1 = (tuck ? 0.96 : 1) * FOLD_SHRINK
+        sm.scale.setScalar(sm.scale.x + (s1 - sm.scale.x) * smooth(fit(carry, 0, 0.3)))
       }
       sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i])
       // ONE set of screens on show at any moment. On the street the big
@@ -1301,7 +1307,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         // then on); the others — behind you — go as the walk starts
         const isMid = i === mid, tuck = !isMid && (i === sideA || i === sideB)
         u.uFade.value = isMid || tuck ? 1 : 1 - smooth(fit(foldU, 0, 0.2))
-        const gone = isMid ? foldE(foldRoot()) > 0 : tuck && carry > 0.97
+        const gone = isMid ? foldU > FOLD_TURN[0] : tuck && carry > 0.97   // (the card takes over to turn)
         sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
         m.visible = g <= 0 && p <= 0.02
         return
@@ -1340,10 +1346,15 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       throwK = Math.min(1, Math.max(0, throwK + m(walkU) - m(lastWalkU)))
       // the fold trial's own clock: walking in, the walk's time itself;
       // walking out the camera leaves the hall in the first second, so the
-      // fold plays back by then — the cards into the screen while you are
-      // still inside, the screen out to the street with the camera — and is
-      // done well before the walk unmaps. Stepped, so a turn mid-way never jumps
-      const mf = walkU < lastWalkU ? (u: number) => fit(u, 0.5, 1) : (u: number) => u
+      // fold plays back early — the cards into the screen first, then the
+      // screen out to the street with the camera — and is done before the
+      // walk unmaps. Stepped, so a turn mid-way never jumps
+      // (walking in it is done by 0.9 of the walk: the walk's last tenth is
+      // the camera settling, where a hair of progress is a leap of walk time;
+      // walking out, the cards fold back over its first quarter, and the
+      // screen goes out to the street over the next half — at its own pace)
+      const out = (u: number) => (u >= 0.75 ? FOLD_CARRY + (1 - FOLD_CARRY) * (u - 0.75) / 0.25 : FOLD_CARRY * fit(u, 0.25, 0.75))
+      const mf = walkU < lastWalkU ? out : (u: number) => fit(u, 0, 0.9)
       foldU = Math.min(1, Math.max(0, foldU + mf(walkU) - mf(lastWalkU)))
       lastWalkU = walkU
     }
@@ -1544,16 +1555,17 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         // to its cell, or a card coming out from behind the one before it
         m.position.copy(fp.p); m.quaternion.copy(fp.q)
         sc = fp.sc; strip = fp.strip; flying = fp.e < 1; flyE = fp.e
-        if (fp.e <= 0) a = 0               // still the screen, or still hidden behind one
+        if (fp.depth === 0 ? foldU <= FOLD_TURN[0] : fp.e <= 0) a = 0   // still the screen, or still hidden behind one
         else if (fp.e < 1) order = -fp.depth   // the one it comes out of is drawn over it
         u.uFlip.value = 0
         if (fp.depth === 0) {
-          // it turns over to its car as it sets off: the screen's photo on
-          // the front, the car on the back (the scatter's flat flip)
+          // it turns over to its car as it settles on the stand, then sets
+          // off: the screen's photo on the front, the car on the back (the
+          // scatter's flat flip)
           const sl = slotOf(0), srcCar = cardMeshes[sl].userData.car as number
           if (S > 0 && srcCar !== hd.car) {
             if (srcCar >= 0 && m.userData.src2 !== srcCar) { m.userData.src2 = srcCar; u.map2.value = ensureTex(srcCar).tex }
-            const fl = smooth(fit(fp.e, FOLD_TURN[0], FOLD_TURN[1]))
+            const fl = smooth(fit(foldU, FOLD_TURN[0], FOLD_TURN[1]))
             sx = Math.max(0.015, Math.abs(Math.cos(Math.PI * fl)))
             u.uFlip.value = fl < 0.5 ? 1 : 0
           }
@@ -1766,7 +1778,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     camera.position.copy(tmpP); camera.lookAt(tmpL)
     // the doors part in one clear sweep just as you reach them (over five
     // metres of approach the move was too slow to be seen)
-    const open = smooth(fit(z, 5.4, 3.4))
+    // (the fold trial: earlier — its screen goes in through them ahead of you)
+    const open = smooth(FOLD ? fit(z, 10.5, 8) : fit(z, 5.4, 3.4))
     doors.forEach((d, i) => {
       const s = i === 0 ? -1 : 1
       d.position.x = s * (0.6 + open * 1.15)
