@@ -801,7 +801,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // sampled now only across the card's own photo region — exactly 3:2 —
       // so the picture is true from the first frame to the last
       float m2y = clamp((p.y + uSize.y * .5 - uStripH) / max(uSize.y - uStripH, 1e-4), 0., 1.);
-      vec3 ph = (uFlip > .5) ? texture2D(map2, vec2(uv.x, m2y)).rgb : texture2D(map, uv).rgb;
+      // (and never below what shows: at the photo's bottom edge a sample
+      // half a texel lower took in the band's white — a hairline in flight)
+      float vMin = uStripH * (1. - uStrip) / uSize.y + .002;
+      vec3 ph = (uFlip > .5) ? texture2D(map2, vec2(uv.x, m2y)).rgb : texture2D(map, vec2(uv.x, max(uv.y, vMin))).rgb;
       vec3 col = mix(uBase, ph, uReady) * uBright;
       // the status pill, its own layer on the photo's corner (uPillR: its box
       // in card space — left, bottom, width, height)
@@ -875,9 +878,6 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // a tapped card flies up to you, filling the screen, and its page opens
   let opening: { h: Held; t: number; fired: boolean } | null = null
   const layCam = new THREE.PerspectiveCamera()
-  // (the fold trial: the camera where the walk ends, for the screens' place on the stand)
-  const arrCam = new THREE.PerspectiveCamera(), arrInv = new THREE.Matrix4(), arrQi = new THREE.Quaternion()
-  const foldMidP = new THREE.Vector3(), foldMidQ = new THREE.Quaternion()
   const invLay = new THREE.Matrix4(), layQi = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0), yUp = new THREE.Vector3(0, 1, 0)
   const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion()
   const srcP = new THREE.Vector3(), srcQ = new THREE.Quaternion(), endP = new THREE.Vector3(), endQ = new THREE.Quaternion()
@@ -893,37 +893,33 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // next row's right) — middle and left rise, right sinks; none cross.
   // rel: the screen (0 middle, +1 left, -1 right); at: its place in the list
   const FLY = [{ rel: 0, at: 0, o: 0 }, { rel: 1, at: 1, o: 0.06 }, { rel: -1, at: 2, o: 0.12 }]
-  // The fold trial, on the walk's own time (walkU, even in time: ~3.3 s), in
-  // two acts. 1) Carried in: the big middle screen comes in with you and
-  // settles onto the stand as you arrive — glued to the view, so its size only
-  // ever changes one way — while the side screens tuck in behind it. 2) It
-  // opens, from that one screen: it turns over to its car on its way to the
-  // first card's cell (top right, where reading starts), and the grid comes
-  // out from behind it as a wave in reading order — down the right column,
-  // each card from behind the one above it, and across each row, its left
-  // card from behind its right one. Every card comes out of the screen you
-  // are looking at, a beat apart; no two paths cross; nothing comes in from
-  // the edges. Walking out plays it backwards, step for step.
+  // The fold trial: ONE motion on the walk's own time (foldU, ~3 s). The
+  // screen you are looking at is the first card, the grid folded in behind
+  // it. From the first step it travels the whole way, from the street to the
+  // first cell (top right) on one curve: in depth and size at once (it
+  // narrows to pass the open doorway and only ever grows smaller, ending the
+  // size of a card), across the screen once it is through. It turns over to
+  // its car on the way, where it is already slow; from behind it the grid
+  // comes out in reading order, a beat apart, and every card lands with it.
+  // No stage, no stop, no fade: the side screens tuck in under it in the
+  // first moment, every card comes out from behind another. Walking out
+  // plays it backwards.
   const FOLD = opts.walk === 'fold'
-  // (in fold time, foldU: walking in, 0→1 over the walk's first 90%, ~3 s)
-  const FOLD_CARRY = 0.38    // act 1: on the stand
-  const FOLD_SHRINK = 0.72   // its size from the doorway on (fits the 2.4 m door)
-  const FOLD_TURN = [0.24, 0.4] as const   // the screen turns over to its car as it settles (~½ s, a stage of its own)
-  const FOLD_GO = 0.36       // act 2: it sets off for its cell as the turn ends
-  const FOLD_LEN = 0.3       // each card's move (~0.9 s)
-  const FOLD_NEXT = 0.08     // the next card sets off from behind it a beat later
-  // k: the place from the first card in view; the middle screen is k 0. A
-  // row's left card comes out from behind its right one; a right card from
-  // behind the one above it (one column: each from behind the one above)
-  const foldRoot = () => 0
+  const FOLD_TUCK = 0.1                       // the side screens are in under it by then
+  const FOLD_TURN = [0.26, 0.46] as const     // its turn to its car, as it moves (~0.6 s)
+  const FOLD_STEP = 0.05                      // the next card comes out from behind a beat later
+  const foldQ = (u: number) => 1 - (1 - u) ** 3   // the first card's depth and size: at once, a soft arrival
+  const foldR = (u: number) => smooth(fit(u, 0.22, 1))   // its place across the screen: once through the door
+  // k: the place from the first card in view. A row's left card comes out
+  // from behind its right one; a right card from behind the one above it
+  // (one column: each from behind the one above)
   const foldParent = (k: number) => (k <= 0 ? -1 : gcols === 2 ? (k % 2 ? k - 1 : k - 2) : k - 1)
-  const foldStart = (k: number, d = 0): number => {
-    const par = foldParent(k)
-    // (every card gets its whole move: the deepest start no later than 1 - FOLD_LEN)
-    return par < 0 || d > 12 ? FOLD_GO : Math.min(1 - FOLD_LEN, foldStart(par, d + 1) + FOLD_NEXT)
-  }
   const foldDepth = (k: number, d = 0): number => { const par = foldParent(k); return par < 0 || d > 12 ? 0 : 1 + foldDepth(par, d + 1) }
-  const foldE = (k: number) => { const t0 = foldStart(k); return smooth(fit(foldU, t0, Math.min(1, t0 + FOLD_LEN))) }
+  // how far card k has come out (after the turn: nothing behind it shows through it)
+  const foldE = (k: number) => smooth(fit(foldU, FOLD_TURN[1] + FOLD_STEP * (foldDepth(k) - 1), 1))
+  // the first card's photo, this frame: its centre, turn and width (set in placeShow)
+  const foldDeckP = new THREE.Vector3(), foldDeckQ = new THREE.Quaternion(), foldInv = new THREE.Matrix4()
+  let foldDeckW = 1
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
     const o = FLY.find(f => f.rel === rel)?.o ?? 0
@@ -933,10 +929,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   }
   const slotOf = (rel: number) => mod(r0m + rel, SLOTS)
   // the fold trial: where card k (from the first card in view) is this frame —
-  // the middle screen from its carried place on the stand to its cell; any
-  // other card from behind the one it comes out of (a touch smaller and
-  // further back, so that one hides it) to its cell
-  type FoldPose = { p: THREE.Vector3; q: THREE.Quaternion; cp: THREE.Vector3; cq: THREE.Quaternion; sc: number; strip: number; e: number; depth: number; at: number }
+  // the first card on its one move; any other from behind the one it comes
+  // out of (a touch smaller and further back, so that one hides it) to its cell
+  type FoldPose = { p: THREE.Vector3; q: THREE.Quaternion; cp: THREE.Vector3; cq: THREE.Quaternion; sc: number; strip: number; e: number; on: boolean; depth: number; at: number }
   const foldCache = new Map<number, FoldPose>()
   let frameNo = 0
   const fwd = new THREE.Vector3()
@@ -944,27 +939,29 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (k < 0 || anchor + k >= N || depth > 12) return null
     let c = foldCache.get(k)
     if (c && c.at === frameNo) return c
-    if (!c) { c = { p: new THREE.Vector3(), q: new THREE.Quaternion(), cp: new THREE.Vector3(), cq: new THREE.Quaternion(), sc: 1, strip: 1, e: 1, depth: 0, at: -1 }; foldCache.set(k, c) }
-    const i = anchor + k
+    if (!c) { c = { p: new THREE.Vector3(), q: new THREE.Quaternion(), cp: new THREE.Vector3(), cq: new THREE.Quaternion(), sc: 1, strip: 1, e: 1, on: true, depth: 0, at: -1 }; foldCache.set(k, c) }
+    const i = anchor + k, par = foldParent(k)
     gridPlace(Math.floor(i / gcols), i % gcols, scrollPos, c.cp, c.cq)   // its cell
-    const e = foldE(k), par = foldParent(k)
     if (par < 0) {
-      const sl = slotOf(0), sc0 = (CW / cardW) * showMeshes[sl].scale.x
-      // the photo exactly on the carried screen, as in the scatter
-      srcP.copy(showP[sl]).sub(tmpV2.set(0, ((cardH - (cardW * 2) / 3) / 2) * sc0, 0).applyQuaternion(showQ[sl]))
-      c.p.lerpVectors(srcP, c.cp, e); c.q.slerpQuaternions(showQ[sl], c.cq, e)
-      c.sc = sc0 + (1 - sc0) * e
+      // the first card: its photo where the move has it (the card's centre
+      // lies below its photo's by half the band)
+      c.sc = foldDeckW / cardW
+      c.q.copy(foldDeckQ)
+      c.p.copy(foldDeckP).sub(tmpV2.set(0, ((cardH - (cardW * 2) / 3) / 2) * c.sc, 0).applyQuaternion(foldDeckQ))
+      c.e = foldR(foldU); c.on = foldU > 0
     } else {
       const pp = foldPose(par, depth + 1)
       if (!pp) return null
+      const e = foldE(k)
       fwd.set(0, 0, -1).applyQuaternion(camera.quaternion)
       srcP.copy(pp.p).addScaledVector(fwd, 0.06 * (1 - e))
       c.p.lerpVectors(srcP, c.cp, e); c.q.slerpQuaternions(pp.q, c.cq, e)
       const s0 = pp.sc * 0.97
       c.sc = s0 + (1 - s0) * e
+      c.e = e; c.on = e > 0
     }
-    c.strip = fit(e, 0.75, 1)   // the band unfolds on landing, never in the air
-    c.e = e; c.depth = foldDepth(k); c.at = frameNo
+    c.strip = fit(c.e, 0.75, 1)   // the band unfolds on landing, never in the air
+    c.depth = foldDepth(k); c.at = frameNo
     return c
   }
   const sIdxK = (sIdx: number) => { const pos = angle / STEP; return sIdx + SLOTS * Math.round((pos - sIdx) / SLOTS) }
@@ -1253,18 +1250,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     showK = g
     ring.updateMatrixWorld(true); camera.updateMatrixWorld()
     invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
-    // the fold trial, act 1: carried in onto the stand. Its place there is
-    // taken as seen from where the walk ends, and held glued to the view, so
-    // the move on screen is one steady glide however the camera travels
     const foldOn = FOLD && !calm && mapped
-    const carry = foldOn ? smooth(fit(foldU, 0, FOLD_CARRY)) : 0
     const mid = slotOf(0), sideA = slotOf(-1), sideB = slotOf(1)
-    if (carry > 0) {
-      arrCam.position.set(0, 1.6, endZ); arrCam.lookAt(0, 1.6 + Math.tan(pitch1) * 30, endZ - 30); arrCam.updateMatrixWorld()
-      arrInv.copy(arrCam.matrixWorld).invert(); arrQi.copy(arrCam.quaternion).invert()
-      // the middle screen on the stand, as seen from there (the side screens tuck in behind it)
-      foldMidP.set(0, 0, R).applyMatrix4(cardMeshes[mid].matrixWorld); cardMeshes[mid].getWorldQuaternion(foldMidQ)
-    }
     cardMeshes.forEach((m, i) => {
       const sm = showMeshes[i], u = m.material.uniforms
       const on = m.visible
@@ -1283,23 +1270,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       tmpV.copy(srcP).sub(camera.position).multiplyScalar(s0).add(camera.position)
       showP[i].lerpVectors(tmpV, endP, g); showQ[i].slerpQuaternions(srcQ, endQ, g)
       sm.scale.setScalar(Math.min(1, s0) + (1 - Math.min(1, s0)) * g)
-      if (carry > 0) {
-        const tuck = i !== mid && (i === sideA || i === sideB)
-        tmpV.copy(tuck ? foldMidP : ringP[i]).applyMatrix4(arrInv).applyMatrix4(camera.matrixWorld)
-        tmpQ2.copy(camera.quaternion).multiply(tmpQ.copy(arrQi).multiply(tuck ? foldMidQ : ringQ[i]))
-        if (tuck) tmpV.addScaledVector(fwd.set(0, 0, -1).applyQuaternion(camera.quaternion), 0.08)   // behind it
-        // the side screens tuck in at once, while the middle one is still large
-        // and covers them (drawn under it, a touch smaller): gone before it
-        // turns — they had stayed beside it, and showed through its turn
-        const k = tuck ? smooth(fit(carry, 0, 0.2)) : carry
-        showP[i].lerp(tmpV, k); showQ[i].slerp(tmpQ2, k)
-        // it narrows early to pass through the doorway (3 m of screen, 2.4 m of
-        // door) and keeps that size: on screen it only ever grows smaller, and
-        // lands about the size of the card it becomes
-        const s1 = (tuck ? 0.96 : 1) * FOLD_SHRINK
-        sm.scale.setScalar(sm.scale.x + (s1 - sm.scale.x) * smooth(fit(carry, 0, tuck ? 0.2 : 0.3)))
-        sm.renderOrder = tuck ? -1 : 0
-      } else sm.renderOrder = 0
+      sm.renderOrder = 0
       sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i])
       // ONE set of screens on show at any moment. On the street the big
       // twins are the screens; the three facing you each hand themselves to
@@ -1307,12 +1278,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // step in. The ring on the plinth never shows once the twins are out —
       // it showed the very same cars behind the flying cards (the doubling)
       if (foldOn) {
-        // the middle screen until it sets off as the first card; the side
-        // screens until they are tucked in behind it (out of sight from
-        // then on); the others — behind you — go as the walk starts
+        // the middle screen until its card takes it on (at once); the side
+        // screens until they are tucked in under it (below); the others —
+        // behind you — go as the walk starts
         const isMid = i === mid, tuck = !isMid && (i === sideA || i === sideB)
         u.uFade.value = isMid || tuck ? 1 : 1 - smooth(fit(foldU, 0, 0.2))
-        const gone = isMid ? foldU > FOLD_TURN[0] : tuck && carry >= 0.2   // (the card takes over to turn; the side ones are tucked in)
+        const gone = isMid ? foldU > 0 : tuck && foldU >= FOLD_TUCK
         sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
         m.visible = g <= 0 && p <= 0.02
         return
@@ -1323,6 +1294,32 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
       m.visible = g <= 0 && p <= 0.02   // the ring shows only before the grow, on the street
     })
+    if (foldOn) {
+      // the fold trial: the first card's one move — from the middle screen's
+      // place on the street to its photo's place in the first cell, both glued
+      // to the view: in depth and size at once, across the screen once it is
+      // through the door
+      gridPlace(Math.floor(anchor / gcols), anchor % gcols, scrollPos, tmpV, tmpQ)
+      tmpV.add(tmpV2.set(0, (cardH - (cardW * 2) / 3) / 2, 0).applyQuaternion(tmpQ))
+      foldInv.copy(camera.matrixWorld).invert()
+      const A = srcP.copy(showP[mid]).applyMatrix4(foldInv), B = tmpV.applyMatrix4(foldInv)
+      const q = foldQ(foldU), r = foldR(foldU)
+      foldDeckP.set(A.x + (B.x - A.x) * r, A.y + (B.y - A.y) * r, A.z + (B.z - A.z) * q).applyMatrix4(camera.matrixWorld)
+      foldDeckQ.slerpQuaternions(showQ[mid], tmpQ, q)
+      const W0 = CW * showMeshes[mid].scale.x
+      foldDeckW = W0 + (cardW - W0) * q
+      // the side screens tuck in under it at once, a touch smaller, while it
+      // is still large and covers them; gone from then on
+      const k = smooth(fit(foldU, 0, FOLD_TUCK))
+      for (const i of [sideA, sideB]) {
+        if (i === mid) continue
+        const sm = showMeshes[i]
+        tmpV.copy(foldDeckP).addScaledVector(fwd.set(0, 0, -1).applyQuaternion(camera.quaternion), 0.08)
+        showP[i].lerp(tmpV, k); showQ[i].slerp(foldDeckQ, k)
+        sm.scale.setScalar(sm.scale.x + ((foldDeckW * 0.96) / CW - sm.scale.x) * k)
+        sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i]); sm.renderOrder = -1
+      }
+    }
   }
   const placeWall = (p: number, dt: number) => {
     // walking in: the screens go in with you and scatter as one move, in
@@ -1358,8 +1355,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // the camera settling, where a hair of progress is a leap of walk time;
       // walking out, the cards fold back over its first quarter, and the
       // screen goes out to the street over the next half — at its own pace)
-      const out = (u: number) => (u >= 0.75 ? FOLD_CARRY + (1 - FOLD_CARRY) * (u - 0.75) / 0.25 : FOLD_CARRY * fit(u, 0.25, 0.75))
-      const mf = walkU < lastWalkU ? out : (u: number) => fit(u, 0, 0.9)
+      // (walking out the camera is at the door within the first fifth: the
+      // grid folds back and the card comes to the middle by then, on one
+      // smooth curve — it goes through the doorway low, and grows only outside)
+      const mf = walkU < lastWalkU ? (u: number) => fit(u, 0.3, 1) ** 2.5 : (u: number) => fit(u, 0, 0.9)
       foldU = Math.min(1, Math.max(0, foldU + mf(walkU) - mf(lastWalkU)))
       lastWalkU = walkU
     }
@@ -1499,7 +1498,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (key !== infoKey || infoReset) { infoKey = key; opts.onScrollInfo?.(maxScroll() * pitchPx, pitchPx, infoReset); infoReset = false }
 
     const want = new Map<number, number>()   // car → its place in the list
-    if (throwK > 0 && N) {
+    if ((throwK > 0 || (FOLD && mapped)) && N) {
       // two rows ahead on each side, always: with the native scroller the
       // scene's own finger speed is 0, and faces were drawn only as their row
       // came into view — mid-scroll
@@ -1507,7 +1506,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (const f of FLY) { const i = anchor + f.at; if (i >= 0 && i < N) want.set(listCar(i), i) }
-      if (FOLD && throwK < 1) for (let k = 0; k < 6; k++) { const i = anchor + k; if (i < N) want.set(listCar(i), i) }
+      if (FOLD && mapped && foldU < 1) for (let k = 0; k < 6; k++) { const i = anchor + k; if (i < N) want.set(listCar(i), i) }
     }
     held.forEach(hd => { if (!want.has(hd.car)) hd.live = false })
     const ease = 1 - Math.exp(-dt * 9)
@@ -1556,16 +1555,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const rel = fly ? fly.rel : 99
       const fp = FOLD && !calm && mapped && foldU < 1 ? foldPose(hd.i - anchor) : null
       if (fp) {
-        // the fold trial, act 2 (see foldPose): the middle screen on its way
-        // to its cell, or a card coming out from behind the one before it
+        // the fold trial (see foldPose): the first card on its one move, or a
+        // card coming out from behind the one before it
         m.position.copy(fp.p); m.quaternion.copy(fp.q)
         sc = fp.sc; strip = fp.strip; flying = fp.e < 1; flyE = fp.e
-        if (fp.depth === 0 ? foldU <= FOLD_TURN[0] : fp.e <= 0) a = 0   // still the screen, or still hidden behind one
+        if (!fp.on) a = 0   // still the street's screen, or still hidden behind one
         else if (fp.e < 1) order = -fp.depth   // the one it comes out of is drawn over it
         u.uFlip.value = 0
         if (fp.depth === 0) {
-          // it turns over to its car as it settles on the stand, then sets
-          // off: the screen's photo on the front, the car on the back (the
+          // it turns over to its car on the way, where it is already slow:
+          // the screen's photo on the front, the car on the back (the
           // scatter's flat flip)
           const sl = slotOf(0), srcCar = cardMeshes[sl].userData.car as number
           if (S > 0 && srcCar !== hd.car) {
@@ -1583,6 +1582,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
         flying = true; flyE = fe
+        if (rel !== 0 && fe < 1) order = -1   // a side screen passes under the middle one, never over it
         // the big screen IS the card: its carried pose is camera-glued, so
         // the glide from full size into the grid cell is steady on screen
         srcP.copy(showP[sl]); srcQ.copy(showQ[sl])
