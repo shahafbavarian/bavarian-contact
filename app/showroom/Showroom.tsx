@@ -528,7 +528,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       if (!alive) return
       try {
         handle.current = createShowroom(cv, {
-          mobile, cards: all, street: streetDeck, light, preload: teamIds, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined,
+          mobile, cards: all, street: streetDeck, light, preload: teamIds, veil: qs.get('veil') ? Number(qs.get('veil')) : undefined, walk: qs.get('walk') === 'fold' ? 'fold' : undefined,
           logoUrl: '/brand/logo-light.png',
           // the sign rides on its spot of the stone: centre and width come from the scene
           onSign: (x, y, w, fade) => {

@@ -79,6 +79,10 @@ type Opts = {
   /** a trial: a bright theme — at the end of the walk in, the whole hall comes up bright to carry it */
   light?: boolean
   veil?: number
+  /** TRIAL (/showroom?walk=fold): instead of the scatter, the street's screens
+   *  close back into the hall first, you walk in, and only then the grid opens
+   *  — fewer things in flight at once */
+  walk?: 'fold'
   onOpen: (i: number) => void
   /** the dark middle screen was tapped from the street: switch on and walk in */
   onEnter?: () => void
@@ -878,6 +882,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // next row's right) — middle and left rise, right sinks; none cross.
   // rel: the screen (0 middle, +1 left, -1 right); at: its place in the list
   const FLY = [{ rel: 0, at: 0, o: 0 }, { rel: 1, at: 1, o: 0.06 }, { rel: -1, at: 2, o: 0.12 }]
+  // the fold trial: the walk's own time (walkU) in three calm acts —
+  // 0→FOLD_IN the big screens close back onto the stand, then the walk,
+  // then from FOLD_OPEN the stand's screens give way and the grid opens
+  // where it stands, row by row (no flights)
+  const FOLD = opts.walk === 'fold'
+  const FOLD_IN = 0.38, FOLD_OPEN = 0.56   // the grid opens as the hall brightens, never after it (an empty beat)
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
     const o = FLY.find(f => f.rel === rel)?.o ?? 0
@@ -1165,7 +1175,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // the big screens stay carried with you through the walk — each hands
     // itself over to its own card the moment that card's glide begins, so
     // nothing ever rushes away or sweeps past
-    const g = g0
+    // the fold trial: the screens close back onto the stand as the walk begins
+    // (and grow out again on the way back) — the same path they grew out on
+    const g = FOLD ? g0 * (1 - smooth(fit(walkU, 0, FOLD_IN))) : g0
     showK = g
     ring.updateMatrixWorld(true); camera.updateMatrixWorld()
     invLay.copy(layCam.matrixWorld).invert(); layQi.copy(layCam.quaternion).invert()
@@ -1193,6 +1205,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // their own card the instant its glide begins, the others fade as you
       // step in. The ring on the plinth never shows once the twins are out —
       // it showed the very same cars behind the flying cards (the doubling)
+      if (FOLD) {
+        // home on the stand they are the stand's own screens again; they give
+        // way only as the grid opens
+        u.uFade.value = 1 - smooth(fit(walkU, FOLD_OPEN, FOLD_OPEN + 0.12))
+        sm.visible = on && g > 0.002
+        m.visible = (g <= 0.002 && u.uFade.value > 0.002) || (g <= 0 && p <= 0.02)
+        return
+      }
       const rel = relOfSlot(i)
       u.uFade.value = mapped && rel === null ? 1 - smooth(fit(throwK, 0, 0.3)) : 1
       const gone = rel !== null && flightE(rel) > 0
@@ -1243,11 +1263,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // the screens will dissolve to, are drawn and uploaded ahead, in idle time
     if (!mapped && N && screenOn && readyAt >= 0 && performance.now() - readyAt > 1200) {
       const r0 = Math.round(drag / STEP)
-      // every card the first view of the hall will hold, faces drawn ahead
-      const ahead = Math.min(N, (rowsFit + 2) * gcols)
+      // every card the first view of the hall will hold, faces drawn ahead —
+      // as far down as the list's window reaches (its rows in view, one more,
+      // the two drawn ahead for the scroll) and a row to spare: the rows that
+      // fit can grow by one as the foot is measured on the way in
+      const ahead = Math.min(N, (rowsFit + 5) * gcols)
       for (let d = 0; d < ahead; d++) ensureCard(view[mod(r0 - base + d, N)])
       // and the gallery's own next photos, so a slide never starts a texture
-      if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
+      if (S) for (let d = -2; d <= 3; d++) ensureTex(sAt(r0 + d))   // every screen the stand can show, the leftmost too (it showed again on the way out)
     }
     // the other set (the team): drawn as soon as the street is up, not after
     // the idle beat, so "הצוות" pressed at once still walks into ready faces
@@ -1266,7 +1289,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // still wearing its car: only that one face is needed, made ready now
       // A person is never left on the street: their card turns home to the
       // history like the others
-      exitRide = !cards[listCar(anchor)]?.person
+      exitRide = !FOLD && !cards[listCar(anchor)]?.person
       if (exitRide) ensureTex(listCar(anchor))   // already made while browsing — a no-op
     }
     if (full) {
@@ -1276,6 +1299,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       if (p >= 1 && !holding && !fling && Math.abs(scrollTarget - scrollPos) < 1e-3 && performance.now() - scrollAt > 400 && N) {   // only once the walk, and the list, have come to rest
         const i0 = Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols))
         if (!texCache.has(listCar(i0)) && !cards[listCar(i0)]?.person) ensureTex(listCar(i0))
+      }
+      // at rest the hall is no longer redrawn, but that face must still be
+      // made: the frames keep coming until it is ready (then they stop)
+      if (p >= 1 && N) {
+        const c0 = listCar(Math.min(N - 1, Math.max(0, Math.round(scrollPos) * gcols)))
+        if (!cards[c0]?.person && !texCache.get(c0)?.ready) dirty = true
       }
     }
     wasFull = full
@@ -1403,7 +1432,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       let flying = false, flyE = 1   // in flight (the scatter, the walk out), and how far along
       const fly = FLY.find(f => anchor + f.at === hd.i)
       const rel = fly ? fly.rel : 99
-      if (mapped && fly && throwK < 1) {
+      if (!FOLD && mapped && fly && throwK < 1) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
@@ -1454,6 +1483,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         u.uShade.value = 0.4 * smooth(fit(progress, 0.1, 0.35))
         const ri = hd.i - anchor - FLY.length
         if (calm) a = throwK
+        else if (FOLD && walkU < 1) {
+          // the grid opens where it stands, row by row from the top: each card
+          // rises a little into its cell and comes up — nothing crosses the hall
+          const row = Math.max(0, Math.min(4, hd.pr - scrollPos))
+          const o = FOLD_OPEN + 0.02 + row * 0.04
+          a = smooth(fit(walkU, o, o + 0.2))
+          sc = 0.94 + 0.06 * a
+          m.position.addScaledVector(tmpV2.set(0, -1, 0).applyQuaternion(camera.quaternion), (1 - a) * cardH * 0.08)
+          flying = a < 1; flyE = a
+        }
         else if (mapped && throwK < 1 && ri >= 0) {
           // the rest of the stock is DEALT out of the main screen: each card
           // leaves its centre small, flies to its cell growing to full size
@@ -1886,7 +1925,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     },
     setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
     prepare(ids) {
-      const first = ids.slice(0, (rowsFit + 1) * gcols)
+      const first = ids.slice(0, (rowsFit + 5) * gcols)
       return first.every(ci => { const e = ensureCard(ci); return e.ready && !uploadQ.includes(e.tex) })
     },
     hideCards(on) { hideT = on; dirty = true },
