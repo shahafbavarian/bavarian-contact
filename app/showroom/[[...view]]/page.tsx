@@ -28,10 +28,13 @@ const teamImg = (url: string) => (url.startsWith('/team/') ? url.replace('/team/
 // The gallery is the inventory: one card per car, in stock and on the way as
 // one list, shuffled afresh on every visit (client side). The caption carries
 // the car's own details: the maker large, the rest below
-// the kilometres as the cars page shows them: a number, or new
+// the kilometres as the main site writes them: a number (0 reads "חדש"), or
+// its own words ("רכב חדש") kept as they are — the filter counts those as 0
 const km = (mileage?: string) => {
-  if (!mileage) return ''
-  const n = parseInt(mileage.replace(/[^\d]/g, ''), 10)
+  const t = (mileage ?? '').trim()
+  if (!t) return ''
+  if (!/\d/.test(t)) return t
+  const n = parseInt(t.replace(/[^\d]/g, ''), 10)
   return !isNaN(n) && n > 0 ? n.toLocaleString('en-US') : 'חדש'
 }
 
