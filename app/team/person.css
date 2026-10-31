@@ -41,7 +41,7 @@ html:has(.pv-page), html:has(.pv-page) body {
 }
 
 /* the bar: the way back at the start, the brand's long mark at the end */
-.pv-bar { display: flex; align-items: center; justify-content: space-between; height: 64px; flex-shrink: 0; }
+.pv-bar { display: flex; align-items: center; justify-content: space-between; height: 60px; flex-shrink: 0; }
 .pv-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding-inline: 2px 8px; font-size: 16px; font-weight: 500; }
 /* a light round close: a hairline and a soft shadow, the tap area a full 44px */
 .pv-close {
@@ -51,7 +51,8 @@ html:has(.pv-page), html:has(.pv-page) body {
   touch-action: manipulation; -webkit-tap-highlight-color: transparent; outline-offset: 2px;
 }
 .pv-close::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
-.pv-logo { display: block; height: 22px; width: auto; }
+/* one logo, one size, on every page of the site (the hall's own) */
+.pv-logo { display: block; height: clamp(30px, 3vw, 38px); width: auto; max-width: none; }
 
 /* the portrait leads, square like the card it grows out of; the name and the
    three ways to talk follow right under it, the whole group in the middle of
@@ -90,8 +91,6 @@ html:has(.pv-page), html:has(.pv-page) body {
 /* a computer: the portrait at the start, the person and the ways to talk beside it */
 @media (min-width: 900px) {
   .pv { --gutter: 56px; }
-  .pv-bar { height: 80px; }
-  .pv-logo { height: 26px; }
   .pv-main {
     flex: 0 0 auto; margin: auto 0; padding-block: 24px 56px;
     display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); column-gap: 64px; align-items: center;

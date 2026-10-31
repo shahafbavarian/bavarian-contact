@@ -28,12 +28,14 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
    frosted glass of the same light (DESIGN.md §7), so what scrolls under them
    stays calm */
 .cv-over > .cv-bg { bottom: auto; height: 100lvh; background: rgba(245,246,247,.42); }
-.cv-over .cv-bar, .cv-over .cv-talk-bar {
+/* (the top bar stays solid: it is the hall's own bar, continued — frosted,
+   the hall's logo showed blurred through it under this one) */
+.cv-over .cv-talk-bar {
   background: rgba(245,246,247,.78); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
 }
 @media (prefers-reduced-transparency: reduce) {
   .cv-over > .cv-bg { background: var(--canvas); }
-  .cv-over .cv-bar, .cv-over .cv-talk-bar { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .cv-over .cv-talk-bar { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 /* what arrives after the opening (the car's full details) comes up softly */
 .cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
@@ -44,7 +46,8 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
    the title card left over the hall */
 .cv-over[data-leaving] .cv-rest,
 .cv-over[data-leaving] .cv-page > :not(.cv-gallery):not(.cv-side),
-.cv-over[data-leaving] .cv-count {
+.cv-over[data-leaving] .cv-count,
+.cv-over[data-leaving] .cv-vid-chip {
   opacity: 0 !important; animation: none !important; transition: none !important; pointer-events: none;
 }
 
@@ -69,11 +72,12 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
    site's other pages) ── */
 .cv-bar {
   position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between;
-  height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 12px 0 16px;
+  height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) clamp(16px, 4vw, 56px) 0;
   background: var(--canvas);
 }
 .cv-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding-inline: 2px 8px; font-size: 16px; font-weight: 500; }
-.cv-logo { display: block; height: 22px; width: auto; }
+/* one logo, one size, on every page of the site (the hall's own) */
+.cv-logo { display: block; height: clamp(30px, 3vw, 38px); width: auto; max-width: none; }
 /* a light round close (the person page's own) */
 .cv-close {
   position: relative; width: 40px; height: 40px; margin: 2px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
@@ -87,9 +91,9 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 }
 /* over the hall: the hall's own bar, continued — its paddings, its logo size,
    its hairline; the close sits exactly where the hall's menu button was */
-.cv-over .cv-bar { padding-inline: clamp(16px, 4vw, 56px); box-shadow: 0 1px 0 rgba(20,23,26,.09); }
+.cv-over .cv-bar { box-shadow: 0 1px 0 rgba(20,23,26,.09); }
 /* the close is fixed (out of the row): the logo alone keeps the hall's end */
-.cv-over .cv-logo { height: clamp(30px, 3vw, 38px); margin-inline-start: auto; }
+.cv-over .cv-logo { margin-inline-start: auto; }
 .cv-over .cv-close {
   position: fixed; z-index: 2; top: calc(env(safe-area-inset-top) + 10px);
   inset-inline-start: clamp(14px, calc(4vw - 2px), 54px);
@@ -122,7 +126,7 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-photo[data-cover] .cv-cover { opacity: 1; }
 .cv-photo:not(:has(.cv-slide)) .cv-cover { pointer-events: auto; cursor: zoom-in; }
 /* in flight between the card and the page: the cover alone */
-.cv-photo[data-flying] .cv-track, .cv-photo[data-flying] .cv-count { visibility: hidden; }
+.cv-photo[data-flying] .cv-track, .cv-photo[data-flying] .cv-count, .cv-photo[data-flying] .cv-vid-chip { visibility: hidden; }
 .cv-count {
   position: absolute; bottom: 10px; left: 10px; padding: 3px 10px; border-radius: 12px;
   background: rgba(20,23,26,.62); color: #fff; font-size: 12px; font-weight: 500; pointer-events: none;
@@ -253,15 +257,32 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-scale-bar i:last-child { border-radius: 2px 3px 3px 2px; }
 .cv-scale-bar i[data-on] { height: 14px; border-radius: 3px; opacity: 1; }
 
-/* the video */
-.cv-video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
-.cv-video iframe, .cv-video-poster { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.cv-video-poster { padding: 0; cursor: pointer; background: #000; }
-.cv-video-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cv-play {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center;
-  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.94); color: var(--ink);
+/* the video: a clear dark chip on the photo, the strip's first frame, and a
+   player over the page */
+.cv .cv-vid-chip {
+  position: absolute; bottom: 10px; right: 10px; display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 14px 0 12px; border: 0; border-radius: 18px; cursor: pointer;
+  background: rgba(20,23,26,.78); color: #fff; font: inherit; font-size: 14px; font-weight: 600;
+  box-shadow: 0 6px 18px -8px rgba(0,0,0,.5); touch-action: manipulation;
 }
+.cv-vid-chip svg { width: 14px; height: 14px; }
+.cv-vid-chip:active { transform: scale(.97); }
+.cv-thumbs .cv-thumb-vid {
+  position: relative; opacity: 1; outline: none;
+}
+.cv-thumb-vid i {
+  position: absolute; inset: 0; margin: auto; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(20,23,26,.78); color: #fff;
+}
+.cv-vplayer {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+  background: rgba(8,9,11,.94); animation: cv-vin 260ms var(--ease) both;
+}
+.cv-vframe { position: relative; width: min(100%, 1100px, calc((100dvh - 120px) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
+.cv-vframe[data-upright] { width: min(100%, 440px, calc((100dvh - 120px) * 9 / 16)); aspect-ratio: 9 / 16; }
+.cv-vframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+@keyframes cv-vin { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cv-vplayer { animation: none; } }
 
 /* the agent */
 .cv-agent { display: flex; align-items: center; gap: 14px; }
@@ -374,7 +395,6 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 /* ── a computer: two columns, the price card beside the gallery and in view ── */
 @media (min-width: 1000px) {
   .cv { --g: 28px; }
-  .cv-bar { padding-inline: 18px; }
   .cv-page {
     grid-template-columns: minmax(0, 1fr) 380px; column-gap: 28px; row-gap: 0;
     padding: 28px var(--g) 64px;
