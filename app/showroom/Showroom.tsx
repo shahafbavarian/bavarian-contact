@@ -12,6 +12,7 @@ const scenePromise = typeof window !== 'undefined' ? import('./scene') : null
 import { INSTAGRAM_URL } from '@/lib/agent-format'
 import { AVAIL, FUELS, HANDS, SORTS, SORT_DEFAULT, carsWord, handKey, haystack, inRange, kmText, lineOf, makesOf, matches, modelsOf, money, norm, priceNum, rank, type Avail, type Option, type Range, type Ranked, type Sort } from './search'
 import RangeSlider from './Range'
+import { FAMILIES } from './colors'
 
 const WHATSAPP = 'https://wa.me/97299561906'
 // the hall's Facebook page, as linked from the main site
@@ -160,6 +161,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const [hands, setHands] = useState<string[]>([])
   const [fuels, setFuels] = useState<string[]>([])
   const [bodies, setBodies] = useState<string[]>([])
+  const [paints, setPaints] = useState<string[]>([])
   const [sort, setSort] = useState<Sort>(SORT_DEFAULT)
   useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
   useEffect(() => { setActive(0); activeMoved.current = false }, [text, make, model])
@@ -170,7 +172,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     return {
       make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true,
       priceN: priceNum(c.price ?? '') ?? NaN, monthlyN: c.monthly || NaN, yearN: Number.isFinite(yr) ? yr : NaN, kmN: Number.isFinite(km) ? km : NaN,
-      hpN: c.hp || NaN, evN: c.ev || NaN,
+      hpN: c.hp || NaN, evN: c.ev || NaN, color: c.color ?? '', colors: c.colors ?? [],
       hand: handKey(c.yad ?? ''), fuel: c.fuel ?? '', body: c.body ?? '', rec: c.rec ?? 0,
     }
   }), [deck])
@@ -185,11 +187,13 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       year: { data: y, b: bounds(y, 1) }, km: { data: k, b: bounds(k, 5_000) },
       hp: { data: hp, b: bounds(hp, 10) }, ev: { data: ev, b: bounds(ev, 5) },
       hands: count('hand'), fuels: count('fuel'),
+      paints: new Set(searchable.flatMap(c => c.colors)),
       // ties by name: the deck's order is per visit, the page's markup is not
       bodies: Array.from(count('body')).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
     }
   }, [searchable])
-  const hays = useMemo(() => searchable.map(haystack), [searchable])
+  // (the colour too: "שחור", or the site's own name, "Nardo")
+  const hays = useMemo(() => searchable.map(c => `${haystack(c)} ${norm([c.color, ...c.colors.map(k => FAMILIES.find(f => f.key === k)?.label ?? '')].join(' '))}`), [searchable])
   const makes = useMemo(() => makesOf(searchable), [searchable])
   const models = useMemo(() => (make ? modelsOf(searchable, make) : []), [searchable, make])
   const stage: 'make' | 'model' | 'done' = !make ? 'make' : !model ? 'model' : 'done'
@@ -345,9 +349,9 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   // with it gone, its range goes too: no hidden filter left behind)
   const evOn = fuels.includes('bev') || fuels.includes('phev')
   useEffect(() => { if (!evOn) setEvR(null) }, [evOn])
-  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || !!hpR || !!evR || hands.length > 0 || fuels.length > 0 || bodies.length > 0
+  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || !!hpR || !!evR || hands.length > 0 || fuels.length > 0 || bodies.length > 0 || paints.length > 0
   const toggle = (list: string[], set: (v: string[]) => void, k: string) => set(list.includes(k) ? list.filter(x => x !== k) : [...list, k])
-  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHpR(null); setEvR(null); setHands([]); setFuels([]); setBodies([]) }
+  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHpR(null); setEvR(null); setHands([]); setFuels([]); setBodies([]); setPaints([]) }
   // the cars the search, availability and the ranges leave
   const passed = useMemo(() => {
     const qn = norm(query)
@@ -366,23 +370,28 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     })
   }, [searchable, hays, make, model, term, query, avail, priceR, monthlyR, yearR, kmR, hpR, evR])
   // the picks (hand, engine, body): any of a group's picks, every group
-  const picked = (i: number, skip?: 'hand' | 'fuel' | 'body') => {
+  const picked = (i: number, skip?: 'hand' | 'fuel' | 'body' | 'paint') => {
     const c = searchable[i]
     return (skip === 'hand' || !hands.length || hands.includes(c.hand))
       && (skip === 'fuel' || !fuels.length || fuels.includes(c.fuel))
       && (skip === 'body' || !bodies.length || bodies.includes(c.body))
+      && (skip === 'paint' || !paints.length || c.colors.some(k => paints.includes(k)))
   }
   // each choice's count, live: the cars it would show with everything else
   // as it is (its own group's other picks aside: they add, not narrow)
   const counts = useMemo(() => {
-    const out = { hand: new Map<string, number>(), fuel: new Map<string, number>(), body: new Map<string, number>() }
-    for (const i of passed) for (const g of ['hand', 'fuel', 'body'] as const) {
-      const k = searchable[i][g]
-      if (k && picked(i, g)) out[g].set(k, (out[g].get(k) ?? 0) + 1)
+    const out = { hand: new Map<string, number>(), fuel: new Map<string, number>(), body: new Map<string, number>(), paint: new Map<string, number>() }
+    for (const i of passed) {
+      for (const g of ['hand', 'fuel', 'body'] as const) {
+        const k = searchable[i][g]
+        if (k && picked(i, g)) out[g].set(k, (out[g].get(k) ?? 0) + 1)
+      }
+      // a two-tone car counts under each of its colours
+      if (picked(i, 'paint')) for (const k of searchable[i].colors) out.paint.set(k, (out.paint.get(k) ?? 0) + 1)
     }
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passed, searchable, hands, fuels, bodies])
+  }, [passed, searchable, hands, fuels, bodies, paints])
   const found = useMemo(() => {
     const ids = passed.filter(i => picked(i))
     const pn = (i: number) => priceNum(searchable[i].price)
@@ -395,7 +404,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passed, searchable, hands, fuels, bodies, sort])
+  }, [passed, searchable, hands, fuels, bodies, paints, sort])
   // something narrows the stock (the count shows then)
   const filtering = !!make || !!norm(query) || !!term || filtersOn
   const view = set === 'team' && teamIds.length ? teamIds : found
@@ -1067,6 +1076,19 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                     <div className="sr-picks" role="group" aria-label="סוג רכב">
                       {facets.bodies.map(([k]) => { const n = counts.body.get(k) ?? 0; return (
                         <button key={k} type="button" className="sr-pick" aria-pressed={bodies.includes(k)} disabled={!n && !bodies.includes(k)} onClick={() => toggle(bodies, setBodies, k)}><bdi>{k}</bdi><small>{n}</small></button>
+                      ) })}
+                    </div>
+                  </div>
+                )}
+                {facets.paints.size > 0 && (
+                  <div className="sr-f">
+                    <div className="sr-fh"><span>צבע חיצוני</span></div>
+                    <div className="sr-dots" role="group" aria-label="צבע חיצוני">
+                      {FAMILIES.filter(f => facets.paints.has(f.key)).map(f => { const n = counts.paint.get(f.key) ?? 0, on = paints.includes(f.key); return (
+                        <button key={f.key} type="button" className="sr-dot" aria-pressed={on} aria-label={`${f.label}, ${carsWord(n)}`} disabled={!n && !on}
+                          data-light={f.key === 'white' || undefined} style={{ '--dot': f.dot } as React.CSSProperties} onClick={() => toggle(paints, setPaints, f.key)}>
+                          <i aria-hidden="true" /><span>{f.label}</span><small>{n}</small>
+                        </button>
                       ) })}
                     </div>
                   </div>

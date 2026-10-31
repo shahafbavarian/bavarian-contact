@@ -64,6 +64,8 @@ export type Card = {
   fuel?: string; body?: string; monthly?: number; rec?: number
   /** horsepower and electric range in km (0: not known) */
   hp?: number; ev?: number
+  /** the outside colour as the site names it, and its families (the filter's dots) */
+  color?: string; colors?: string[]
   /** a member of the team, not a car: the face carries the name (title) and role (sub) */
   person?: boolean
   /** a person's sharp portrait for their page (the card carries the small copy) */
