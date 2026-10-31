@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import CarView from '../cars/[slug]/CarView'
 import type { PublicCar } from '@/lib/car-public'
 
@@ -16,6 +16,9 @@ type Rect = { x: number; y: number; w: number; h: number; r: number }
 // car (its spec, offer, indices…) comes from /api/cars/<number> and rises in
 // below as soon as it is there.
 const OPEN_MS = 560, CLOSE_MS = 420
+// the opening's last piece lands by then (the photo 560ms; the bar, the strip,
+// the title and the ways to talk rising after it): only then is the page filled
+const SETTLED_MS = 820
 const EASE_OUT = 'cubic-bezier(.22,1,.36,1)', EASE_IO = 'cubic-bezier(.77,0,.175,1)'
 
 function fromCard(final: DOMRect, card: Rect) {
@@ -34,6 +37,9 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
   onClose: () => void
 }) {
   const [full, setFull] = useState<{ car: PublicCar; qr: string } | null>(null)
+  // the card's own details, fixed for the life of the layer (a new object
+  // each time the hall renders would rebuild the whole page for nothing)
+  const [q] = useState(quick)
   const photo = useRef<HTMLDivElement>(null), bg = useRef<HTMLDivElement>(null), host = useRef<HTMLDivElement>(null)
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches
   const root = () => host.current?.querySelector<HTMLElement>('.cv-over') ?? null
@@ -58,8 +64,9 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       // rebuilt under a moving photo is what made it stutter
       .then(d => {
         if (!d?.car) return
-        const wait = Math.max(0, OPEN_MS + 60 - (performance.now() - opened.current))
-        setTimeout(() => { if (!closingRef.current) setFull({ car: d.car, qr: d.qr ?? '' }) }, wait)
+        // (after the photo and every piece of the opening have landed)
+        const wait = Math.max(0, SETTLED_MS - (performance.now() - opened.current))
+        setTimeout(() => requestAnimationFrame(() => { if (!closingRef.current) setFull({ car: d.car, qr: d.qr ?? '' }) }), wait)
       })
       .catch(() => {})
     return () => ac.abort()
@@ -75,18 +82,30 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       const a = ph.animate([fromCard(ph.getBoundingClientRect(), card), { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
       a.onfinish = () => flying(false)
       bg.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: EASE_OUT })
-      parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
-        { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
+      parts().forEach((el, i) => {
+        // the bar of ways to talk rises from the bottom edge, solid — faded,
+        // the page showed through it
+        if (el.classList.contains('cv-talk-bar')) el.animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, delay: 220, easing: EASE_OUT, fill: 'backwards' })
+        else el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' })
+      })
     }
     if (matchMedia('(pointer: fine)').matches) root()?.querySelector<HTMLElement>('.cv-close')?.focus({ preventScroll: true })
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // close: the same move played back into the card
-  useEffect(() => {
-    if (!closing) return
+  // close: the same move played back into the card. It starts at the very
+  // tap (the X, the swipe, Escape) — straight on the page, before the hall and
+  // the address do anything — so the details are gone at once; a close from
+  // the browser's back arrives through `closing` and plays the same
+  const started = useRef(false), timer = useRef(0)
+  const closedRef = useRef(onClosed)
+  closedRef.current = onClosed
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const play = () => {
+    if (started.current) return
+    started.current = true; closingRef.current = true
     const ph = photo.current, card = from()
     let done = false
-    const end = () => { if (!done) { done = true; onClosed() } }
+    const end = () => { if (!done) { done = true; clearTimeout(timer.current); closedRef.current() } }
     // a close during the opening goes on from exactly where each piece is
     const now = (el: HTMLElement) => {
       const cs = getComputedStyle(el), v = { opacity: cs.opacity, transform: cs.transform }
@@ -104,34 +123,37 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     // page's light goes, and the last stretch fades onto the card. No jump to
     // the top: the photo flies from wherever it is on the screen (out of
     // view, it comes in as it flies)
-    const HEAD = 140
-    ph.setAttribute('data-closing', '')   // the cover — the card's own photo — over the gallery
-    const fade = [...parts(), ...Array.from(r?.querySelectorAll<HTMLElement>('.cv-page > :not(.cv-gallery):not(.cv-side), .cv-count') ?? [])]
-    fade.forEach(el => {
-      const v = now(el)
-      el.animate([{ opacity: v.opacity, transform: v.transform }, { opacity: 0, transform: v.transform }], { duration: 160, easing: EASE_OUT, fill: 'forwards' })
-    })
+    // The photo flies home as it is on the screen (the cover, or the gallery's
+    // photo if it has turned — the last stretch fades it onto the card): no
+    // swap to another photo at the start of the move
+    const HEAD = 80
+    // the details: gone at once, by a rule nothing can outweigh (on the
+    // iPhone the script's fade did not always hold — the title card stayed
+    // over the hall while the photo flew home)
+    r?.setAttribute('data-leaving', '')
     if (bg.current) {
       const v = now(bg.current)
       bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 320, delay: HEAD + 60, easing: EASE_OUT, fill: 'forwards' })
     }
     const pv = now(ph)
     const at = ph.getBoundingClientRect()
-    flying(true)
+    ph.style.willChange = 'transform'
     ph.animate([{ transform: pv.transform }, fromCard(at, card)], { duration: CLOSE_MS, delay: HEAD, easing: EASE_IO, fill: 'both' })
     if (at.bottom < 0 || at.top > innerHeight) ph.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, delay: HEAD, easing: 'linear', fill: 'backwards' })
     // the last stretch fades onto the card (already back in its place), and
     // the layer goes only once it is invisible
     const f = ph.animate([{ opacity: pv.opacity }, { opacity: 0 }], { duration: 140, delay: HEAD + CLOSE_MS - 140, easing: 'linear', fill: 'forwards' })
     f.onfinish = () => requestAnimationFrame(end)
-    const t = setTimeout(end, HEAD + CLOSE_MS + 200)
-    return () => clearTimeout(t)
-  }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
+    timer.current = window.setTimeout(end, HEAD + CLOSE_MS + 200)
+  }
+  useEffect(() => { if (closing) play() }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pulling down never reloads the page; a strong swipe down — far and fast —
   // from the top closes the car. Sideways (the gallery) is left alone
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+  const close = useCallback(() => { play(); closeRef.current() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+  const viewRefs = useRef({ photo, bg }).current
   useEffect(() => {
     const el = root()
     if (!el) return
@@ -150,7 +172,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       if (side || document.documentElement.hasAttribute('data-cv-lock')) return
       const dy = e.changedTouches[0].clientY - y0, dt = Math.max(1, performance.now() - t0)
       const dx = Math.abs(e.changedTouches[0].clientX - x0)
-      if (fromTop && dy > 110 && dy > dx * 1.5 && dy / dt > 0.6) closeRef.current()
+      if (fromTop && dy > 110 && dy > dx * 1.5 && dy / dt > 0.6) close()
     }
     el.addEventListener('touchstart', start, { passive: true })
     el.addEventListener('touchmove', move, { passive: false })
@@ -162,16 +184,22 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || document.querySelector('.cv-sheet[data-open], .cv-full')) return
-      onClose()
+      close()
     }
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [close])
 
-  const car = full?.car ?? quick
+  // once the details are in, the main photo stays the very one already on the
+  // screen (the card's) — a new address for it would reload it in view
+  const car = useMemo(() => {
+    if (!full) return q
+    const hero = q.hero ?? full.car.hero
+    return { ...full.car, hero, images: full.car.images.filter(u => u !== hero && u !== full.car.hero) }
+  }, [full, q])
   return (
     <div ref={host} className="cv-host">
-      <CarView car={car} url={url} qr={full?.qr ?? ''} mode="over" loading={!full} onClose={onClose} refs={{ photo, bg }} />
+      <CarView car={car} url={url} qr={full?.qr ?? ''} mode="over" loading={!full} onClose={close} refs={viewRefs} />
     </div>
   )
 }

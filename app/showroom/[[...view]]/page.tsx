@@ -19,6 +19,7 @@ import { familiesOf } from '../colors'
 const extra = (recNo: string) => (EXTRAS as Record<string, { hp?: number; ev?: number; ext?: string; int?: string }>)[recNo] ?? {}
 import type { Card } from '../scene'
 import { carSlug } from '@/lib/car-public'
+import { splitName } from '@/lib/car-name'
 
 export const revalidate = 300
 
@@ -64,11 +65,8 @@ export default async function ShowroomPage({ params }: { params: { view?: string
     const [list, cdn] = await Promise.all([fetchCarList(), getCachedImageUrls()])
     const cars = list.map(c => ({ ...c, imageUrl: freshImage(c.imageUrl, cdn[c.recNo]) })).filter(c => c.imageUrl)
     // title: the maker; everything else moves to the line below
-    const TWO = ['Land', 'Alfa', 'Aston', 'Rolls', 'לנד', 'אלפא', 'אסטון', 'רולס']
     cards = cars.map(c => {
-      const words = c.name.trim().split(/\s+/)
-      const cut = TWO.includes(words[0]) ? 2 : 1
-      const make = words.slice(0, cut).join(' '), model = words.slice(cut).join(' ')
+      const [make, model] = splitName(c.name)
       const stock = c.status.includes('מלאי')
       return {
         title: make,

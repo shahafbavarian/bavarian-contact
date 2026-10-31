@@ -25,6 +25,15 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 /* what arrives after the opening (the car's full details) comes up softly */
 .cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
 @keyframes cv-in { from { opacity: 0; transform: translateY(14px); } }
+/* the close: every detail goes in the very frame of the tap, before the
+   photo flies home. No fade: on the iPhone a fade of these runs on the main
+   thread, which the hall keeps busy while the photo flies — it froze there,
+   the title card left over the hall */
+.cv-over[data-leaving] .cv-rest,
+.cv-over[data-leaving] .cv-page > :not(.cv-gallery):not(.cv-side),
+.cv-over[data-leaving] .cv-count {
+  opacity: 0 !important; animation: none !important; transition: none !important; pointer-events: none;
+}
 
 .cv {
   --canvas: #F5F6F7; --surface: #FFFFFF; --soft: #E9ECEF; --ink: #14171A; --muted: #5A6169;
@@ -89,7 +98,6 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
   opacity: 0; pointer-events: none; transition: opacity 450ms var(--ease);
 }
 .cv-photo[data-cover] .cv-cover { opacity: 1; }
-.cv-photo[data-closing] .cv-cover { opacity: 1; transition: none; }
 .cv-photo:not(:has(.cv-slide)) .cv-cover { pointer-events: auto; cursor: zoom-in; }
 /* in flight between the card and the page: the cover alone */
 .cv-photo[data-flying] .cv-track, .cv-photo[data-flying] .cv-count { visibility: hidden; }
@@ -108,7 +116,11 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
   transition: opacity 200ms, outline-color 200ms;
 }
 .cv-thumbs button[aria-selected="true"] { opacity: 1; outline-color: var(--ink); }
-.cv-thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cv-thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 320ms var(--ease); }
+/* each comes up softly once it is there (never a pop, never a gap) */
+.cv-thumbs img[data-in] { opacity: 1; }
+.cv-thumb-ph { flex: 0 0 auto; width: 72px; aspect-ratio: 3 / 2; border-radius: 8px; background: var(--soft); }
+@media (min-width: 1000px) { .cv-thumb-ph { width: 96px; } }
 
 /* ── cards ── */
 .cv-card {
@@ -125,7 +137,6 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-name { margin-top: 10px; font-size: 24px; font-weight: 500; line-height: 1.2; letter-spacing: -.01em; }
 .cv-name b { font-weight: 600; }
 .cv-name > bdi { display: block; text-align: right; }
-.cv-trim { margin-top: 4px; font-size: 15px; font-weight: 400; color: var(--muted); }
 .cv-price { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .cv-price strong { display: block; font-size: 30px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; text-align: right; }
 .cv-ask { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; color: var(--green); }
@@ -198,6 +209,8 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-na { font-size: 14.5px; color: var(--muted); }
 /* the spec's place, held while it loads: soft lines that breathe */
 .cv-skel { display: grid; gap: 14px; }
+.cv-tiles-ph li { animation: cv-breathe 1.2s ease-in-out infinite alternate; }
+.cv-tiles-ph li > * { visibility: hidden; }
 .cv-skel i { display: block; height: 14px; border-radius: 7px; background: var(--soft); animation: cv-breathe 1.2s ease-in-out infinite alternate; }
 .cv-skel i:nth-child(1) { width: 30%; height: 18px; }
 .cv-skel i:nth-child(even) { width: 82%; }
@@ -207,13 +220,16 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-about { font-size: 15px; white-space: pre-line; color: #2A2F34; }
 
 /* the indices */
-.cv-scale + .cv-scale { margin-top: 18px; }
-.cv-scale-h { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 8px; }
-.cv-scale-h b { font-size: 17px; font-weight: 600; }
-.cv-scale-bar { display: flex; gap: 2px; height: 14px; }
-.cv-scale-bar i { flex: 1; border-radius: 3px; opacity: .28; }
-.cv-scale-bar i[data-on] { opacity: 1; transform: scaleY(1.45); border-radius: 4px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--ink); }
-.cv-scale-ends { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
+/* the two indices side by side, each one line and a thin scale */
+.cv-scales { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.cv-scale-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: var(--muted); }
+.cv-scale-h b { font-size: 17px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cv-scale-h b small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.cv-scale-bar { display: flex; align-items: center; gap: 2px; height: 14px; }
+.cv-scale-bar i { flex: 1 1 0; min-width: 0; height: 6px; border-radius: 2px; opacity: .25; }
+.cv-scale-bar i:first-child { border-radius: 3px 2px 2px 3px; }
+.cv-scale-bar i:last-child { border-radius: 2px 3px 3px 2px; }
+.cv-scale-bar i[data-on] { height: 14px; border-radius: 3px; opacity: 1; }
 
 /* the video */
 .cv-video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
