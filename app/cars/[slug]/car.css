@@ -196,6 +196,13 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
   box-shadow: inset 0 0 0 1px rgba(20,23,26,.16);
 }
 .cv-na { font-size: 14.5px; color: var(--muted); }
+/* the spec's place, held while it loads: soft lines that breathe */
+.cv-skel { display: grid; gap: 14px; }
+.cv-skel i { display: block; height: 14px; border-radius: 7px; background: var(--soft); animation: cv-breathe 1.2s ease-in-out infinite alternate; }
+.cv-skel i:nth-child(1) { width: 30%; height: 18px; }
+.cv-skel i:nth-child(even) { width: 82%; }
+.cv-skel i:nth-child(odd):not(:first-child) { width: 64%; }
+@keyframes cv-breathe { from { opacity: 1; } to { opacity: .45; } }
 
 .cv-about { font-size: 15px; white-space: pre-line; color: #2A2F34; }
 

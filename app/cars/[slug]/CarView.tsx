@@ -414,12 +414,20 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
         </aside>
 
         {/* ── the key facts ── */}
-        {!loading && tiles.length > 0 && (
+        {tiles.length > 0 && (
           <ul className="cv-tiles" aria-label="נתונים עיקריים">
             {tiles.map(([k, l, v]) => (
               <li key={k}><Icon k={k} s={22} /><small>{l}</small><bdi>{v}</bdi></li>
             ))}
           </ul>
+        )}
+
+        {/* while the rest of the car is on its way (opened from the hall): its
+            place held, never an empty page */}
+        {loading && (
+          <section className="cv-card cv-skel" aria-hidden="true">
+            <i /><i /><i /><i /><i /><i />
+          </section>
         )}
 
         {/* ── the full spec, in its groups ── */}

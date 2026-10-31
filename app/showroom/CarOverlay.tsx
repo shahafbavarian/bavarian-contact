@@ -99,27 +99,32 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       if (a) a.onfinish = end; else end()
       return
     }
-    // back to the top, and the cover — the card's own photo — over the gallery
-    r?.scrollTo({ top: 0 })
-    ph.setAttribute('data-closing', '')
-    flying(true)
+    // In order, as one breath: the details go first — all of the page but
+    // the photo fades — then the photo flies home into its card while the
+    // page's light goes, and the last stretch fades onto the card. No jump to
+    // the top: the photo flies from wherever it is on the screen (out of
+    // view, it comes in as it flies)
+    const HEAD = 140
+    ph.setAttribute('data-closing', '')   // the cover — the card's own photo — over the gallery
     const fade = [...parts(), ...Array.from(r?.querySelectorAll<HTMLElement>('.cv-page > :not(.cv-gallery):not(.cv-side), .cv-count') ?? [])]
     fade.forEach(el => {
       const v = now(el)
-      el.animate([{ opacity: v.opacity, transform: v.transform }, { opacity: 0, transform: v.transform }], { duration: 140, easing: EASE_OUT, fill: 'forwards' })
+      el.animate([{ opacity: v.opacity, transform: v.transform }, { opacity: 0, transform: v.transform }], { duration: 160, easing: EASE_OUT, fill: 'forwards' })
     })
     if (bg.current) {
       const v = now(bg.current)
-      bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
+      bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 320, delay: HEAD + 60, easing: EASE_OUT, fill: 'forwards' })
     }
     const pv = now(ph)
-    ph.animate([{ transform: pv.transform }, fromCard(ph.getBoundingClientRect(), card)],
-      { duration: CLOSE_MS, easing: EASE_IO, fill: 'forwards' })
+    const at = ph.getBoundingClientRect()
+    flying(true)
+    ph.animate([{ transform: pv.transform }, fromCard(at, card)], { duration: CLOSE_MS, delay: HEAD, easing: EASE_IO, fill: 'both' })
+    if (at.bottom < 0 || at.top > innerHeight) ph.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, delay: HEAD, easing: 'linear', fill: 'backwards' })
     // the last stretch fades onto the card (already back in its place), and
     // the layer goes only once it is invisible
-    const f = ph.animate([{ opacity: pv.opacity }, { opacity: 0 }], { duration: 140, delay: CLOSE_MS - 140, easing: 'linear', fill: 'forwards' })
+    const f = ph.animate([{ opacity: pv.opacity }, { opacity: 0 }], { duration: 140, delay: HEAD + CLOSE_MS - 140, easing: 'linear', fill: 'forwards' })
     f.onfinish = () => requestAnimationFrame(end)
-    const t = setTimeout(end, CLOSE_MS + 200)
+    const t = setTimeout(end, HEAD + CLOSE_MS + 200)
     return () => clearTimeout(t)
   }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
 
