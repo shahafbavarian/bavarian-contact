@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
 import PersonOverlay from './PersonOverlay'
+import CarOverlay from './CarOverlay'
+import type { PublicCar } from '@/lib/car-public'
 
 // the 3D module starts downloading the moment this file is parsed, in
 // parallel with hydration — not only once the effect runs
@@ -34,6 +36,26 @@ const NO_TEAM: Card[] = []
 const VIEW_RE = /^\/showroom\/(cars|team)\/?$/
 const pathView = () => (location.pathname.match(VIEW_RE)?.[1] ?? null) as 'cars' | 'team' | null
 const onHallPath = () => /^\/showroom(\/|$)/.test(location.pathname)
+// a person (/team/<id>) or a car (/cars/<slug>) opened over the hall: its own address
+const overHref = (c: Card) => (c.person ? c.href : `/cars/${c.slug}`)
+const onOverPath = () => /^\/(team|cars)\/[^/]+/.test(location.pathname)
+const SITE = 'https://contact.bavarian-motors.co.il'
+// what a car's card already carries, as the car's page needs it: shown at once
+// while the rest of the car is on its way (CarOverlay)
+function quickCar(c: Card): PublicCar {
+  const raw = (u?: string) => { if (!u) return null; try { return new URL(u, location.origin).searchParams.get('url') ?? u } catch { return u } }
+  const hero = raw(c.images[0])
+  const [model = '', ...rest] = (c.model ?? '').split(/\s+/)
+  const priceN = parseInt((c.price ?? '').replace(/\D/g, ''), 10) || null
+  return {
+    recNo: String(c.rec ?? ''), slug: c.slug ?? '', make: c.make ?? c.title, model, trim: rest.join(' ') || null,
+    name: [c.make, c.model].filter(Boolean).join(' '), status: c.stock === false ? 'way' : 'stock',
+    price: priceN ? `${priceN.toLocaleString('he-IL')} ₪` : null, priceN, finance: null,
+    year: c.year || null, km: c.km || null, hand: c.yad || null, ownership: null, engineCc: null, hp: c.hp ? String(c.hp) : null,
+    fuel: null, body: null, colorExt: null, colorInt: null, listPrice: null, description: null,
+    hero, images: hero ? [hero] : [], pollution: null, safety: null, videos: [], agent: null,
+  }
+}
 
 export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars' }: { cards: Card[]; team?: Card[]; street?: Card[]; start?: 'cars' | 'team' }) {
   const router = useRouter()
@@ -115,7 +137,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     if (personRef.current) return
     setPerson({ i, closing: false })
     handle.current?.hideCards(true)   // the cards step out; the hall stays behind the person
-    if (push) { history.pushState(null, '', all[i].href); pushedPerson.current = true }
+    if (push) { history.pushState(null, '', overHref(all[i])); pushedPerson.current = true }
   }
   const openPersonRef = useRef(openPerson)
   openPersonRef.current = openPerson
@@ -524,15 +546,15 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     // the change of set) it asks for, without writing the history again
     const onPop = () => {
       // a person open over the hall: back closes them, and only that
-      if (personRef.current && !location.pathname.startsWith('/team/')) {
+      if (personRef.current && !onOverPath()) {
         pushedPerson.current = false
         setPerson(p => p && { ...p, closing: true })
         handle.current?.hideCards(false)
         return
       }
       // forward to a person opened before: open them again
-      if (!personRef.current && location.pathname.startsWith('/team/')) {
-        const i = all.findIndex(c => c.person && c.href === location.pathname.replace(/\/$/, ''))
+      if (!personRef.current && onOverPath()) {
+        const i = all.findIndex(c => (c.person || c.slug) && overHref(c) === location.pathname.replace(/\/$/, ''))
         if (i >= 0 && current > 0.95) { pushedPerson.current = true; openPersonRef.current(i, false) }
         return
       }
@@ -783,7 +805,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
           onReady: () => setState('ready'),
           onEnter: () => enterRef.current('cars'),
           onFront: setFront,
-          onOpen: i => { const c = all[i]; if (c.person) openPersonRef.current(i); else if (c.external) location.href = c.href; else router.push(c.href) },
+          onOpen: i => { const c = all[i]; if (c.person || c.slug) openPersonRef.current(i); else if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
         // the cards follow the native scroller, read by the scene once a frame
@@ -1117,7 +1139,18 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
           )}
         </div>
       </div>
-      {person && (
+      {person && !all[person.i].person && (
+        <CarOverlay
+          key={person.i}
+          quick={quickCar(all[person.i])}
+          url={`${SITE}${overHref(all[person.i])}`}
+          from={() => handle.current?.cardRect(person.i) ?? null}
+          closing={person.closing}
+          onClosed={() => setPerson(null)}
+          onClose={closePerson}
+        />
+      )}
+      {person && all[person.i].person && (
         <PersonOverlay
           key={person.i}
           p={personData(all[person.i])}

@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { getPublicCar, recNoOfSlug, type PublicCar } from '@/lib/car-public'
 import CarView from './CarView'
-import './car.css'
+
 
 // The car's own page (docs/CAR_PAGE_SPEC.md): /cars/<number>-<make>-<model>.
 // The number is the lookup; the words are for people (and a light hint for

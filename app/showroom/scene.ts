@@ -68,6 +68,8 @@ export type Card = {
   color?: string; colors?: string[]
   /** a member of the team, not a car: the face carries the name (title) and role (sub) */
   person?: boolean
+  /** a car's own page (/cars/<slug>): it opens over the hall, out of the card */
+  slug?: string
   /** a person's sharp portrait for their page (the card carries the small copy) */
   hero?: string
 }
@@ -1593,7 +1595,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!hd || opening) return
     // a person opens at once: their page grows out of this very card (the
     // hall's layer takes the card's place on screen — see cardRect)
-    if (calm || cards[car]?.person) { opts.onOpen(car); return }
+    if (calm || cards[car]?.person || cards[car]?.slug) { opts.onOpen(car); return }
     opening = { h: hd, t: 0, fired: false }; dirty = true
   }
 

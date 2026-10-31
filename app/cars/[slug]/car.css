@@ -7,11 +7,24 @@
    and stays in view while the page scrolls. */
 
 /* the page scrolls with the browser's own document scroll (as the team page) */
-html:has(.cv), html:has(.cv) body {
+html:has(.cv-doc), html:has(.cv-doc) body {
   position: static; width: auto; height: auto; touch-action: auto; overscroll-behavior: auto;
   overflow: visible; background: #F5F6F7; color: #14171A;
 }
-html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
+html[data-cv-lock]:has(.cv-doc), html[data-cv-lock]:has(.cv-doc) body { overflow: hidden; }
+
+/* over the hall (app/showroom/CarOverlay): the same page in a layer of its
+   own that scrolls inside itself and leaves the hall alone; its light (.cv-bg)
+   comes up under the photo as it grows out of the card */
+.cv.cv-over {
+  position: fixed; inset: 0; z-index: 50; min-height: 0; overflow-y: auto; overscroll-behavior: none;
+  background: none; -webkit-overflow-scrolling: touch;
+}
+html[data-cv-lock] .cv-over { overflow: hidden; }
+.cv-bg { position: fixed; inset: 0; z-index: -1; background: var(--canvas); }
+/* what arrives after the opening (the car's full details) comes up softly */
+.cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
+@keyframes cv-in { from { opacity: 0; transform: translateY(14px); } }
 
 .cv {
   --canvas: #F5F6F7; --surface: #FFFFFF; --soft: #E9ECEF; --ink: #14171A; --muted: #5A6169;
@@ -54,7 +67,7 @@ html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
 
 /* ── the gallery: a 3:2 photo, its thumbnails under it ── */
 .cv-gallery { min-width: 0; margin-inline: calc(-1 * var(--g)); margin-top: calc(-1 * var(--g)); }
-.cv-photo { position: relative; aspect-ratio: 3 / 2; background: var(--soft); overflow: hidden; }
+.cv-photo { position: relative; aspect-ratio: 3 / 2; background: var(--soft); overflow: hidden; transform-origin: 0 0; }
 .cv-track {
   position: absolute; inset: 0; display: flex; overflow-x: auto; overflow-y: hidden;
   scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y;
@@ -125,7 +138,7 @@ html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
 .cv-talk-bar {
   position: fixed; inset: auto 0 0; z-index: 30; margin: 0;
   padding: 10px var(--g) calc(10px + env(safe-area-inset-bottom));
-  background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -8px 24px -16px rgba(20,23,26,.25);
+  background: var(--canvas); border-top: 1px solid var(--line);
 }
 
 /* the key facts */
@@ -189,20 +202,33 @@ html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
 
 /* ── what opens over the page ── */
 .cv-dim {
-  position: fixed; inset: 0; z-index: 40; background: rgba(20,23,26,.4); opacity: 0; pointer-events: none;
-  transition: opacity 260ms var(--ease);
+  position: fixed; inset: 0; z-index: 40; background: rgba(20,23,26,.3); opacity: 0; pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.cv-dim[data-on] { opacity: 1; pointer-events: auto; }
+/* a bottom sheet, as the hall's advanced filter: its light, its rounded top,
+   its grabber; its position is painted by CarView (spring and drag). The
+   second shadow carries its colour under the bottom edge when pulled up */
 .cv-sheet {
-  position: fixed; inset: auto 0 0; z-index: 41; max-height: 86vh; overflow-y: auto; overscroll-behavior: contain;
-  background: var(--surface); border-radius: 22px 22px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom));
-  transform: translateY(105%); visibility: hidden;
-  transition: transform 340ms var(--ease), visibility 0s 340ms;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; width: min(100%, 560px); margin-inline: auto;
+  max-height: 86vh; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  background: var(--canvas); border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 40px -16px rgba(20,23,26,.28), 0 80px 0 0 var(--canvas);
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translate3d(0, 100%, 0); visibility: hidden; will-change: transform;
 }
-.cv-sheet[data-open] { transform: none; visibility: visible; transition: transform 380ms var(--ease); }
-.cv-sheet-h { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 18px 18px 6px 8px; }
+.cv-sheet[data-open] { visibility: visible; }
+.cv-sheet-h {
+  position: relative; display: flex; align-items: center; justify-content: space-between; padding: 22px 18px 6px 8px;
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.cv-sheet-h:active { cursor: grabbing; }
 .cv-sheet-h h2 { font-size: 18px; font-weight: 600; }
-.cv-grab { position: absolute; top: 7px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--soft); }
+.cv .cv-grab {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 22px; padding: 0; border: 0;
+  background: none; display: grid; place-items: center; cursor: grab;
+}
+.cv-grab i { display: block; width: 38px; height: 5px; border-radius: 3px; background: rgba(20,23,26,.42); opacity: .7; }
+.cv-grab:active i { opacity: 1; }
 .cv-sheet-in { padding: 4px 18px 0; }
 .cv-fin dd { font-weight: 600; }
 .cv-note { margin-top: 12px; font-size: 13px; color: var(--muted); }
@@ -255,13 +281,6 @@ html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
   .cv-name { font-size: 28px; }
   .cv-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .cv-card { padding: 22px 24px; }
-  .cv-sheet {
-    inset: 50% auto auto 50%; width: min(460px, 92vw); max-height: 80vh; border-radius: 20px; padding-bottom: 22px;
-    transform: translate(-50%, -46%); opacity: 0;
-    transition: transform 280ms var(--ease), opacity 200ms, visibility 0s 280ms;
-  }
-  .cv-sheet[data-open] { transform: translate(-50%, -50%); opacity: 1; transition: transform 320ms var(--ease), opacity 200ms; }
-  .cv-grab { display: none; }
 }
 @media (min-width: 600px) and (max-width: 999.98px) {
   .cv-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -270,7 +289,7 @@ html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
   .cv-thumbs { padding-inline: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cv *, .cv-dim, .cv-sheet { transition-duration: 0s !important; }
+  .cv * { transition-duration: 0s !important; }
 }
 
 /* ── a listing that is no longer here ── */
@@ -283,9 +302,12 @@ html[data-cv-lock], html[data-cv-lock] body { overflow: hidden; }
 .cv-print { display: none; }
 @media print {
   @page { margin: 14mm; }
-  html:has(.cv), html:has(.cv) body { background: #fff; }
+  html:has(.cv-doc), html:has(.cv-doc) body { background: #fff; }
   .cv { min-height: 0; background: #fff; }
   .cv > :not(.cv-print) { display: none !important; }
+  /* opened over the hall: the hall is not printed, the layer opens out */
+  .sr:has(.cv-over) > :not(.cv-over) { display: none !important; }
+  .cv.cv-over { position: static; overflow: visible; }
   .cv-print { display: block; color: #000; font-size: 12pt; }
   .cv-print-logo { height: 26px; width: auto; }
   .cv-print h2 { margin: 14px 0 10px; font-size: 20pt; font-weight: 600; text-align: right; }

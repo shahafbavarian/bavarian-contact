@@ -5,7 +5,7 @@ import './car.css'
 // ways on — the stock and the home page
 export default function CarNotFound() {
   return (
-    <main className="cv cv-gone" dir="rtl">
+    <main className="cv cv-doc cv-gone" dir="rtl">
       <h1>המודעה אינה זמינה</h1>
       <p>ייתכן שהרכב כבר נמכר או שהמודעה הוסרה.</p>
       <div className="cv-gone-act">

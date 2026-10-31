@@ -18,6 +18,7 @@ import EXTRAS from '../extras.json'
 import { familiesOf } from '../colors'
 const extra = (recNo: string) => (EXTRAS as Record<string, { hp?: number; ev?: number; ext?: string; int?: string }>)[recNo] ?? {}
 import type { Card } from '../scene'
+import { carSlug } from '@/lib/car-public'
 
 export const revalidate = 300
 
@@ -72,7 +73,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
       return {
         title: make,
         sub: [model, c.year, c.price, stock ? 'במלאי' : 'בדרך לארץ'].filter(Boolean).join(' · '),
-        href: `/car/${c.recNo}`,
+        href: `/car/${c.recNo}`, slug: carSlug(c.recNo, c.name),
         images: [img(c.imageUrl)],
         make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || handOf(c.recNo),
         fuel: c.engine || '', body: c.carType || '', monthly: parseInt((c.monthlyPrice || '').replace(/\D/g, ''), 10) || 0, rec: parseInt(c.recNo, 10) || 0,

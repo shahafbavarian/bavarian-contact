@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PublicCar } from '@/lib/car-public'
+import './car.css'
 
 // A car's page (docs/CAR_PAGE_SPEC.md), in order and in plain sight: the
 // gallery (a 3:2 main photo, its thumbnails under it), the name and the price
@@ -58,8 +59,130 @@ function Scale({ label, value, colors, from, low, high }: { label: string; value
   )
 }
 
-export default function CarView({ car, url, qr }: { car: PublicCar; url: string; qr: string }) {
+// mode 'over': the same page opened over the hall (app/showroom/CarOverlay),
+// growing out of the card's photo; until the car's full details arrive
+// (loading) only what the card already carried is shown
+export default function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }: {
+  car: PublicCar; url: string; qr: string
+  mode?: 'page' | 'over'
+  loading?: boolean
+  onClose?: () => void
+  refs?: { photo?: React.Ref<HTMLDivElement>; bg?: React.Ref<HTMLDivElement> }
+}) {
+  const over = mode === 'over'
   const [sheet, setSheet] = useState<Sheet>(null)
+  const rootEl = useRef<HTMLDivElement>(null)
+
+  // ── the sheets (the offer, the form, the share) rise from the bottom as the
+  // hall's filter does: on a spring, after the finger when dragged, shut by a
+  // flick or a pull down; the page dims with them. Painted in the DOM, never
+  // a re-render per frame ──
+  const sheetEls = useRef<Partial<Record<Exclude<Sheet, null>, HTMLElement | null>>>({})
+  const dimEl = useRef<HTMLDivElement>(null)
+  const sh = useRef({ name: null as Sheet, off: 0, H: 1, raf: 0 })
+  const paint = (off: number) => {
+    const s = sh.current; s.off = off
+    const el = s.name ? sheetEls.current[s.name] : null
+    if (el) el.style.transform = `translate3d(0, ${off}px, 0)`
+    const k = Math.min(1, Math.max(0, 1 - off / s.H))
+    if (dimEl.current) { dimEl.current.style.opacity = String(k); dimEl.current.style.pointerEvents = k > 0.02 ? 'auto' : 'none' }
+  }
+  const springTo = (open: boolean, v0 = 0) => {
+    const s = sh.current
+    cancelAnimationFrame(s.raf)
+    const target = open ? 0 : s.H
+    const shutDone = () => { s.raf = 0; s.name = null; setSheet(null) }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { paint(target); if (!open) shutDone(); return }
+    let x = s.off, v = v0, last = performance.now()
+    const step = (now: number) => {
+      const dt = Math.min(0.032, (now - last) / 1000); last = now
+      const w = 21, a = -w * w * (x - target) - 2 * w * v   // critically damped, as the hall's sheet
+      v += a * dt; x += v * dt
+      if (Math.abs(x - target) < 0.5 && Math.abs(v) < 8) { paint(target); if (open) s.raf = 0; else shutDone(); return }
+      paint(x); s.raf = requestAnimationFrame(step)
+    }
+    s.raf = requestAnimationFrame(step)
+  }
+  const openSheet = (n: Exclude<Sheet, null>) => {
+    const s = sh.current
+    if (s.name && s.name !== n) { cancelAnimationFrame(s.raf); s.name = null }
+    setSheet(n)
+  }
+  const shut = () => { if (sh.current.name) springTo(false) }
+  // it rises from just under the screen's edge
+  useLayoutEffect(() => {
+    const s = sh.current
+    if (!sheet || s.name === sheet) return
+    const el = sheetEls.current[sheet]; if (!el) return
+    s.name = sheet; s.H = Math.max(1, el.offsetHeight); paint(s.H); springTo(true)
+  }, [sheet])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // the drag: its head and grabber follow the finger or the mouse; its
+  // content, once scrolled to its top, is pulled down by the finger
+  const drag = useRef<{ y0: number; ys: number; x0: number; y: number; t: number; v: number; mode: 0 | 1 | 2; moved: boolean; grab: boolean } | null>(null)
+  const dragTo = (y: number) => {
+    const g = drag.current; if (!g) return
+    let off = y - g.y0
+    if (off < 0) off = -Math.sqrt(-off) * 4   // past open it gives a little
+    const now = performance.now(), dt = Math.max(1, now - g.t)
+    g.v = g.v * 0.4 + ((y - g.y) / dt) * 1000 * 0.6   // px/s, down is positive
+    g.y = y; g.t = now
+    if (Math.abs(y - g.ys) > 4) g.moved = true
+    paint(off)
+  }
+  const release = () => {
+    const g = drag.current; drag.current = null
+    if (!g || g.mode !== 1) return
+    const s = sh.current
+    if (!g.moved) { springTo(!g.grab); return }   // a tap on the grabber shuts
+    springTo(g.v > 350 ? false : g.v < -350 ? true : s.off < s.H * 0.3, g.v)
+  }
+  const head = {
+    onPointerDown: (e: React.PointerEvent) => {
+      if ((e.target as Element).closest('button:not(.cv-grab)')) return
+      cancelAnimationFrame(sh.current.raf)
+      drag.current = { y0: e.clientY - sh.current.off, ys: e.clientY, x0: e.clientX, y: e.clientY, t: performance.now(), v: 0, mode: 1, moved: false, grab: !!(e.target as Element).closest('.cv-grab') }
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    onPointerMove: (e: React.PointerEvent) => { if (drag.current?.mode === 1) dragTo(e.clientY) },
+    onPointerUp: release,
+    onPointerCancel: release,
+  }
+  useEffect(() => {
+    const root = rootEl.current; if (!root) return
+    let sc: HTMLElement | null = null
+    const down = (e: TouchEvent) => {
+      const t = e.target as Element
+      sc = t.closest<HTMLElement>('.cv-sheet[data-open]')
+      if (!sc || t.closest('.cv-sheet-h') || e.touches.length !== 1) { sc = null; return }
+      const p = e.touches[0]
+      drag.current = { y0: p.clientY, ys: p.clientY, x0: p.clientX, y: p.clientY, t: performance.now(), v: 0, mode: 0, moved: false, grab: false }
+    }
+    const move = (e: TouchEvent) => {
+      const g = drag.current
+      if (!sc || !g || g.mode === 2) return
+      const p = e.touches[0], dx = p.clientX - g.x0, dy = p.clientY - g.y
+      if (g.mode === 0) {
+        const top = sc.scrollTop <= 0
+        // (held while the direction is unclear, so the content cannot start a scroll of its own)
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) { if (dy >= 0 && top && e.cancelable) e.preventDefault(); return }
+        if (!(dy > 0 && dy > Math.abs(dx) && top)) { g.mode = 2; return }
+        g.mode = 1; cancelAnimationFrame(sh.current.raf)
+        g.y0 = p.clientY - sh.current.off; g.y = p.clientY; g.t = performance.now(); g.moved = true
+      }
+      if (e.cancelable) e.preventDefault()
+      dragTo(p.clientY)
+    }
+    const end = () => { if (sc) release(); sc = null }
+    root.addEventListener('touchstart', down, { passive: true })
+    root.addEventListener('touchmove', move, { passive: false })
+    root.addEventListener('touchend', end)
+    root.addEventListener('touchcancel', end)
+    return () => {
+      root.removeEventListener('touchstart', down); root.removeEventListener('touchmove', move)
+      root.removeEventListener('touchend', end); root.removeEventListener('touchcancel', end)
+    }
+  }, [])   // eslint-disable-line react-hooks/exhaustive-deps
   const [full, setFull] = useState<number | null>(null)
   const [at, setAt] = useState(0)
   const [play, setPlay] = useState(false)
@@ -121,11 +244,14 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [full])
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setSheet(null) }
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') shut() }
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [])
   // nothing behind a sheet or the full screen scrolls
-  useEffect(() => { document.documentElement.toggleAttribute('data-cv-lock', !!sheet || full !== null) }, [sheet, full])
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-cv-lock', !!sheet || full !== null)
+    return () => document.documentElement.removeAttribute('data-cv-lock')
+  }, [sheet, full])
 
   // ── the form ──
   const [lead, setLead] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
@@ -162,21 +288,27 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
   }
 
   const Talk = ({ where }: { where: 'bar' | 'side' }) => (
-    <div className={where === 'bar' ? 'cv-talk cv-talk-bar' : 'cv-talk'}>
+    <div className={where === 'bar' ? 'cv-talk cv-talk-bar cv-rest' : 'cv-talk'}>
       <a className="cv-btn cv-primary" href={waHref} target="_blank" rel="noopener noreferrer"><Icon k="wa" />{car.price ? 'WhatsApp' : 'בקשת מחיר'}</a>
       <a className="cv-btn" href={TEL} aria-label={`התקשרו ${PHONE}`}><Icon k="call" />התקשרו</a>
-      <button type="button" className="cv-btn" onClick={() => { setLead('idle'); setSheet('lead') }}><Icon k="form" />השאירו פרטים</button>
+      <button type="button" className="cv-btn" onClick={() => { setLead('idle'); openSheet('lead') }}><Icon k="form" />השאירו פרטים</button>
     </div>
   )
 
   return (
-    <div className="cv">
-      <header className="cv-bar">
-        <a href="/showroom/cars" className="cv-ic" aria-label="לכל הרכבים"><Icon k="back" /></a>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <a href="/showroom" className="cv-logo-a" aria-label="בוואריאן מוטורס"><img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} /></a>
+    <div ref={rootEl} className={over ? 'cv cv-over sr-sheet' : 'cv cv-doc'} role={over ? 'dialog' : undefined} aria-modal={over || undefined} aria-label={over ? car.name : undefined}>
+      {over && <div ref={refs?.bg} className="cv-bg" aria-hidden="true" />}
+      <header className="cv-bar cv-rest">
+        {over
+          ? <button type="button" className="cv-ic cv-close" aria-label="סגירה" onClick={onClose}><Icon k="close" /></button>
+          : <a href="/showroom/cars" className="cv-ic" aria-label="לכל הרכבים"><Icon k="back" /></a>}
+        {over
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <span className="cv-logo-a"><img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} /></span>
+          // eslint-disable-next-line @next/next/no-img-element
+          : <a href="/showroom" className="cv-logo-a" aria-label="בוואריאן מוטורס"><img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} /></a>}
         <div className="cv-bar-end">
-          <button type="button" className="cv-ic" aria-label="שיתוף" onClick={() => setSheet('share')}><Icon k="share" /></button>
+          <button type="button" className="cv-ic" aria-label="שיתוף" onClick={() => openSheet('share')}><Icon k="share" /></button>
           <button type="button" className="cv-ic" aria-label="הדפסה" onClick={() => print()}><Icon k="print" /></button>
         </div>
       </header>
@@ -184,7 +316,7 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
       <main className="cv-page">
         {/* ── the gallery ── */}
         <section className="cv-gallery" aria-label="תמונות הרכב">
-          <div className="cv-photo">
+          <div ref={refs?.photo} className="cv-photo">
             <div ref={track} className="cv-track" onScroll={onTrack} onPointerDown={() => { touched.current = Date.now() }}>
               {imgs.map((u, i) => (
                 <button key={u} type="button" className="cv-slide" aria-label={`תמונה ${i + 1} במסך מלא`} onClick={() => setFull(i)}>
@@ -196,7 +328,7 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
             {imgs.length > 1 && <span className="cv-count" dir="ltr">{at + 1} / {imgs.length}</span>}
           </div>
           {imgs.length > 1 && (
-            <div ref={thumbs} className="cv-thumbs" role="tablist" aria-label="תמונות ממוזערות">
+            <div ref={thumbs} className="cv-thumbs cv-rest" role="tablist" aria-label="תמונות ממוזערות">
               {imgs.map((u, i) => (
                 <button key={u} type="button" role="tab" aria-selected={i === at} aria-label={`תמונה ${i + 1}`} onClick={() => { touched.current = Date.now(); show(i) }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -208,7 +340,7 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
         </section>
 
         {/* ── the name, the price, the offer (beside the gallery on a computer) ── */}
-        <aside className="cv-side">
+        <aside className="cv-side cv-rest">
           <section className="cv-card cv-title">
             <p className="cv-status" data-s={car.status}><i />{statusWord}<span>מודעה <bdi dir="ltr">{car.recNo}</bdi></span></p>
             <h1 className="cv-name">
@@ -221,7 +353,7 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
               )}
             </div>
             {car.finance && (
-              <button type="button" className="cv-monthly" onClick={() => setSheet('finance')}>
+              <button type="button" className="cv-monthly" onClick={() => openSheet('finance')}>
                 <span className="cv-monthly-v"><b dir="ltr">{car.finance.monthly}</b> לחודש</span>
                 <span className="cv-monthly-l">פרטי הצעת המימון<Icon k="chev" s={16} /></span>
               </button>
@@ -231,7 +363,7 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
         </aside>
 
         {/* ── the key facts ── */}
-        {tiles.length > 0 && (
+        {!loading && tiles.length > 0 && (
           <ul className="cv-tiles" aria-label="נתונים עיקריים">
             {tiles.map(([k, l, v]) => (
               <li key={k}><Icon k={k} s={22} /><small>{l}</small><bdi>{v}</bdi></li>
@@ -240,6 +372,7 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
         )}
 
         {/* ── the full spec, in its groups ── */}
+        {!loading && <>
         <section className="cv-card" aria-labelledby="cv-spec-h">
           <h2 id="cv-spec-h">מפרט</h2>
           {groups.map(([g, rows]) => (
@@ -297,23 +430,24 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
             <h2>מודעה <bdi dir="ltr">{car.recNo}</bdi></h2>
             <p>סרקו כדי לפתוח את המודעה בנייד</p>
             <div className="cv-id-act">
-              <button type="button" className="cv-btn cv-small" onClick={() => setSheet('share')}><Icon k="share" s={18} />שיתוף</button>
+              <button type="button" className="cv-btn cv-small" onClick={() => openSheet('share')}><Icon k="share" s={18} />שיתוף</button>
               <button type="button" className="cv-btn cv-small" onClick={() => print()}><Icon k="print" s={18} />הדפסה</button>
             </div>
           </div>
           {qr && <i className="cv-qr" aria-label="קוד QR למודעה" dangerouslySetInnerHTML={{ __html: qr }} />}
         </section>
+        </>}
       </main>
 
       {/* ── the ways to talk, always at hand on a phone ── */}
       <Talk where="bar" />
 
       {/* ── what opens over the page: the offer's terms, the form, the share ── */}
-      <div className="cv-dim" data-on={sheet ? '' : undefined} onClick={() => setSheet(null)} aria-hidden="true" />
+      <div ref={dimEl} className="cv-dim" onClick={shut} aria-hidden="true" />
 
       {car.finance && (
-        <section className="cv-sheet" data-open={sheet === 'finance' || undefined} aria-label="הצעת המימון" aria-hidden={sheet !== 'finance'}>
-          <SheetHead title="הצעת המימון" onClose={() => setSheet(null)} />
+        <section ref={el => { sheetEls.current.finance = el }} className="cv-sheet" data-open={sheet === 'finance' || undefined} aria-label="הצעת המימון" aria-hidden={sheet !== 'finance'}>
+          <SheetHead title="הצעת המימון" onClose={shut} drag={head} />
           <div className="cv-sheet-in">
             <dl className="cv-rows cv-fin">
               {car.finance.down && <div><dt>מקדמה</dt><dd dir="ltr">{car.finance.down}</dd></div>}
@@ -326,13 +460,13 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
         </section>
       )}
 
-      <section className="cv-sheet" data-open={sheet === 'lead' || undefined} aria-label="השארת פרטים" aria-hidden={sheet !== 'lead'}>
-        <SheetHead title="השאירו פרטים ונחזור אליכם" onClose={() => setSheet(null)} />
+      <section ref={el => { sheetEls.current.lead = el }} className="cv-sheet" data-open={sheet === 'lead' || undefined} aria-label="השארת פרטים" aria-hidden={sheet !== 'lead'}>
+        <SheetHead title="השאירו פרטים ונחזור אליכם" onClose={shut} drag={head} />
         <div className="cv-sheet-in">
           {lead === 'sent' ? <p className="cv-done">תודה! נחזור אליכם בהקדם.</p> : (
             <form className="cv-form" onSubmit={send}>
               <p className="cv-form-car"><bdi dir="ltr">{car.name}</bdi> · מודעה {car.recNo}</p>
-              <label>שם מלא <small>(לא חובה)</small><input name="name" autoComplete="name" /></label>
+              <label><span>שם מלא <small>(לא חובה)</small></span><input name="name" autoComplete="name" /></label>
               <label>טלפון<input name="phone" type="tel" inputMode="tel" autoComplete="tel" required dir="ltr" /></label>
               <input name="website" tabIndex={-1} autoComplete="off" className="cv-hp" aria-hidden="true" />
               <button type="submit" className="cv-btn cv-primary" disabled={lead === 'sending'}>{lead === 'sending' ? 'שולח…' : 'שליחה'}</button>
@@ -342,8 +476,8 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
         </div>
       </section>
 
-      <section className="cv-sheet" data-open={sheet === 'share' || undefined} aria-label="שיתוף" aria-hidden={sheet !== 'share'}>
-        <SheetHead title="שיתוף המודעה" onClose={() => setSheet(null)} />
+      <section ref={el => { sheetEls.current.share = el }} className="cv-sheet" data-open={sheet === 'share' || undefined} aria-label="שיתוף" aria-hidden={sheet !== 'share'}>
+        <SheetHead title="שיתוף המודעה" onClose={shut} drag={head} />
         <div className="cv-sheet-in cv-share">
           <button type="button" className="cv-btn" onClick={shareLink}><Icon k="share" />שיתוף קישור</button>
           <button type="button" className="cv-btn" onClick={sharePhotos}><Icon k="share" />שיתוף תמונות ופרטים</button>
@@ -377,10 +511,10 @@ export default function CarView({ car, url, qr }: { car: PublicCar; url: string;
   )
 }
 
-function SheetHead({ title, onClose }: { title: string; onClose: () => void }) {
+function SheetHead({ title, onClose, drag }: { title: string; onClose: () => void; drag: React.HTMLAttributes<HTMLDivElement> }) {
   return (
-    <div className="cv-sheet-h">
-      <i className="cv-grab" aria-hidden="true" />
+    <div className="cv-sheet-h" {...drag}>
+      <button type="button" className="cv-grab" aria-label="סגירה" tabIndex={-1}><i /></button>
       <h2>{title}</h2>
       <button type="button" className="cv-ic" aria-label="סגירה" onClick={onClose}><Icon k="close" /></button>
     </div>
