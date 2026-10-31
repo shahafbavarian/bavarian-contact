@@ -1051,8 +1051,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // the facts, the band's last line: icon + value, right to left
     const facts: { k: 'year' | 'km' | 'hand'; v: string }[] = []
     if (card.year) facts.push({ k: 'year', v: card.year })
-    if (card.km && !(card.km === 'חדש' && /חדש/.test(card.year ?? ''))) facts.push({ k: 'km', v: card.km === 'חדש' ? 'חדש' : card.km })
-    if (card.yad) facts.push({ k: 'hand', v: `יד ${card.yad}` })
+    // "new" once: not again for the km when the year or the hand already says so
+    const newHand = /חדש/.test(card.yad ?? '')
+    if (card.km && !(card.km === 'חדש' && (/חדש/.test(card.year ?? '') || newHand))) facts.push({ k: 'km', v: card.km === 'חדש' ? 'חדש' : card.km })
+    if (card.yad) facts.push({ k: 'hand', v: newHand ? 'חדש' : `יד ${card.yad}` })
     const GAP = 12, ICON = 11, IG = 4
     const factsW = (fs: number) => facts.reduce((a, f, n) => {
       c.direction = f.k === 'hand' ? 'rtl' : 'ltr'; c.font = `500 ${px(fs)}px ${font}`

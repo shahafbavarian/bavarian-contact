@@ -9,7 +9,8 @@ import { HISTORY } from '../history'
 // each car's own page (the list does not carry it) — read at build time, no
 // request at run time. The real site will take it from its live data source
 import HANDS from '../hands.json'
-const handOf = (recNo: string) => { const h = (HANDS as Record<string, string>)[recNo] ?? ''; return /^\d+$/.test(h) ? h : '' }
+// a number, or new ("חדש" on the main site: no owner before) — anything else is unknown
+const handOf = (recNo: string) => { const h = ((HANDS as Record<string, string>)[recNo] ?? '').trim(); return /^\d+$/.test(h) ? h : /חדש/.test(h) ? 'חדש' : '' }
 import type { Card } from '../scene'
 
 export const revalidate = 300
