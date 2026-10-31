@@ -342,6 +342,106 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
   .sr-word:hover { color: #fff; }
   .sr-tool:hover { background: rgba(255,255,255,.08); }
 }
+/* ─── The sheet: drag the grabber up (or press the filter button) and the
+   advanced filter opens under the search row; the cards dim behind. Its box
+   is laid out at full height and the sheet's own height uncovers it from the
+   top, so it rises like a sheet out of the bottom edge ─── */
+.sr-cap {
+  --s-ink: #fff; --s-mut: rgba(255,255,255,.6); --s-line: rgba(255,255,255,.14); --s-surf: rgba(255,255,255,.07);
+  --s-sel: #fff; --s-on: #0b0d11; --s-bar: rgba(255,255,255,.2); --s-bar-on: rgba(255,255,255,.62);
+}
+.sr[data-theme="light"] .sr-cap {
+  --s-ink: #14171A; --s-mut: #5A6169; --s-line: rgba(20,23,26,.1); --s-surf: rgba(20,23,26,.05);
+  --s-sel: #14171A; --s-on: #fff; --s-bar: rgba(20,23,26,.1); --s-bar-on: rgba(20,23,26,.42);
+}
+/* the dark hall has no foot sheet: open, one rises behind the row */
+.sr:not([data-theme="light"]) .sr-cap::before {
+  content: ''; position: absolute; z-index: -1; inset: -24px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
+  background: #090b0f; border-radius: 22px 22px 0 0; box-shadow: 0 -1px 0 rgba(255,255,255,.12);
+  opacity: 0; transition: opacity 220ms ease; pointer-events: none;
+}
+.sr:not([data-theme="light"]) .sr-cap[data-open]::before { opacity: 1; }
+/* (with no foot sheet under it, shut, the grabber would sit on the cards: the filter button opens it there) */
+.sr:not([data-theme="light"]) .sr-cap:not([data-open]) .sr-grab { visibility: hidden; }
+.sr-grab {
+  position: absolute; top: -24px; left: 50%; transform: translateX(-50%); width: min(100%, 560px); height: 24px;
+  display: grid; place-items: center; cursor: grab; touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+.sr-grab i { display: block; width: 38px; height: 5px; border-radius: 3px; background: var(--s-bar-on); opacity: .7; transition: opacity 160ms ease; }
+.sr-grab:active i { opacity: 1; }
+.sr-grab:focus-visible { outline: none; }
+.sr-grab:focus-visible i { box-shadow: 0 0 0 3px var(--s-line); }
+.sr-adv { width: min(100%, 560px); height: 0; overflow: hidden; text-align: start; color: var(--s-ink); }
+.sr-adv-box { display: flex; flex-direction: column; height: calc(var(--sheet-h, 480px) - 7px); margin-top: 6px; border-top: 1px solid var(--s-line); }
+.sr-adv-in {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+  padding-inline: 2px; scrollbar-width: none;
+}
+.sr-adv-in::-webkit-scrollbar { display: none; }
+.sr-adv-in > * { padding-block: 14px; }
+.sr-adv-in > * + * { border-top: 1px solid var(--s-line); }
+.sr-fh { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 14px; }
+.sr-fh span { font-weight: 600; }
+.sr-fh bdi { font-size: 13px; color: var(--s-mut); font-variant-numeric: tabular-nums; }
+.sr-fh bdi.on { color: var(--s-ink); font-weight: 600; }
+/* availability: one segmented control */
+.sr-seg { display: flex; padding: 3px; border-radius: 11px; background: var(--s-surf); }
+.sr-seg button {
+  flex: 1; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--s-mut);
+  font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+.sr-seg button[aria-pressed="true"] { background: var(--s-sel); color: var(--s-on); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+/* the multi-picks: chips that wrap, each with its count */
+.sr-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.sr-pick {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding-inline: 14px; border-radius: 999px;
+  border: 1px solid var(--s-line); background: var(--s-surf); color: var(--s-ink);
+  font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.sr-pick small { font-size: 11.5px; color: var(--s-mut); font-variant-numeric: tabular-nums; transition: color 160ms ease; }
+.sr-pick[aria-pressed="true"] { background: var(--s-sel); border-color: var(--s-sel); color: var(--s-on); }
+.sr-pick[aria-pressed="true"] small { color: var(--s-on); opacity: .7; }
+.sr-pick:disabled { opacity: .35; cursor: default; }
+.sr-pick:active:not(:disabled) { transform: scale(.96); }
+/* the range: the stock's spread over the track, the chosen span in ink */
+.sr-rg-hist { display: flex; align-items: flex-end; gap: 2px; height: 30px; margin-inline: 13px; direction: rtl; }
+.sr-rg-hist i { flex: 1; border-radius: 2px 2px 0 0; background: var(--s-bar); transition: background-color 160ms ease; }
+.sr-rg-hist i[data-in] { background: var(--s-bar-on); }
+.sr-rg-track { position: relative; height: 34px; margin-inline: 13px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sr-rg-rail, .sr-rg-fill { position: absolute; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px; }
+.sr-rg-rail { inset-inline: 0; background: var(--s-line); }
+.sr-rg-fill { background: var(--s-ink); }
+.sr-rg-thumb { position: absolute; top: 50%; width: 44px; height: 44px; transform: translate(50%, -50%); display: grid; place-items: center; outline: none; }
+.sr-rg-thumb i {
+  display: block; width: 26px; height: 26px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.22); transition: transform 140ms cubic-bezier(.23,1,.32,1);
+}
+.sr-rg-track:active .sr-rg-thumb i { transform: scale(1.06); }
+.sr-rg-thumb:focus-visible i { box-shadow: 0 0 0 3px var(--s-bar-on), 0 2px 6px rgba(0,0,0,.22); }
+/* the foot: clear, and the live count that closes the sheet */
+.sr-adv-foot {
+  flex: none; display: flex; align-items: center; gap: 12px; padding-block: 10px 2px; border-top: 1px solid var(--s-line);
+}
+.sr-go {
+  flex: 1; height: 46px; border: 0; border-radius: 13px; background: var(--s-sel); color: var(--s-on);
+  font: inherit; font-size: 15.5px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform 140ms cubic-bezier(.23,1,.32,1);
+}
+.sr-go:active { transform: scale(.98); }
+.sr-clr {
+  flex: none; height: 46px; padding-inline: 6px; border: 0; background: none; color: var(--s-ink);
+  font: inherit; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.sr-clr:disabled { opacity: .35; cursor: default; text-decoration: none; }
+/* behind the open sheet: the cards dimmed (under the top bar; a press closes) */
+.sr-dim {
+  position: absolute; z-index: 3; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.sr[data-theme="light"] .sr-dim { background: rgba(20,23,26,.3); }
 /* TRIAL: the cards' native scroller — transparent, over the cards' zone; the
    phone draws its own scroll indicator at the side */
 .sr-scroller {
@@ -448,7 +548,7 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 .sr[data-theme="light"] .sr-word, .sr[data-theme="light"] .sr-cap-in, .sr[data-theme="light"] .sr-chip { animation: none; }
 /* the foot: a sheet in the page's colour behind the search, on the same move */
 .sr[data-theme="light"] .sr-cap::before {
-  content: ''; position: absolute; z-index: -1; inset: -12px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
+  content: ''; position: absolute; z-index: -1; inset: -24px -16px calc(-30px - env(safe-area-inset-bottom)) -16px;
   background: #f5f6f7; border-radius: 22px 22px 0 0; box-shadow: 0 -1px 0 rgba(20,23,26,.09);
   opacity: var(--br, 0);
 }

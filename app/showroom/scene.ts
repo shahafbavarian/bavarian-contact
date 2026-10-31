@@ -52,6 +52,8 @@ export type Card = {
   title: string; sub: string; href: string; external?: boolean; images: string[]
   /** the car's own fields, for search: maker, model, year, price, in stock */
   make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string; yad?: string
+  /** for the advanced filter: fuel/engine (petrol, diesel, hev, phev, bev), body type, monthly payment, and the listing's number (newest = highest) */
+  fuel?: string; body?: string; monthly?: number; rec?: number
   /** a member of the team, not a car: the face carries the name (title) and role (sub) */
   person?: boolean
   /** a person's sharp portrait for their page (the card carries the small copy) */
@@ -1221,7 +1223,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // (no snap: a screen still turning finishes its turn as it flies)
       drag = Math.round(angle / STEP) * STEP; autoT = 0
       r0m = Math.round(drag / STEP)
-      listStart = r0m - base; anchor = 0
+      // the street shows the history, not cars: the list opens at its own
+      // first car (the newest), not wherever the gallery had turned to
+      listStart = S > 0 ? 0 : r0m - base; anchor = 0
       scrollPos = scrollTarget = 0; mapped = true
     }
     // on the street: the faces of the cards about to fly, and the ring faces
@@ -1230,7 +1234,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       const r0 = Math.round(drag / STEP)
       // every card the first view of the hall will hold, faces drawn ahead
       const ahead = Math.min(N, (rowsFit + 2) * gcols)
-      for (let d = 0; d < ahead; d++) ensureCard(view[mod(r0 - base + d, N)])
+      for (let d = 0; d < ahead; d++) ensureCard(view[mod((S > 0 ? 0 : r0 - base) + d, N)])
       // the other set (the team) too, so the street can walk straight into it
       if (opts.preload) for (const ci of opts.preload.slice(0, ahead)) ensureCard(ci)
       // and the gallery's own next photos, so a slide never starts a texture
@@ -1747,7 +1751,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // listened on the window: the canvas lets touches through (nothing fixed at the
   // top edge may take them, or Safari paints a strip behind the clock); presses
   // on the page's own buttons and links are theirs
-  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap, .sr-scroller, .sr-sheet')) onDown(e) }
+  const onDownAny = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('a, button, nav, input, .sr-cap, .sr-scroller, .sr-sheet, .sr-dim')) onDown(e) }
   const onHover = (e: PointerEvent) => {
     if (mobile || e.pointerType !== 'mouse') return
     let next: THREE.Object3D | null = null
