@@ -51,7 +51,7 @@ export type SceneHandle = {
   /** Offline rendering: place the camera at p and draw one frame now */
   renderFrame: (p: number) => void
   dispose: () => void
-  stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number; born: number; walk?: { throwK: number; walkU: number; mapped: boolean; wallOn: boolean; exitRide: boolean } }
+  stats: () => { frames: number; avg: number; p95: number; calls: number; tris: number; dpr: number; angle: number; drag: number; progress: number; front: number; born: number; walk?: { throwK: number; walkU: number; foldU: number; mapped: boolean; wallOn: boolean; exitRide: boolean } }
 }
 
 // A card on the floating gallery: one of the site's destinations. One image
@@ -873,6 +873,25 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const held = new Map<number, Held>()
   let scrollPos = 0, scrollTarget = 0, holding = false, wallOn = false, hovered: THREE.Object3D | null = null
   let walkDir = 1, lastP = 0, walkU = 0, lastWalkU = 0, foldU = 0
+  // the walk's clocks re-anchor where it turns (see placeWall)
+  let clockDir = 0, turnU = 0, turnK = 0, turnF = 0, foldTimed = false
+  // a clock from (u0, f0), where the walk turned. In: up to 1 over the
+  // direction's span — or, turned late, over the next tenth of the walk (a
+  // hurried catch-up read as a snap), never past 0.95 (the walk's last hair
+  // of progress is a leap of walk time). Out: down to 0 in the span's shape,
+  // likewise over at least a tenth. A whole walk follows its span exactly
+  type Span = { inA: number; inB: number; outA: number; outB: number; pow: number }
+  const follow = (u: number, d: number, u0: number, f0: number, c: Span) => {
+    if (d > 0) {
+      if (u0 >= 0.95) return Math.min(1, f0 + (1 - f0) * fit(u, u0, 1))
+      return Math.min(1, f0 + (1 - f0) * fit(u, Math.max(u0, c.inA), Math.min(0.95, Math.max(c.inB, u0 + 0.1))))
+    }
+    const a = Math.max(0, Math.min(c.outA, u0 - 0.1)), b = Math.min(u0, c.outB)
+    if (b <= a) return u0 > 0 ? f0 * fit(u, 0, u0) : 0
+    return Math.max(0, f0 * fit(u, a, b) ** c.pow)
+  }
+  const THROW: Span = { inA: 0.04, inB: 0.88, outA: 0.2, outB: 0.985, pow: 1 }
+  const FOLDS: Span = { inA: 0, inB: 0.9, outA: 0.3, outB: 1, pow: 2.5 }
   let scrollAt = -1e9, infoKey = '', infoReset = false
   let throwK = 0, growAt = -1, viewChanged = false, exitRide = false, mapped = false, listStart = 0, anchor = 1, r0m = 0, wasFull = false
   // a tapped card flies up to you, filling the screen, and its page opens
@@ -1344,25 +1363,29 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     else if (p <= 0) walkU = 0
     const tk = throwK
     if (walkU !== lastWalkU) {
-      const m = walkU < lastWalkU ? (u: number) => fit(u, 0.2, 0.985) : (u: number) => fit(u, 0.04, 0.88)
-      throwK = Math.min(1, Math.max(0, throwK + m(walkU) - m(lastWalkU)))
-      // the fold trial's own clock: walking in, the walk's time itself;
-      // walking out the camera leaves the hall in the first second, so the
-      // fold plays back early — the cards into the screen first, then the
-      // screen out to the street with the camera — and is done before the
-      // walk unmaps. Stepped, so a turn mid-way never jumps
-      // (walking in it is done by 0.9 of the walk: the walk's last tenth is
-      // the camera settling, where a hair of progress is a leap of walk time;
-      // walking out, the cards fold back over its first quarter, and the
-      // screen goes out to the street over the next half — at its own pace)
-      // (walking out the camera is at the door within the first fifth: the
-      // grid folds back and the card comes to the middle by then, on one
-      // smooth curve — it goes through the doorway low, and grows only outside)
-      const mf = walkU < lastWalkU ? (u: number) => fit(u, 0.3, 1) ** 2.5 : (u: number) => fit(u, 0, 0.9)
-      foldU = Math.min(1, Math.max(0, foldU + mf(walkU) - mf(lastWalkU)))
+      // where the walk turns, each clock is anchored afresh: from where it
+      // stands it follows its own curve to the very end of the walk. (Stepping
+      // by the difference of the two directions' curves drifted on every
+      // turn: a quick in and out left the cards half thrown, or the fold half
+      // open, while the walk ran home — then snapped)
+      const d = walkU > lastWalkU ? 1 : -1
+      if (d !== clockDir) {
+        clockDir = d; turnU = lastWalkU; turnK = throwK; turnF = foldU
+        // turned back in at the very end: the fold opens on its own clock
+        // (below), not on the walk's last moment, which leaps to its end
+        foldTimed = d > 0 && lastWalkU > 0.85
+      }
+      throwK = follow(walkU, d, turnU, turnK, THROW)
+      // the fold trial's own clock: walking in it is done by 0.9 of the walk
+      // (its last tenth is the camera settling, where a hair of progress is a
+      // leap of walk time); walking out the camera is at the door within the
+      // first fifth: the grid folds back and the card comes to the middle by
+      // then, on one smooth curve — through the doorway low, grown only outside
+      if (!foldTimed) foldU = follow(walkU, d, turnU, turnF, FOLDS)
       lastWalkU = walkU
     }
-    if (walkU >= 1) { throwK = 1; foldU = 1 }
+    if (foldTimed) foldU = Math.min(1, foldU + (dt * (1 - turnF)) / 0.4)   // what was left, in 0.4 s
+    if (walkU >= 1) { throwK = 1; if (!foldTimed) foldU = 1 }
     else if (walkU <= 0) { throwK = 0; foldU = 0 }
     if (throwK !== tk) dirty = true
     wallOn = throwK >= 0.98
@@ -2109,7 +2132,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     stats() {
       const s = [...frames].sort((a, b) => a - b)
       return {
-        born, walk: { throwK, walkU, mapped, wallOn, exitRide }, frames: s.length, avg: s.reduce((a, b) => a + b, 0) / (s.length || 1), p95: s[Math.floor(s.length * 0.95)] ?? 0,
+        born, walk: { throwK, walkU, foldU, mapped, wallOn, exitRide }, frames: s.length, avg: s.reduce((a, b) => a + b, 0) / (s.length || 1), p95: s[Math.floor(s.length * 0.95)] ?? 0,
         calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr,
         angle: angle / STEP, drag: drag / STEP, progress, front,
       }
