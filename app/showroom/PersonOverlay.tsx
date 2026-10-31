@@ -7,23 +7,18 @@ type Rect = { x: number; y: number; w: number; h: number; r: number }
 
 // A team card opened in the hall: the person's page, opening out of the card
 // itself. The portrait starts exactly where the card's photo is on screen and
-// grows into its place on the page (transform + clip-path, top-anchored like
-// the card), the page's light comes up under it, then the name and the ways to
-// talk follow. Closing plays it back into the card. Nothing is fetched: the
+// grows into its place on the page — transform only, so Safari runs it on the
+// compositor and the hall's own frames can never make it stutter — the page's
+// light comes up under it, then the name and the ways to talk follow. Closing plays it back into the card. Nothing is fetched: the
 // card already carries the person.
 const OPEN_MS = 560, CLOSE_MS = 420
 const EASE_OUT = 'cubic-bezier(.22,1,.36,1)', EASE_IO = 'cubic-bezier(.77,0,.175,1)'
 
-// from the photo's place on the page back to the card's: scale to cover the
-// card, cut to it (sides evenly, the bottom — both are anchored at the top)
+// from the photo's place on the page back to the card's: one uniform scale
+// to the card's width, the tops aligned (both are anchored at the top)
 function fromCard(final: DOMRect, card: Rect) {
-  const k = Math.max(card.w / final.width, card.h / final.height)
-  const padX = (final.width - card.w / k) / 2
-  const padB = final.height - card.h / k
-  return {
-    transform: `translate(${card.x - final.left - padX * k}px, ${card.y - final.top}px) scale(${k})`,
-    clipPath: `inset(0px ${padX}px ${padB}px ${padX}px round ${card.r / k}px)`,
-  }
+  const k = card.w / final.width
+  return { transform: `translate(${card.x - final.left}px, ${card.y - final.top}px) scale(${k})` }
 }
 
 export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
@@ -55,12 +50,16 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
       root.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT })
     } else {
       const start = fromCard(ph.getBoundingClientRect(), card)
-      ph.animate([start, { transform: 'none', clipPath: 'inset(0px 0px 0px 0px round 24px)' }], { duration: OPEN_MS, easing: EASE_OUT })
+      ph.animate([start, { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
+      // it comes up over the card in its first instant: the square portrait and
+      // the card's slightly wider photo never meet as a snap
+      ph.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 110, easing: 'linear' })
       bg.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: EASE_OUT })
       parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
         { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
     }
-    root.current?.querySelector<HTMLElement>('.pv-close')?.focus({ preventScroll: true })
+    // the keyboard lands on the close (a computer); a touch screen shows no ring
+    if (matchMedia('(pointer: fine)').matches) root.current?.querySelector<HTMLElement>('.pv-close')?.focus({ preventScroll: true })
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // close: the same move played back into the card
@@ -69,20 +68,66 @@ export default function PersonOverlay({ p, from, closing, onClosed, onClose }: {
     const ph = photo.current, card = from()
     let done = false
     const end = () => { if (!done) { done = true; onClosed() } }
+    // a close can come while the opening is still under way: every piece goes
+    // on from exactly where it is (read, then the opening stopped) — never a
+    // jump to full and back
+    const now = (el: HTMLElement) => {
+      const cs = getComputedStyle(el), v = { opacity: cs.opacity, transform: cs.transform }
+      el.getAnimations().forEach(x => x.cancel())
+      return v
+    }
     if (still() || !ph || !card) {
-      const a = root.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards' })
+      const r = root.current
+      const a = r?.animate([{ opacity: now(r).opacity }, { opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards' })
       if (a) a.onfinish = end; else end()
       return
     }
     root.current?.querySelector('.pv-over')?.scrollTo({ top: 0 })
-    parts().forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: EASE_OUT, fill: 'forwards' }))
-    bg.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
-    const a = ph.animate([{ transform: 'none', clipPath: 'inset(0px 0px 0px 0px round 24px)' }, fromCard(ph.getBoundingClientRect(), card)],
+    parts().forEach(el => {
+      const v = now(el)
+      el.animate([{ opacity: v.opacity, transform: v.transform }, { opacity: 0, transform: v.transform }], { duration: 140, easing: EASE_OUT, fill: 'forwards' })
+    })
+    if (bg.current) {
+      const v = now(bg.current)
+      bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
+    }
+    const pv = now(ph)
+    // the photo's place on the page without any motion on it: the card's
+    // place is measured against that
+    ph.animate([{ transform: pv.transform }, fromCard(ph.getBoundingClientRect(), card)],
       { duration: CLOSE_MS, easing: EASE_IO, fill: 'forwards' })
-    a.onfinish = end
+    // the last stretch: it fades onto the card (already back in its place
+    // underneath), so the two shapes never meet; the layer is taken away only
+    // once it is invisible, so that frame's work never shows
+    const f = ph.animate([{ opacity: pv.opacity }, { opacity: 0 }], { duration: 140, delay: CLOSE_MS - 140, easing: 'linear', fill: 'forwards' })
+    f.onfinish = () => requestAnimationFrame(end)
     const t = setTimeout(end, CLOSE_MS + 200)   // never left open if a frame is dropped
     return () => clearTimeout(t)
   }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pulling down never reloads the page or stretches it; only a strong swipe
+  // down — far and fast — from the top closes the person. On a screen too
+  // small for the page it still scrolls as usual
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEffect(() => {
+    const el = root.current?.querySelector<HTMLElement>('.pv-over')
+    if (!el) return
+    let y0 = 0, t0 = 0, fromTop = true
+    const start = (e: TouchEvent) => { y0 = e.touches[0].clientY; t0 = performance.now(); fromTop = el.scrollTop <= 0 }
+    const move = (e: TouchEvent) => {
+      const dy = e.touches[0].clientY - y0, still = el.scrollHeight <= el.clientHeight + 1
+      if (e.cancelable && (still || (el.scrollTop <= 0 && dy > 0))) e.preventDefault()
+    }
+    const end = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - y0, dt = Math.max(1, performance.now() - t0)
+      if (fromTop && dy > 110 && dy / dt > 0.6) closeRef.current()
+    }
+    el.addEventListener('touchstart', start, { passive: true })
+    el.addEventListener('touchmove', move, { passive: false })
+    el.addEventListener('touchend', end)
+    return () => { el.removeEventListener('touchstart', start); el.removeEventListener('touchmove', move); el.removeEventListener('touchend', end) }
+  }, [])
 
   // Escape closes, like the button
   useEffect(() => {

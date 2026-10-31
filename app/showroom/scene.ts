@@ -26,6 +26,11 @@ export type SceneHandle = {
   setView: (ids: number[] | null, instant?: boolean) => void
   /** where a card's photo is on screen (css px, and its corner radius), while it is on show */
   cardRect: (ci: number) => { x: number; y: number; w: number; h: number; r: number } | null
+  /** draws (if needed) the faces the first view of these cards needs; true once
+   *  all are drawn and on the GPU — a walk started then births nothing */
+  prepare: (ids: number[]) => boolean
+  /** the cards step out of the hall (a person is open over it) or come back */
+  hideCards: (on: boolean) => void
   /** The screen's edges the cards keep clear of (css px): the bar above, the search below, the sides */
   setInsets: (top: number, bottom: number, side: number) => void
   /** inside, with the cards out: up and down is theirs */
@@ -34,6 +39,9 @@ export type SceneHandle = {
   toTop: () => void
   /** a native page scroller drives the list: its position, in rows */
   setScroll: (rows: number) => void
+  /** the native scroller, read once per frame (null while it is off): the
+   *  cards then move in even steps, in time with the drawing */
+  setScrollSource: (read: () => number | null) => void
   /** a tap at a screen point (from the native scroller): opens the card there */
   tapAt: (x: number, y: number) => void
   atTop: () => boolean
@@ -165,6 +173,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const dpr = opts.dpr ?? Math.min(window.devicePixelRatio || 1, 2)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', precision: 'highp', preserveDrawingBuffer: !!opts.manual })
+  // the shader error checks read the GPU's logs, which makes the browser wait
+  // for every compile right there in the frame: a debugging aid only
+  renderer.debug.checkShaderErrors = process.env.NODE_ENV !== 'production'
   renderer.setPixelRatio(dpr)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
@@ -743,7 +754,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   //     showing above and below; up and down runs through the whole stock ───
   const wallScene = new THREE.Scene()
   const WALL_R = 3                      // the cards' distance from you (m)
-  const CARD_PX = 768                   // a card's face, in canvas pixels
+  // a card's face, in canvas pixels: on a phone a card is ~350 device pixels
+  // wide (the pixel ratio is capped at 2), so 512 keeps it sharp at a little
+  // over half the GPU memory and upload of 768 — every card entering the list
+  // is uploaded mid-scroll
+  const CARD_PX = mobile ? 512 : 768
   let STRIP = 0.26                      // its info band, as a share of its width (set by layout)
   const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   const wallFrag = `
@@ -1235,11 +1250,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // every card the first view of the hall will hold, faces drawn ahead
       const ahead = Math.min(N, (rowsFit + 2) * gcols)
       for (let d = 0; d < ahead; d++) ensureCard(view[mod((S > 0 ? 0 : r0 - base) + d, N)])
-      // the other set (the team) too, so the street can walk straight into it
-      if (opts.preload) for (const ci of opts.preload.slice(0, ahead)) ensureCard(ci)
       // and the gallery's own next photos, so a slide never starts a texture
       if (S) for (let d = -1; d <= 3; d++) ensureTex(sAt(r0 + d))
     }
+    // the other set (the team): drawn as soon as the street is up, not after
+    // the idle beat, so "הצוות" pressed at once still walks into ready faces
+    if (!mapped && opts.preload && readyAt >= 0) for (const ci of opts.preload.slice(0, 12)) ensureCard(ci)
     if (p <= 0.02 && throwK <= 0 && mapped) mapped = false
     // heading out only: it stayed on after the walk home, and every later
     // walk in then skipped the main screen's turn
@@ -1323,7 +1339,13 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const dayFill = new THREE.HemisphereLight('#ffffff', '#e8eaee', 0)
   if (opts.light) scene.add(dayFill)
   let briK = 0
+  // a person open over the hall: the cards step out, the room stays
+  let hideT = false, hideK = 0
   const placeCards = (dt: number) => {
+    const hk = hideK
+    hideK += ((hideT ? 1 : 0) - hideK) * (1 - Math.exp(-dt * 10))
+    if (Math.abs(hideK - (hideT ? 1 : 0)) < 2e-3) hideK = hideT ? 1 : 0
+    if (hideK !== hk) dirty = true
     // the column count follows the stock on show
     const wc = N <= 5 ? 1 : 2
     if (wc !== gcols) { gcols = wc; layout() }
@@ -1333,7 +1355,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
 
     const want = new Map<number, number>()   // car → its place in the list
     if (throwK > 0 && N) {
-      const ahead = Math.min(2, Math.ceil(Math.abs(vy) * 0.3))
+      // two rows ahead on each side, always: with the native scroller the
+      // scene's own finger speed is 0, and faces were drawn only as their row
+      // came into view — mid-scroll
+      const ahead = 2
       const r0 = Math.max(0, Math.floor(scrollPos) - 1 - ahead), r1 = Math.ceil(scrollPos) + rowsFit + 1 + ahead
       for (let i = r0 * gcols; i <= Math.min(N - 1, r1 * gcols + gcols - 1); i++) want.set(listCar(i), i)
       if (throwK < 1) for (const f of FLY) { const i = anchor + f.at; if (i >= 0 && i < N) want.set(listCar(i), i) }
@@ -1478,6 +1503,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           m.renderOrder = 1
         } else a *= 1 - openK
       } else m.renderOrder = 0
+      a *= 1 - hideK
       u.uAlpha.value = a; u.uBright.value = bright; u.uStrip.value = strip
       {
         // corners and edge: a landed card has its own; in flight they morph to
@@ -1532,6 +1558,27 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   wallPass.clear = false
   composer.addPass(wallPass)
   composer.addPass(new OutputPass())
+  // Every shader the walk draws with, prepared on the street ahead of time.
+  // Measured (a performance trace of the walk): two were built mid-walk and
+  // froze it — the cards' own, because the load-time compile above was made
+  // for the screen while the cards are drawn into the composer's target (a
+  // different version of the shader), at ~0.16; and the hall's veil, invisible
+  // at load and so skipped, at ~0.91, just before the end. Prepared for the
+  // composer's target, with the veil shown for the compile only; compileAsync
+  // lets the GPU build them in the background
+  let warmed = false
+  const warmShaders = () => {
+    warmed = true
+    const prev = renderer.getRenderTarget(), vv = veil.visible
+    const w = takeMesh(); w.visible = true; veil.visible = true
+    const shown = showMeshes.map(sm => sm.visible); showMeshes.forEach(sm => { sm.visible = true })
+    renderer.setRenderTarget(composer.readBuffer)
+    renderer.compileAsync(wallScene, camera).catch(() => {})
+    renderer.compileAsync(scene, camera).catch(() => {})
+    renderer.setRenderTarget(prev)
+    veil.visible = vv; w.visible = false; freeMeshes.push(w)
+    showMeshes.forEach((sm, i) => { sm.visible = shown[i] })
+  }
 
   // ─── Camera: street → doors → inside → stops facing the stand. A narrow
   //     (portrait) screen stops further back so the front card and its
@@ -1549,6 +1596,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // stand. That is where the page scroll ends: the gallery itself only turns
   // sideways — finger, mouse or arrows — and always rests on a card.
   const WALK = 0.82
+  let scrollSource: (() => number | null) | null = null, lastSr: number | null = null
   let progress = 0, shown = -1, dirty = true, time = 0, tvClock = 0, hallClock = 0, autoT = 0, swapHold = 0
   let drag = 0, angle = 0, dragging = false, front = -1
   const pointer = new THREE.Vector2(), pointerS = new THREE.Vector2()
@@ -1774,6 +1822,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (!running) return
     raf = requestAnimationFrame(tick)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; time += dt   // (a rAF stamp can predate setup)
+    // the native scroller's position, read here, once a frame: scroll events
+    // come at the screen's rate (up to 120 a second), not the drawing's, and
+    // left some frames two steps and some none — the tremble
+    // Only when the scroller itself moved: the arrows, the keys and a wheel
+    // off the list move the list through the scene, and must not be pulled back
+    const sr = scrollSource?.() ?? null
+    if (sr != null && sr !== lastSr) { scrollPos = scrollTarget = sr; scrollAt = performance.now(); fling = false; dirty = true }
+    lastSr = sr
     // the kick wakes the render loop so the switch-on plays even at rest
     if (!screenOn && readyAt >= 0 && now - readyAt > 700) { screenOn = true; dirty = true }
     if (growAt < 0 && readyAt >= 0) {
@@ -1786,12 +1842,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // picture moves on and its neighbour takes the middle
     if (screenOn && N > 1 && !dragging && !pendingView && !swap && !mapped && progress < 0.02) { autoT += dt; if (autoT > 5) { autoT = 0; drag += STEP; dirty = true } } else autoT = 0
     pointerS.lerp(pointer, 1 - Math.exp(-dt * 4))
+    if (!warmed && readyAt >= 0 && performance.now() - readyAt > 600 && progress < 0.02) warmShaders()
     const uq = uploadQ.shift()
     if (uq) { renderer.initTexture(uq); dirty = true }
     loadCards()
     let signRising = false
     if (readyAt >= 0 && !signDone) { const k = smooth(fit(now - readyAt, 200, 1200)); signLight(0.28 + 0.72 * k); signDone = k >= 1; signRising = !signDone }
-    const floating = progress > 0.7
+    // the stand's ring floats only while it is part of the walk; inside, at
+    // rest, nothing moves — the hall is drawn only when something changes
+    // (it was redrawn every frame for a ring that is not on show)
+    const floating = progress > 0.7 && progress < 0.999
     const moving = signRising || floating || dirty || Math.abs(progress - shown) > 1e-5 || pointerS.distanceToSquared(pointer) > 1e-6
     if (!moving) return
     dirty = false
@@ -1813,6 +1873,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     toTop() { if (!wallOn) return; fling = false; scrollTarget = 0; dirty = true },
     // the native scroller's position, followed exactly — its own momentum and
     // its own give at the ends (a negative or overshooting value) included
+    setScrollSource(read) { scrollSource = read },
     setScroll(rows) { if (rows === scrollPos && rows === scrollTarget) return; scrollPos = scrollTarget = rows; scrollAt = performance.now(); fling = false; dirty = true },
     tapAt(x, y) { if (!wallOn || opening) return; const o = wallHit({ clientX: x, clientY: y } as PointerEvent); if (o) openCard(o) },
     atTop: () => scrollTarget <= 0.001,
@@ -1828,9 +1889,16 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       return true
     },
     setInsets(t, b, sd) { insetTop = t; insetBottom = b; insetSide = sd; layout() },
+    prepare(ids) {
+      const first = ids.slice(0, (rowsFit + 1) * gcols)
+      return first.every(ci => { const e = ensureCard(ci); return e.ready && !uploadQ.includes(e.tex) })
+    },
+    hideCards(on) { hideT = on; dirty = true },
     cardRect(ci) {
+      // (a card stepped out for a person is still in its place: the person
+      // closes back into it, so no visibility test here)
       const hd = held.get(ci)
-      if (!hd || !hd.m.visible) return null
+      if (!hd) return null
       const m = hd.m, pad = cardW * 0.07
       // the face within the mesh (the mesh carries a shadow margin), and of it
       // the photo: the top 2/3 of a car's card, all but the band on a person's

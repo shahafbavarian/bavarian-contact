@@ -39,6 +39,8 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
 /* the strip behind the iPhone clock stays black (it takes this colour) */
 .sr-safari-strip { position: fixed; top: 0; left: 0; width: 100%; height: 8px; background: #06080c; pointer-events: none; z-index: 2147483647; transition: background-color 500ms ease; }
 .sr-strip-b { top: auto; bottom: 0; }
+/* not Safari (Chrome, Firefox, Edge on the iPhone): no strips — see the layout */
+html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
 .sr-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; touch-action: pan-y; cursor: grab; transition: opacity 400ms cubic-bezier(.22,1,.36,1); }
 .sr[data-state="ready"] .sr-canvas { opacity: 1; }
 /* The scene never ends on a hard edge: it fades into the page on every side,
@@ -211,8 +213,13 @@ html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2p
   opacity: 0; visibility: hidden; font-variant-numeric: tabular-nums; pointer-events: none;
 }
 .sr-cap > * { pointer-events: auto; }
-/* the team has no search: its foot stays out (over the inline style the walk sets) */
-.sr[data-set="team"] .sr-cap { visibility: hidden !important; }
+/* the team has no search: the foot's sheet and its dividing line stay, exactly
+   as over the stock (the cards end on the same line, the same short fade, top
+   and bottom alike); only what is on it gives way */
+.sr[data-set="team"] .sr-cap > * { visibility: hidden !important; }
+/* a person open over the hall: the bar keeps its logo, its menu gives way to
+   the person's close (in the same place) */
+.sr[data-person] .sr-burger, .sr[data-person] .sr-menu { visibility: hidden !important; }
 /* Lit like the street's buttons and the sign: white light, zero-offset glows
    stacked from a tight edge to a wide soft halo (no frame; the dark floor
    behind is what lets the glow read), and a short line of light between name

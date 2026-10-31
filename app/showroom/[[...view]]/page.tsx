@@ -82,5 +82,5 @@ export default async function ShowroomPage({ params }: { params: { view?: string
   } catch {}
   // the street gallery: history photos on the big screens outside
   const street: Card[] = HISTORY.map(src => ({ title: '', sub: '', href: '/cars', images: [src] }))
-  return <Showroom cards={cards} team={team} street={street} />
+  return <Showroom cards={cards} team={team} street={street} start={v?.[0] === 'team' ? 'team' : 'cars'} />
 }

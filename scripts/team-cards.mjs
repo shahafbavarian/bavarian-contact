@@ -5,14 +5,16 @@
 // Both are anchored at their top, so the crop here is the framing there.
 // Static copies cost nothing per visit (no image optimizer, no Supabase egress).
 //
-// A new portrait: add it under public/team, measure where the hair starts
-// (pixels from the top of the 1200px original) into HAIR_TOP, then run:
+// A new portrait: add it under public/team (square; 1200px when there is
+// one, smaller is used as it is — never enlarged), measure where the hair
+// starts (pixels from the top of that file) into HAIR_TOP, then run:
 //   node scripts/team-cards.mjs
 import sharp from 'sharp'
 import { mkdirSync } from 'fs'
 
-// where the hair starts, in the 1200×1200 originals
+// where the hair starts, in pixels from the top of each square original
 const HAIR_TOP = {
+  256441: 58,   // רוברט אנוקוב
   257075: 85,
   257076: 78,
   257077: 80,
@@ -24,15 +26,18 @@ const HAIR_TOP = {
   280833: 60,
   281088: 24,
 }
-// the margin left above the hair, in original pixels
-const MARGIN = 36
+// the margin left above the hair, as a share of the original's side
+// (36px on a 1200px portrait)
+const MARGIN = 0.03
 
 mkdirSync('public/team/card', { recursive: true })
 mkdirSync('public/team/hero', { recursive: true })
 for (const [id, hair] of Object.entries(HAIR_TOP)) {
-  const top = Math.max(0, hair - MARGIN)
-  const cut = () => sharp(`public/team/${id}.jpg`).extract({ left: 0, top, width: 1200, height: 1200 - top })
-  await cut().resize({ width: 768 }).jpeg({ quality: 82, mozjpeg: true }).toFile(`public/team/card/${id}.jpg`)
+  const src = `public/team/${id}.jpg`
+  const { width: W, height: H } = await sharp(src).metadata()
+  const top = Math.max(0, Math.round(hair - MARGIN * W))
+  const cut = () => sharp(src).extract({ left: 0, top, width: W, height: H - top })
+  await cut().resize({ width: 768, withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toFile(`public/team/card/${id}.jpg`)
   await cut().jpeg({ quality: 84, mozjpeg: true }).toFile(`public/team/hero/${id}.jpg`)
   console.log(id, `cut ${top}px from the top`)
 }

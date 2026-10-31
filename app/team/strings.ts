@@ -7,7 +7,7 @@ export const he = {
   emptyTeam: 'הצוות שלנו יוצג כאן בקרוב',
   meet: (name: string) => `הכירו את ${name}`,
   backToTeam: 'הצוות',
-  whatsapp: 'שיחה בוואטסאפ',
+  whatsapp: 'שליחת וואטסאפ',
   saveContact: 'שמור איש קשר',
   instagram: 'אינסטגרם',
   logoAlt: 'בוואריאן מוטורס',

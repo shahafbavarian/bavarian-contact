@@ -33,7 +33,10 @@ export const viewport: Viewport = {
 // CLAUDE.md Safari rulebook, first-paint clause
 // (inside: the address says so — /showroom/cars, /showroom/team — or the
 // remembered state does)
-const FIRST_PAINT = `try{if(location.search.indexOf('theme=dark')<0&&(/^\\/showroom\\/(cars|team)\\/?$/.test(location.pathname)||sessionStorage.getItem('sr-view')==='in'))document.documentElement.setAttribute('data-sr-bright','')}catch(e){}`
+// Chrome, Firefox and Edge on the iPhone draw their own opaque bars below the
+// page and never sample it: there the Safari strips (rule 5) would only show
+// as bands at the edges, so they are taken out — Safari keeps them as they are
+const FIRST_PAINT = `try{if(/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent))document.documentElement.setAttribute('data-sr-nostrip','')}catch(e){}try{if(location.search.indexOf('theme=dark')<0&&(/^\\/showroom\\/(cars|team)\\/?$/.test(location.pathname)||sessionStorage.getItem('sr-view')==='in'))document.documentElement.setAttribute('data-sr-bright','')}catch(e){}`
 
 export default function ShowroomLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -38,8 +38,8 @@ export default function PersonView({ p, mode, onClose, refs }: {
         <div ref={refs?.rest} className="pv-bar">
           {mode === 'over' ? (
             <button type="button" className="pv-close" aria-label="סגירה" onClick={onClose}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
               </svg>
             </button>
           ) : (
@@ -50,8 +50,12 @@ export default function PersonView({ p, mode, onClose, refs }: {
               הצוות
             </a>
           )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="pv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} />
+          {/* over the hall, the hall's own bar keeps its logo in place (only its
+              menu gives way to the close): no second logo on top of it */}
+          {mode === 'page' && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="pv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} />
+          )}
         </div>
 
         <main className="pv-main">
@@ -78,7 +82,7 @@ export default function PersonView({ p, mode, onClose, refs }: {
                 <path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9" />
                 <path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1" />
               </svg>
-              שיחה בוואטסאפ
+              שליחת וואטסאפ
             </a>
             <a className="pv-btn" href={p.vcard}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

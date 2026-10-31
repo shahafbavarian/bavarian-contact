@@ -34,7 +34,7 @@ const VIEW_RE = /^\/showroom\/(cars|team)\/?$/
 const pathView = () => (location.pathname.match(VIEW_RE)?.[1] ?? null) as 'cars' | 'team' | null
 const onHallPath = () => /^\/showroom(\/|$)/.test(location.pathname)
 
-export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Card[]; team?: Card[]; street?: Card[] }) {
+export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars' }: { cards: Card[]; team?: Card[]; street?: Card[]; start?: 'cars' | 'team' }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -76,14 +76,16 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   const all = useMemo(() => [...deck, ...team], [deck, team])
   const carIds = useMemo(() => deck.map((_, i) => i), [deck])
   const teamIds = useMemo(() => team.map((_, i) => deck.length + i), [deck, team])
-  const [set, setSet] = useState<'cars' | 'team'>('cars')
+  // the set to start on comes with the page (each address is its own page), so
+  // a refresh of /showroom/team never shows the cars first
+  const [set, setSet] = useState<'cars' | 'team'>(start === 'team' && team.length ? 'team' : 'cars')
   const setRef = useRef(set)
   setRef.current = set
-  // a refresh inside opens on the set it was showing: the address says which,
-  // or (a plain /showroom) the remembered one
+  // a plain /showroom that was left inside opens on the set it was showing
   useEffect(() => {
-    let s = pathView()
-    if (!s) try { if (sessionStorage.getItem('sr-set') === 'team') s = 'team' } catch {}
+    if (pathView()) return   // the address already said which, with the page
+    let s: string | null = null
+    try { s = sessionStorage.getItem('sr-set') } catch {}
     if (s === 'team' && team.length) { setRef.current = 'team'; setSet('team') }
   }, [team.length])
   // where the walk is (0 street … 1 inside), for the choice of an instant swap
@@ -111,6 +113,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   const openPerson = (i: number, push = true) => {
     if (personRef.current) return
     setPerson({ i, closing: false })
+    handle.current?.hideCards(true)   // the cards step out; the hall stays behind the person
     if (push) { history.pushState(null, '', all[i].href); pushedPerson.current = true }
   }
   const openPersonRef = useRef(openPerson)
@@ -118,7 +121,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   const closePerson = () => {
     if (!personRef.current || personRef.current.closing) return
     if (pushedPerson.current) history.back()   // the address goes home; popstate plays the close
-    else setPerson(p => p && { ...p, closing: true })
+    else { setPerson(p => p && { ...p, closing: true }); handle.current?.hideCards(false) }
   }
   const personData = (c: Card) => {
     const id = c.href.split('/').pop() ?? ''
@@ -329,11 +332,18 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     if (s === 'team' && !teamIds.length) { router.push('/team'); return }
     setRef.current = s; setSet(s); setMenu(false)
     try { sessionStorage.setItem('sr-set', s) } catch {}
-    if (s === 'team') { input.current?.blur(); setPanel(null) }
+    if (s === 'team') { input.current?.blur(); setPanel(null); closeSheet.current() }
     const v = s === 'team' ? teamIds : found
     viewRef.current = v
     handle.current?.setView(v, progress.current < 0.02)   // before the first step maps the cards
-    goRef.current(1)
+    // from the street, the walk sets off once the first faces of the set are
+    // drawn and on the GPU (a few frames at most) — nothing is born mid-walk
+    const h = handle.current, t0 = performance.now()
+    const setOff = () => {
+      if (!h || progress.current > 0.02 || h.prepare(v) || performance.now() - t0 > 1500) goRef.current(1)
+      else requestAnimationFrame(setOff)
+    }
+    setOff()
     syncRef.current(true)   // already inside (a set switched): the address still follows
   }
   enterRef.current = enter
@@ -430,6 +440,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
       if (personRef.current && !location.pathname.startsWith('/team/')) {
         pushedPerson.current = false
         setPerson(p => p && { ...p, closing: true })
+        handle.current?.hideCards(false)
         return
       }
       // forward to a person opened before: open them again
@@ -575,11 +586,13 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
     const insets = () => {
       const n = nav.current, c = cap.current
       // the cards are cut exactly at the dividing lines: the bar's bottom edge
-      // above, the search sheet's top edge below (it rises 12px over the row)
+      // above, the search sheet's top edge below (it rises 24px over the row:
+      // room for the grabber)
       const top = n ? n.offsetTop + n.offsetHeight : 64
-      // from the screen's bottom edge to the foot's top, plus a breath; the
-      // team has no search row, so its cards take that room too
-      const bottom = !c ? 150 : setRef.current === 'team' ? cv.clientHeight - (c.offsetTop + c.offsetHeight) + 12 : cv.clientHeight - (c.offsetTop + (adv.current?.offsetHeight ?? 0)) + (light ? 24 : 0)
+      // from the screen's bottom edge to the foot's top, plus a breath: the
+      // same line for the stock and the team (the team's foot keeps its sheet);
+      // the advanced filter's sheet opens over the cards, never moves them
+      const bottom = !c ? 150 : cv.clientHeight - (c.offsetTop + (adv.current?.offsetHeight ?? 0)) + (light ? 24 : 0)
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
@@ -686,6 +699,11 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
           onOpen: i => { const c = all[i]; if (c.person) openPersonRef.current(i); else if (c.external) location.href = c.href; else router.push(c.href) },
         })
         ;(window as unknown as { __showroom: SceneHandle }).__showroom = handle.current
+        // the cards follow the native scroller, read by the scene once a frame
+        handle.current.setScrollSource(() => {
+          const sc = scroller.current
+          return sc && sc.style.display === 'block' ? sc.scrollTop / rowPx.current : null
+        })
         insets()
         if (viewRef.current) handle.current.setView(viewRef.current, true)
       } catch { setState('fallback') }
@@ -728,7 +746,7 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
   }, [all, teamIds, streetDeck, router])
 
   return (
-    <div ref={root} className="sr" data-state={state} data-set={set}>
+    <div ref={root} className="sr" data-state={state} data-set={set} data-person={person ? '' : undefined}>
       {/* Safari 26 looks at what is fixed at the very top edge to decide what to draw
           behind the clock; a transparent, click-through strip there lets the page show */}
       <div ref={strip} className="sr-safari-strip" aria-hidden="true" />
@@ -835,7 +853,6 @@ export default function Showroom({ cards, team = NO_TEAM, street }: { cards: Car
               low and tight, so the cards keep the screen */}
           {/* the cards' native scroller (transparent; a tap opens the card under it) */}
           <div ref={scroller} className="sr-scroller" aria-hidden="true"
-            onScroll={e => handle.current?.setScroll((e.currentTarget as HTMLDivElement).scrollTop / rowPx.current)}
             onClick={e => handle.current?.tapAt(e.clientX, e.clientY)}>
             <div ref={scrollFill} />
           </div>
