@@ -69,6 +69,10 @@ export type CarDetail = CarSummary & {
   pollutionGrade: number | null
   safetyLevel:    number | null
   licensePlate:   string | null
+  /** the person the main site shows under "דברו איתנו" for this car */
+  agentName:      string | null
+  /** the financing offer's approved legal note, as the main site words it */
+  financeNote:    string | null
 }
 
 function extractIndexValue(html: string, keyword: RegExp, min: number, max: number): number | null {
@@ -335,6 +339,8 @@ async function fetchCarDetailInner(recNo: string): Promise<CarDetail | null> {
       if (s) { const n = parseInt(s, 10); if (!isNaN(n) && n >= 0 && n <= 8) return n }
       return extractIndexValue(html, /(?:דרגת|רמת)\s*אבזור/i, 0, 8)
     })(),
+    agentName: html.match(/דברו איתנו<\/h4>\s*<img[^>]*>\s*<h4>([^<]+)<\/h4>/)?.[1]?.trim() || null,
+    financeNote: html.match(/(אישור ההלוואה[^<]+)/)?.[1]?.replace(/\s+/g, ' ').trim() || null,
   }
 }
 
