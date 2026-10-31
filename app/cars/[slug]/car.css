@@ -22,6 +22,19 @@ html[data-cv-lock]:has(.cv-doc), html[data-cv-lock]:has(.cv-doc) body { overflow
 }
 html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-bg { position: fixed; inset: 0; z-index: -1; background: var(--canvas); }
+/* over the hall, as a person's page: the white hall itself is the background
+   (its cards step out), under the same light veil; it runs on under Safari's
+   floating bar (the large viewport). The two bars over the scrolling page are
+   frosted glass of the same light (DESIGN.md §7), so what scrolls under them
+   stays calm */
+.cv-over > .cv-bg { bottom: auto; height: 100lvh; background: rgba(245,246,247,.42); }
+.cv-over .cv-bar, .cv-over .cv-talk-bar {
+  background: rgba(245,246,247,.78); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .cv-over > .cv-bg { background: var(--canvas); }
+  .cv-over .cv-bar, .cv-over .cv-talk-bar { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 /* what arrives after the opening (the car's full details) comes up softly */
 .cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
 @keyframes cv-in { from { opacity: 0; transform: translateY(14px); } }
