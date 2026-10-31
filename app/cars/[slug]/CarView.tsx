@@ -198,6 +198,7 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
   const [at, setAt] = useState(0)
   // the car's video (YouTube): opened over the page from the photo or the strip
   const [vid, setVid] = useState(false)
+  const [vidReady, setVidReady] = useState(false)
   const track = useRef<HTMLDivElement>(null), fullTrack = useRef<HTMLDivElement>(null), thumbs = useRef<HTMLDivElement>(null)
   const touched = useRef(0)
   // the main photo is the cover the page opens on; the gallery that turns
@@ -296,7 +297,7 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [full])
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { shut(); setVid(false) } }
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { shut(); setVid(false); setVidReady(false) } }
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [])
   // nothing behind a sheet or the full screen scrolls
@@ -597,13 +598,26 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
 
       {/* ── the full-screen gallery, at the photo that was tapped ── */}
       {/* ── the video, over the page: dark, the player in the middle ── */}
+      {/* a car with a video: the way to YouTube is opened ahead, in the
+          background (no download — only the connections), so a tap does not
+          wait on it */}
+      {video && <>
+        <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+        <link rel="preconnect" href="https://www.youtube.com" />
+        <link rel="preconnect" href="https://i.ytimg.com" />
+        <link rel="preconnect" href="https://www.google.com" />
+      </>}
       {vid && video && (
-        <div className="cv-vplayer" role="dialog" aria-modal="true" aria-label={`סרטון ${car.name}`} onClick={() => setVid(false)}>
-          <div className="cv-vframe" data-upright={upright || undefined} onClick={e => e.stopPropagation()}>
+        <div className="cv-vplayer" role="dialog" aria-modal="true" aria-label={`סרטון ${car.name}`} onClick={() => { setVid(false); setVidReady(false) }}>
+          <div className="cv-vframe" data-upright={upright || undefined} data-ready={vidReady || undefined} onClick={e => e.stopPropagation()}>
+            {/* at once: the video's own frame and a sign that it is coming */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="cv-vposter" src={`https://i.ytimg.com/vi/${video}/hqdefault.jpg`} alt="" />
+            <span className="cv-vspin" aria-hidden="true" />
             <iframe src={`https://www.youtube-nocookie.com/embed/${video}?autoplay=1&playsinline=1&rel=0&modestbranding=1`} title={`סרטון ${car.name}`}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen onLoad={() => setVidReady(true)} />
           </div>
-          <button type="button" className="cv-ic cv-full-x" aria-label="סגירת הסרטון" onClick={() => setVid(false)}><Icon k="close" /></button>
+          <button type="button" className="cv-ic cv-full-x" aria-label="סגירת הסרטון" onClick={() => { setVid(false); setVidReady(false) }}><Icon k="close" /></button>
         </div>
       )}
 
