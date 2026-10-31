@@ -92,9 +92,7 @@ async function agentOf(name: string | null) {
 // The pollution and safety indices, from a source that can be trusted (spec
 // §7: shown as the law requires; missing means not shown — never invented):
 // a manual correction first, then the official registry by the plate (read
-// here, on the server, and never passed on), then the main site's own value —
-// but not its blank form: it prints 15 and 0 when nothing was entered (an
-// electric car as the worst polluter), and an electric car cannot be above 1
+// here, on the server, and never passed on), then the main site's own value as it is
 async function indicesOf(
   recNo: string,
   ov: { pollution: number | null; safety: number | null } | null,
@@ -108,10 +106,10 @@ async function indicesOf(
     const g = await Promise.race([fetchGovIndices(detail.name, detail.year, detail.engine, detail.licensePlate).catch(() => null), cap])
     if (g && (g.pollutionGrade != null || g.safetyLevel != null)) return { pollution: g.pollutionGrade, safety: g.safetyLevel }
   }
-  let p = detail?.pollutionGrade ?? null, s = detail?.safetyLevel ?? null
-  if (p === 15 && s === 0) { p = null; s = null }
-  if (p != null && /חשמל/.test(fuel ?? '') && !/בנזין|דיזל/.test(fuel ?? '') && p > 1) p = null
-  return { pollution: p, safety: s }
+  // the main site's own value, shown as it is — 15 and 0 too (the owner's
+  // decision, 31.10.2026: what is set there is the car's value)
+  void fuel
+  return { pollution: detail?.pollutionGrade ?? null, safety: detail?.safetyLevel ?? null }
 }
 
 export async function getPublicCar(recNo: string): Promise<PublicCar | null> {
