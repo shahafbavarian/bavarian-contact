@@ -32,7 +32,7 @@ export default function TopBar({ title, watch, back }: { title: string; watch?: 
 
   const logo = (
     // eslint-disable-next-line @next/next/no-img-element
-    <img className="bm-logo" src="/brand/logo-full-dark-sm.png" alt={t.logoAlt} width={94} height={44} />
+    <img className="bm-logo" src="/brand/logo-horizontal-dark.png" alt={t.logoAlt} width={1244} height={200} />
   )
 
   // like a native app's bar: a tap on its empty part goes back to the top
@@ -62,13 +62,14 @@ export default function TopBar({ title, watch, back }: { title: string; watch?: 
         </>
       ) : (
         <>
-          <Link href="/" className="bm-logo-link" aria-label={t.brand}>{logo}</Link>
-          {/* The nav already names the page; no duplicate centered title here. */}
-          <span />
+          {/* the nav at the start, the logo at the end — where the hall keeps it */}
           <nav className="bm-nav" aria-label={t.navLabel}>
             <Link href="/cars" aria-current={pathname === '/cars' ? 'page' : undefined}>{t.navCars}</Link>
             <Link href="/team" aria-current={pathname?.startsWith('/team') ? 'page' : undefined}>{t.navTeam}</Link>
           </nav>
+          {/* The nav already names the page; no duplicate centered title here. */}
+          <span />
+          <Link href="/" className="bm-logo-link bm-logo-end" aria-label={t.brand}>{logo}</Link>
         </>
       )}
     </header>

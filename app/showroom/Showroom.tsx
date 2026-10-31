@@ -913,7 +913,9 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
             {/* inside, the logo IS the way home: it plays the walk out */}
             <Link href="/" className="sr-logo" aria-label="חזרה לדף הבית" onClick={e => { e.preventDefault(); goRef.current(0) }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/logo-wide-light.png" alt="" width={1283} height={232} />
+              {/* the light and ink marks are one shape (logo-horizontal-light is the
+                  ink file in white): their crossfade never changes the size */}
+              <img src="/brand/logo-horizontal-light.png" alt="" width={1244} height={200} />
               {/* the bright trial: the same mark in ink */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="sr-logo-ink" src="/brand/logo-horizontal-dark.png" alt="" width={1244} height={200} />

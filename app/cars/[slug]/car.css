@@ -28,12 +28,14 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
    frosted glass of the same light (DESIGN.md §7), so what scrolls under them
    stays calm */
 .cv-over > .cv-bg { bottom: auto; height: 100lvh; background: rgba(245,246,247,.42); }
-.cv-over .cv-bar, .cv-over .cv-talk-bar {
+/* (the top bar stays solid: it is the hall's own bar, continued — frosted,
+   the hall's logo showed blurred through it under this one) */
+.cv-over .cv-talk-bar {
   background: rgba(245,246,247,.78); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
 }
 @media (prefers-reduced-transparency: reduce) {
   .cv-over > .cv-bg { background: var(--canvas); }
-  .cv-over .cv-bar, .cv-over .cv-talk-bar { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .cv-over .cv-talk-bar { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 /* what arrives after the opening (the car's full details) comes up softly */
 .cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
@@ -69,11 +71,12 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
    site's other pages) ── */
 .cv-bar {
   position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between;
-  height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 12px 0 16px;
+  height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) clamp(16px, 4vw, 56px) 0;
   background: var(--canvas);
 }
 .cv-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding-inline: 2px 8px; font-size: 16px; font-weight: 500; }
-.cv-logo { display: block; height: 22px; width: auto; }
+/* one logo, one size, on every page of the site (the hall's own) */
+.cv-logo { display: block; height: clamp(30px, 3vw, 38px); width: auto; max-width: none; }
 /* a light round close (the person page's own) */
 .cv-close {
   position: relative; width: 40px; height: 40px; margin: 2px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
@@ -87,9 +90,9 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 }
 /* over the hall: the hall's own bar, continued — its paddings, its logo size,
    its hairline; the close sits exactly where the hall's menu button was */
-.cv-over .cv-bar { padding-inline: clamp(16px, 4vw, 56px); box-shadow: 0 1px 0 rgba(20,23,26,.09); }
+.cv-over .cv-bar { box-shadow: 0 1px 0 rgba(20,23,26,.09); }
 /* the close is fixed (out of the row): the logo alone keeps the hall's end */
-.cv-over .cv-logo { height: clamp(30px, 3vw, 38px); margin-inline-start: auto; }
+.cv-over .cv-logo { margin-inline-start: auto; }
 .cv-over .cv-close {
   position: fixed; z-index: 2; top: calc(env(safe-area-inset-top) + 10px);
   inset-inline-start: clamp(14px, calc(4vw - 2px), 54px);
@@ -374,7 +377,6 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 /* ── a computer: two columns, the price card beside the gallery and in view ── */
 @media (min-width: 1000px) {
   .cv { --g: 28px; }
-  .cv-bar { padding-inline: 18px; }
   .cv-page {
     grid-template-columns: minmax(0, 1fr) 380px; column-gap: 28px; row-gap: 0;
     padding: 28px var(--g) 64px;
