@@ -72,6 +72,15 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
   display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%;
   background: none; cursor: pointer; touch-action: manipulation; color: var(--ink);
 }
+/* over the hall: the hall's own bar, continued — its paddings, its logo size,
+   its hairline; the close sits exactly where the hall's menu button was */
+.cv-over .cv-bar { padding-inline: clamp(16px, 4vw, 56px); box-shadow: 0 1px 0 rgba(20,23,26,.09); }
+/* the close is fixed (out of the row): the logo alone keeps the hall's end */
+.cv-over .cv-logo { height: clamp(30px, 3vw, 38px); margin-inline-start: auto; }
+.cv-over .cv-close {
+  position: fixed; z-index: 2; top: calc(env(safe-area-inset-top) + 10px);
+  inset-inline-start: clamp(14px, calc(4vw - 2px), 54px);
+}
 @media (hover: hover) { .cv-ic:hover { background: var(--soft); } }
 
 /* ── the page ── */

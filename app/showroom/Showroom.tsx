@@ -144,10 +144,22 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   }
   const openPersonRef = useRef(openPerson)
   openPersonRef.current = openPerson
+  // The close plays first; the address goes home only once the layer is gone.
+  // (history.back() at the start handed Next's router a popstate to restore
+  // mid-flight — two long main-thread tasks that froze the very animation)
   const closePerson = () => {
     if (!personRef.current || personRef.current.closing) return
-    if (pushedPerson.current) history.back()   // the address goes home; popstate plays the close
-    else { setPerson(p => p && { ...p, closing: true }); handle.current?.hideCards(false) }
+    setPerson(p => p && { ...p, closing: true })
+    handle.current?.hideCards(false)
+  }
+  // a car's close: the layer plays it itself (its own `play`) — the hall only
+  // brings its cards back under the flight. No state flip here: a re-render
+  // of the hall mid-flight was a long main-thread task that froze the frame
+  const carCloseStart = () => { if (personRef.current && !personRef.current.closing) handle.current?.hideCards(false) }
+  const personClosed = () => {
+    setPerson(null)
+    // the router's restore work runs a frame after the unmount's, never both at once
+    if (pushedPerson.current) { pushedPerson.current = false; requestAnimationFrame(() => history.back()) }
   }
   const personData = (c: Card) => {
     const id = c.href.split('/').pop() ?? ''
@@ -1166,8 +1178,8 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
           url={`${SITE}${overHref(all[person.i])}`}
           from={() => handle.current?.cardRect(person.i) ?? null}
           closing={person.closing}
-          onClosed={() => setPerson(null)}
-          onClose={closePerson}
+          onClosed={personClosed}
+          onClose={carCloseStart}
         />
       )}
       {person && all[person.i].person && (
@@ -1176,7 +1188,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
           p={personData(all[person.i])}
           from={() => handle.current?.cardRect(person.i) ?? null}
           closing={person.closing}
-          onClosed={() => setPerson(null)}
+          onClosed={personClosed}
           onClose={closePerson}
         />
       )}

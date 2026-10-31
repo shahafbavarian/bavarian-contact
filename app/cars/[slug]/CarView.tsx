@@ -357,8 +357,11 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
   return (
     <div ref={rootEl} className={over ? 'cv cv-over sr-sheet' : 'cv cv-doc'} role={over ? 'dialog' : undefined} aria-modal={over || undefined} aria-label={over ? car.name : undefined}>
       {over && <div ref={refs?.bg} className="cv-bg" aria-hidden="true" />}
-      {/* the bar, as the site's other pages: the way back at the start, the logo at the end */}
-      <header className="cv-bar cv-rest">
+      {/* the bar: on the page, the way back at the start and the logo at the
+          end; over the hall it continues the hall's own bar — same height,
+          same logo in the same spot, the close where the menu was, and no
+          entrance of its own (a bar that moves reads as a jump) */}
+      <header className="cv-bar">
         {over
           ? <button type="button" className="cv-close" aria-label="סגירה" onClick={onClose}><Icon k="close" s={16} /></button>
           : <a href="/showroom/cars" className="cv-back"><Icon k="back" s={18} />הרכבים</a>}
