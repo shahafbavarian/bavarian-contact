@@ -25,6 +25,12 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 /* what arrives after the opening (the car's full details) comes up softly */
 .cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
 @keyframes cv-in { from { opacity: 0; transform: translateY(14px); } }
+/* the close: every detail goes at once, before the photo flies home */
+.cv-over[data-leaving] .cv-rest,
+.cv-over[data-leaving] .cv-page > :not(.cv-gallery):not(.cv-side),
+.cv-over[data-leaving] .cv-count {
+  opacity: 0 !important; animation: none !important; transition: opacity 160ms ease-out !important; pointer-events: none;
+}
 
 .cv {
   --canvas: #F5F6F7; --surface: #FFFFFF; --soft: #E9ECEF; --ink: #14171A; --muted: #5A6169;
@@ -108,7 +114,11 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
   transition: opacity 200ms, outline-color 200ms;
 }
 .cv-thumbs button[aria-selected="true"] { opacity: 1; outline-color: var(--ink); }
-.cv-thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cv-thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 320ms var(--ease); }
+/* each comes up softly once it is there (never a pop, never a gap) */
+.cv-thumbs img[data-in] { opacity: 1; }
+.cv-thumb-ph { flex: 0 0 auto; width: 72px; aspect-ratio: 3 / 2; border-radius: 8px; background: var(--soft); }
+@media (min-width: 1000px) { .cv-thumb-ph { width: 96px; } }
 
 /* ── cards ── */
 .cv-card {
@@ -207,13 +217,27 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-about { font-size: 15px; white-space: pre-line; color: #2A2F34; }
 
 /* the indices */
-.cv-scale + .cv-scale { margin-top: 18px; }
-.cv-scale-h { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 8px; }
-.cv-scale-h b { font-size: 17px; font-weight: 600; }
-.cv-scale-bar { display: flex; gap: 2px; height: 14px; }
-.cv-scale-bar i { flex: 1; border-radius: 3px; opacity: .28; }
-.cv-scale-bar i[data-on] { opacity: 1; transform: scaleY(1.45); border-radius: 4px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--ink); }
-.cv-scale-ends { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
+/* each index a panel of its own: the value as a coloured badge, the scale's
+   steps in full colour (softened), the car's step raised and ringed */
+.cv-scales { display: grid; gap: 12px; }
+.cv-scale { padding: 16px; border-radius: 14px; background: var(--canvas); }
+.cv-scale-h { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.cv-scale-v {
+  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+  font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1px rgba(20,23,26,.08);
+}
+.cv-scale-t { display: grid; gap: 1px; }
+.cv-scale-t b { font-size: 15.5px; font-weight: 600; }
+.cv-scale-t small { font-size: 13px; color: var(--muted); }
+.cv-scale-bar { display: flex; align-items: center; gap: 3px; height: 22px; }
+.cv-scale-bar i { flex: 1; height: 10px; border-radius: 3px; opacity: .32; }
+.cv-scale-bar i[data-on] {
+  height: 22px; border-radius: 5px; opacity: 1; flex: 1.6;
+  box-shadow: 0 0 0 2px var(--canvas), 0 0 0 3.5px var(--ink);
+}
+.cv-scale-ends { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: var(--muted); }
+@media (min-width: 600px) { .cv-scales { grid-template-columns: 1fr 1fr; } }
 
 /* the video */
 .cv-video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }

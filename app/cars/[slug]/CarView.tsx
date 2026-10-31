@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PublicCar } from '@/lib/car-public'
 import './car.css'
 import { FAMILIES, familiesOf } from '@/app/showroom/colors'
@@ -55,12 +55,22 @@ function Icon({ k, s = 20 }: { k: IconK; s?: number }) {
   }
 }
 
-function Scale({ label, value, colors, from, low, high }: { label: string; value: number; colors: string[]; from: number; low: string; high: string }) {
+// an index on its official scale: the value in its own colour, the scale's
+// steps under it with the car's step raised and marked, the ends named
+const inkOn = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+  return l > 0.6 ? '#14171A' : '#fff'
+}
+function Scale({ label, value, colors, from, max, low, high }: { label: string; value: number; colors: string[]; from: number; max: number; low: string; high: string }) {
+  const c = colors[Math.min(colors.length - 1, Math.max(0, value - from))]
   return (
     <div className="cv-scale">
-      <div className="cv-scale-h"><span>{label}</span><b dir="ltr">{value}</b></div>
-      <div className="cv-scale-bar" dir="ltr">
-        {colors.map((c, i) => <i key={i} style={{ background: c }} data-on={i + from === value ? '' : undefined} />)}
+      <div className="cv-scale-h">
+        <span className="cv-scale-v" style={{ background: c, color: inkOn(c) }} dir="ltr">{value}</span>
+        <span className="cv-scale-t"><b>{label}</b><small>{value} מתוך {max}</small></span>
+      </div>
+      <div className="cv-scale-bar" dir="ltr" role="img" aria-label={`${label}: ${value} מתוך ${max}`}>
+        {colors.map((col, i) => <i key={i} style={{ background: col }} data-on={i + from === value ? '' : undefined} />)}
       </div>
       <div className="cv-scale-ends" dir="ltr"><small>{low}</small><small>{high}</small></div>
     </div>
@@ -70,7 +80,7 @@ function Scale({ label, value, colors, from, low, high }: { label: string; value
 // mode 'over': the same page opened over the hall (app/showroom/CarOverlay),
 // growing out of the card's photo; until the car's full details arrive
 // (loading) only what the card already carried is shown
-export default function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }: {
+function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }: {
   car: PublicCar; url: string; qr: string
   mode?: 'page' | 'over'
   loading?: boolean
@@ -250,8 +260,13 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
     const t = setInterval(() => {
       if (!seen.current || sheet || full !== null || document.hidden || Date.now() - touched.current < 8000) return
       if (photoEl.current?.hasAttribute('data-flying')) return
-      // the first turn: the gallery's first photo comes up from under the cover
-      if (cover) { setCover(false); return }
+      // the first turn: the gallery's first photo comes up from under the
+      // cover — once it is there (never an empty frame)
+      if (cover) {
+        const first = track.current?.querySelector('img')
+        if (first && first.complete && first.naturalWidth) setCover(false)
+        return
+      }
       if (gal.length < 2) return
       const next = (at + 1) % gal.length
       show(next, next !== 0)
@@ -377,13 +392,17 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
             {hero && <img className="cv-cover" src={heroSrc(hero)} alt={car.name} fetchPriority="high" decoding="async" draggable={false} onClick={() => setFull(0)} />}
             {!cover && gal.length > 1 && <span className="cv-count" dir="ltr">{at + 1} / {gal.length}</span>}
           </div>
-          {gal.length > 1 && (
+          {/* the strip's place is held while the gallery is on its way: it
+              never arrives late and pushes the page down */}
+          {loading && <div className="cv-thumbs cv-rest" aria-hidden="true">{[0, 1, 2, 3, 4, 5].map(i => <span key={i} className="cv-thumb-ph" />)}</div>}
+          {!loading && gal.length > 1 && (
             <div ref={thumbs} className="cv-thumbs cv-rest" role="tablist" aria-label="תמונות ממוזערות">
               {gal.map((u, i) => (
                 <button key={u} type="button" role="tab" aria-selected={!cover && i === at} aria-label={`תמונה ${i + 1}`}
                   onClick={() => { touched.current = Date.now(); setCover(false); show(i) }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={u} alt="" loading="lazy" decoding="async" draggable={false} />
+                  <img src={u} alt="" loading="lazy" decoding="async" draggable={false}
+                    ref={el => { if (el?.complete && el.naturalWidth) el.dataset.in = '' }} onLoad={e => { e.currentTarget.dataset.in = '' }} />
                 </button>
               ))}
             </div>
@@ -459,8 +478,12 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
           <section className="cv-card" aria-labelledby="cv-idx-h">
             <h2 id="cv-idx-h">זיהום ובטיחות</h2>
             {!hasIdx && <p className="cv-na">המידע על דרגת זיהום האוויר ורמת אבזור הבטיחות של הרכב אינו זמין כרגע.</p>}
-            {car.pollution != null && <Scale label="דרגת זיהום אוויר" value={car.pollution} colors={POLLUTION} from={1} low="1 · מזהם פחות" high="15 · מזהם יותר" />}
-            {car.safety != null && <Scale label="רמת אבזור בטיחותי" value={car.safety} colors={SAFETY} from={0} low="0 · נמוכה" high="8 · גבוהה" />}
+            {hasIdx && (
+              <div className="cv-scales">
+                {car.pollution != null && <Scale label="דרגת זיהום אוויר" value={car.pollution} colors={POLLUTION} from={1} max={15} low="מזהם פחות" high="מזהם יותר" />}
+                {car.safety != null && <Scale label="רמת אבזור בטיחותי" value={car.safety} colors={SAFETY} from={0} max={8} low="נמוכה" high="גבוהה" />}
+              </div>
+            )}
           </section>
         )}
 
@@ -610,3 +633,6 @@ function SheetHead({ title, onClose, drag }: { title: string; onClose: () => voi
     </div>
   )
 }
+
+// over the hall it is drawn once: nothing the layer changes (its close) redraws the page
+export default memo(CarView)

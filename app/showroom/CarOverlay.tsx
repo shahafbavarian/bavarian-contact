@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import CarView from '../cars/[slug]/CarView'
 import type { PublicCar } from '@/lib/car-public'
 
@@ -34,6 +34,9 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
   onClose: () => void
 }) {
   const [full, setFull] = useState<{ car: PublicCar; qr: string } | null>(null)
+  // the card's own details, fixed for the life of the layer (a new object
+  // each time the hall renders would rebuild the whole page for nothing)
+  const [q] = useState(quick)
   const photo = useRef<HTMLDivElement>(null), bg = useRef<HTMLDivElement>(null), host = useRef<HTMLDivElement>(null)
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches
   const root = () => host.current?.querySelector<HTMLElement>('.cv-over') ?? null
@@ -81,12 +84,20 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     if (matchMedia('(pointer: fine)').matches) root()?.querySelector<HTMLElement>('.cv-close')?.focus({ preventScroll: true })
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // close: the same move played back into the card
-  useEffect(() => {
-    if (!closing) return
+  // close: the same move played back into the card. It starts at the very
+  // tap (the X, the swipe, Escape) — straight on the page, before the hall and
+  // the address do anything — so the details are gone at once; a close from
+  // the browser's back arrives through `closing` and plays the same
+  const started = useRef(false), timer = useRef(0)
+  const closedRef = useRef(onClosed)
+  closedRef.current = onClosed
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const play = () => {
+    if (started.current) return
+    started.current = true; closingRef.current = true
     const ph = photo.current, card = from()
     let done = false
-    const end = () => { if (!done) { done = true; onClosed() } }
+    const end = () => { if (!done) { done = true; clearTimeout(timer.current); closedRef.current() } }
     // a close during the opening goes on from exactly where each piece is
     const now = (el: HTMLElement) => {
       const cs = getComputedStyle(el), v = { opacity: cs.opacity, transform: cs.transform }
@@ -106,11 +117,10 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     // view, it comes in as it flies)
     const HEAD = 140
     ph.setAttribute('data-closing', '')   // the cover — the card's own photo — over the gallery
-    const fade = [...parts(), ...Array.from(r?.querySelectorAll<HTMLElement>('.cv-page > :not(.cv-gallery):not(.cv-side), .cv-count') ?? [])]
-    fade.forEach(el => {
-      const v = now(el)
-      el.animate([{ opacity: v.opacity, transform: v.transform }, { opacity: 0, transform: v.transform }], { duration: 160, easing: EASE_OUT, fill: 'forwards' })
-    })
+    // the details: gone at once, by a rule nothing can outweigh (on the
+    // iPhone the script's fade did not always hold — the title card stayed
+    // over the hall while the photo flew home)
+    r?.setAttribute('data-leaving', '')
     if (bg.current) {
       const v = now(bg.current)
       bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 320, delay: HEAD + 60, easing: EASE_OUT, fill: 'forwards' })
@@ -124,14 +134,16 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     // the layer goes only once it is invisible
     const f = ph.animate([{ opacity: pv.opacity }, { opacity: 0 }], { duration: 140, delay: HEAD + CLOSE_MS - 140, easing: 'linear', fill: 'forwards' })
     f.onfinish = () => requestAnimationFrame(end)
-    const t = setTimeout(end, HEAD + CLOSE_MS + 200)
-    return () => clearTimeout(t)
-  }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
+    timer.current = window.setTimeout(end, HEAD + CLOSE_MS + 200)
+  }
+  useEffect(() => { if (closing) play() }, [closing])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pulling down never reloads the page; a strong swipe down — far and fast —
   // from the top closes the car. Sideways (the gallery) is left alone
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+  const close = useCallback(() => { play(); closeRef.current() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+  const viewRefs = useRef({ photo, bg }).current
   useEffect(() => {
     const el = root()
     if (!el) return
@@ -150,7 +162,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       if (side || document.documentElement.hasAttribute('data-cv-lock')) return
       const dy = e.changedTouches[0].clientY - y0, dt = Math.max(1, performance.now() - t0)
       const dx = Math.abs(e.changedTouches[0].clientX - x0)
-      if (fromTop && dy > 110 && dy > dx * 1.5 && dy / dt > 0.6) closeRef.current()
+      if (fromTop && dy > 110 && dy > dx * 1.5 && dy / dt > 0.6) close()
     }
     el.addEventListener('touchstart', start, { passive: true })
     el.addEventListener('touchmove', move, { passive: false })
@@ -162,16 +174,16 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || document.querySelector('.cv-sheet[data-open], .cv-full')) return
-      onClose()
+      close()
     }
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [close])
 
-  const car = full?.car ?? quick
+  const car = full?.car ?? q
   return (
     <div ref={host} className="cv-host">
-      <CarView car={car} url={url} qr={full?.qr ?? ''} mode="over" loading={!full} onClose={onClose} refs={{ photo, bg }} />
+      <CarView car={car} url={url} qr={full?.qr ?? ''} mode="over" loading={!full} onClose={close} refs={viewRefs} />
     </div>
   )
 }
