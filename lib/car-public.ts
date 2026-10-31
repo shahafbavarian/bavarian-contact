@@ -37,7 +37,9 @@ export type PublicCar = {
   colorInt: string | null
   listPrice: string | null
   description: string | null
+  /** the main photo: the cover the page opens on (the hall's card shows it) */
   hero: string | null
+  /** the gallery that turns after the cover — the main photo is not in it */
   images: string[]
   pollution: number | null
   safety: number | null
@@ -101,7 +103,9 @@ async function indicesOf(
 ): Promise<{ pollution: number | null; safety: number | null }> {
   if (ov && (ov.pollution != null || ov.safety != null)) return { pollution: ov.pollution, safety: ov.safety }
   if (detail?.licensePlate) {
-    const g = await fetchGovIndices(detail.name, detail.year, detail.engine, detail.licensePlate).catch(() => null)
+    // the registry is slow at times: the page never waits on it for long
+    const cap = new Promise<null>(res => setTimeout(() => res(null), 2500))
+    const g = await Promise.race([fetchGovIndices(detail.name, detail.year, detail.engine, detail.licensePlate).catch(() => null), cap])
     if (g && (g.pollutionGrade != null || g.safetyLevel != null)) return { pollution: g.pollutionGrade, safety: g.safetyLevel }
   }
   let p = detail?.pollutionGrade ?? null, s = detail?.safetyLevel ?? null
@@ -112,13 +116,21 @@ async function indicesOf(
 
 export async function getPublicCar(recNo: string): Promise<PublicCar | null> {
   if (!/^\d{1,9}$/.test(recNo)) return null
-  const [summary, detail, cdn, videos, ov] = await Promise.all([
+  // everything at once: the indices and the agent start as soon as the
+  // car's own page is read, beside the rest (never one after another)
+  const detailP = fetchCarDetail(recNo).catch(() => null)
+  const ovP = overridesOf(recNo)
+  const fuelOf = (d: Awaited<typeof detailP>) => clean(Object.entries(d?.specs ?? {}).find(([k]) => k.includes('סוג מנוע'))?.[1])
+  const [summary, detail, cdn, videos, ov, idx, agent] = await Promise.all([
     fetchCarSummaryByRecNo(recNo).catch(() => null),
-    fetchCarDetail(recNo).catch(() => null),
+    detailP,
     getCachedImageUrl(recNo),
     videosOf(recNo),
-    overridesOf(recNo),
+    ovP,
+    Promise.all([ovP, detailP]).then(([o, d]) => indicesOf(recNo, o, d, fuelOf(d))).catch(() => ({ pollution: null, safety: null })),
+    detailP.then(d => agentOf(d?.agentName ?? null)),
   ])
+  void ov
   // on the main site's list: the car is for sale. Sold or gone: no public page here yet
   if (!summary) return null
   const sp = detail?.specs ?? {}
@@ -152,7 +164,7 @@ export async function getPublicCar(recNo: string): Promise<PublicCar | null> {
   const list = num(spec('מחירון'))
 
   const hero = freshImage(summary.imageUrl, cdn ? { url: cdn.url, source: cdn.source } : null) || null
-  const images = Array.from(new Set([hero, ...(detail?.images ?? []).filter(i => i !== summary.imageUrl)].filter(Boolean) as string[]))
+  const images = Array.from(new Set((detail?.images ?? []).filter(i => i && i !== summary.imageUrl && i !== hero)))
 
   return {
     recNo, slug: carSlug(recNo, summary.name), make, model, trim, name: summary.name.trim(),
@@ -165,7 +177,7 @@ export async function getPublicCar(recNo: string): Promise<PublicCar | null> {
     listPrice: list ? shekel(list) : null,
     description: clean(detail?.description),
     hero, images,
-    ...(await indicesOf(recNo, ov, detail, clean(spec('סוג מנוע')))),
-    videos, agent: await agentOf(detail?.agentName ?? null),
+    ...idx,
+    videos, agent,
   }
 }

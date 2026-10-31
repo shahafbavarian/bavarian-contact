@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PublicCar } from '@/lib/car-public'
 import './car.css'
+import { FAMILIES, familiesOf } from '@/app/showroom/colors'
 
 // A car's page (docs/CAR_PAGE_SPEC.md), in order and in plain sight: the
 // gallery (a 3:2 main photo, its thumbnails under it), the name and the price
@@ -17,11 +18,16 @@ const AUTO_MS = 4500
 
 // the main photo through the hall's own image variant (already cached there)
 const heroSrc = (u: string) => `/_next/image?url=${encodeURIComponent(u)}&w=828&q=85`
-const srcOf = (u: string, i: number) => (i === 0 ? heroSrc(u) : u)
+// a colour's dot (the hall filter's own): by its family, English or Hebrew name
+const dotsOf = (name: string) => {
+  const keys = familiesOf(name)
+  const fams = keys.length ? FAMILIES.filter(f => keys.includes(f.key)) : FAMILIES.filter(f => name.includes(f.label))
+  return fams.map(f => f.dot)
+}
 const ytId = (u: string) => u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/)?.[1] ?? null
 
 type Sheet = 'finance' | 'lead' | 'share' | null
-type IconK = 'year' | 'km' | 'hand' | 'hp' | 'fuel' | 'body' | 'wa' | 'call' | 'form' | 'share' | 'print' | 'back' | 'close' | 'play' | 'chev'
+type IconK = 'year' | 'km' | 'hand' | 'hp' | 'fuel' | 'body' | 'wa' | 'call' | 'form' | 'share' | 'print' | 'back' | 'close' | 'play' | 'chev' | 'send' | 'check'
 
 const POLLUTION = ['#1a6b1a', '#2a8b2a', '#3ea030', '#68be1a', '#90cc00', '#c0d400', '#e0d800', '#f0bc00', '#f08c00', '#e85800', '#d02800', '#b81000', '#980800', '#740404', '#520000']
 const SAFETY = ['#520000', '#980800', '#d02800', '#f08c00', '#e0d800', '#68be1a', '#2a8b2a', '#1060c8', '#003690']
@@ -44,6 +50,8 @@ function Icon({ k, s = 20 }: { k: IconK; s?: number }) {
     case 'close': return <svg {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>
     case 'play': return <svg {...p}><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none" /></svg>
     case 'chev': return <svg {...p}><path d="M15 6l-6 6 6 6" /></svg>
+    case 'send': return <svg {...p}><path d="M20 4L3 11l7 2.5L12.5 21z" /><path d="M20 4L10 13.5" /></svg>
+    case 'check': return <svg {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
   }
 }
 
@@ -188,7 +196,19 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
   const [play, setPlay] = useState(false)
   const track = useRef<HTMLDivElement>(null), fullTrack = useRef<HTMLDivElement>(null), thumbs = useRef<HTMLDivElement>(null)
   const touched = useRef(0)
-  const imgs = car.images
+  // the main photo is the cover the page opens on; the gallery that turns
+  // after it does not hold it (no photo twice). The full screen shows both
+  const hero = car.hero
+  const gal = car.images
+  const allImgs = hero ? [hero, ...gal] : gal
+  const [cover, setCover] = useState(true)
+  const photoEl = useRef<HTMLDivElement | null>(null)
+  const setPhoto = (el: HTMLDivElement | null) => {
+    photoEl.current = el
+    const r = refs?.photo
+    if (typeof r === 'function') r(el); else if (r) (r as React.MutableRefObject<HTMLDivElement | null>).current = el
+  }
+  const seen = useRef(true)
   const km = car.km && (/\d/.test(car.km) ? `${car.km} ק״מ` : car.km)
   const hand = car.hand && (car.hand === 'חדש' ? 'יד חדשה' : `יד ${car.hand}`)
 
@@ -213,23 +233,44 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
   const hasIdx = car.pollution != null || car.safety != null
   const statusWord = car.status === 'stock' ? 'במלאי' : 'בדרך לארץ'
 
-  // ── the gallery: it turns by itself, rests a while after a touch ──
+  // ── the gallery: it turns by itself — only while it is on the screen —
+  // and rests a while after a touch ──
   const show = (i: number, smooth = true) => {
     const el = track.current; if (!el) return
     el.scrollTo({ left: -i * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' })
   }
   useEffect(() => {
-    if (imgs.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const el = photoEl.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => { seen.current = e.isIntersecting }, { threshold: 0.4 })
+    io.observe(el); return () => io.disconnect()
+  }, [])
+  useEffect(() => {
+    if (!gal.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const t = setInterval(() => {
-      if (sheet || full !== null || Date.now() - touched.current < 8000 || document.hidden) return
-      const next = (at + 1) % imgs.length
+      if (!seen.current || sheet || full !== null || document.hidden || Date.now() - touched.current < 8000) return
+      if (photoEl.current?.hasAttribute('data-flying')) return
+      // the first turn: the gallery's first photo comes up from under the cover
+      if (cover) { setCover(false); return }
+      if (gal.length < 2) return
+      const next = (at + 1) % gal.length
       show(next, next !== 0)
     }, AUTO_MS)
     return () => clearInterval(t)
-  }, [at, imgs.length, sheet, full])
-  const onTrack = () => { const el = track.current; if (el) setAt(Math.round(Math.abs(el.scrollLeft) / el.clientWidth)) }
-  // the strip under the photo follows it
-  useEffect(() => { thumbs.current?.children[at]?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }) }, [at])
+  }, [at, gal.length, sheet, full, cover])   // eslint-disable-line react-hooks/exhaustive-deps
+  const onTrack = () => {
+    const el = track.current; if (!el) return
+    setAt(Math.round(Math.abs(el.scrollLeft) / el.clientWidth))
+    if (cover && !photoEl.current?.hasAttribute('data-closing')) setCover(false)
+  }
+  // the strip under the photo follows it — sideways only (scrollIntoView
+  // moved the whole page up to it)
+  useEffect(() => {
+    const s = thumbs.current, b = s?.children[at] as HTMLElement | undefined
+    if (!s || !b || cover) return
+    const sr = s.getBoundingClientRect(), br = b.getBoundingClientRect()
+    s.scrollBy({ left: br.left + br.width / 2 - (sr.left + sr.width / 2), behavior: 'smooth' })
+  }, [at, cover])
 
   // the full screen opens at the very photo that was tapped
   useEffect(() => {
@@ -278,7 +319,7 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
   const sharePhotos = async () => {
     setShareMsg('מכין את התמונות…')
     try {
-      const files = await Promise.all(imgs.slice(0, 8).map(async (u, i) => {
+      const files = await Promise.all(allImgs.slice(0, 8).map(async (u, i) => {
         const b = await (await fetch(`/api/car-image?url=${encodeURIComponent(u)}`)).blob()
         return new File([b], `${car.recNo}-${i + 1}.jpg`, { type: b.type || 'image/jpeg' })
       }))
@@ -287,52 +328,62 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
     } catch { setShareMsg('') }
   }
 
-  const Talk = ({ where }: { where: 'bar' | 'side' }) => (
-    <div className={where === 'bar' ? 'cv-talk cv-talk-bar cv-rest' : 'cv-talk'}>
-      <a className="cv-btn cv-primary" href={waHref} target="_blank" rel="noopener noreferrer"><Icon k="wa" />{car.price ? 'WhatsApp' : 'בקשת מחיר'}</a>
+  // the ways to talk (DESIGN.md §7): WhatsApp the one primary, in ink; the
+  // call and the form beside it. On a phone a bar pinned to the bottom
+  const waLabel = car.price ? 'שליחת וואטסאפ' : 'בקשת מחיר בוואטסאפ'
+  const toLead = () => { setLead('idle'); openSheet('lead') }
+  const Talk = ({ where }: { where: 'bar' | 'side' }) => where === 'bar' ? (
+    <div className="cv-talk-bar cv-rest">
+      <a className="cv-btn cv-primary cv-wa" href={waHref} target="_blank" rel="noopener noreferrer"><Icon k="wa" />{waLabel}</a>
+      <a className="cv-sq" href={TEL} aria-label={`התקשרו ${PHONE}`}><Icon k="call" /><small>שיחה</small></a>
+      <button type="button" className="cv-sq" onClick={toLead} aria-label="השאירו פרטים"><Icon k="form" /><small>פרטים</small></button>
+    </div>
+  ) : (
+    <div className="cv-talk">
+      <a className="cv-btn cv-primary cv-wa" href={waHref} target="_blank" rel="noopener noreferrer"><Icon k="wa" />{waLabel}</a>
       <a className="cv-btn" href={TEL} aria-label={`התקשרו ${PHONE}`}><Icon k="call" />התקשרו</a>
-      <button type="button" className="cv-btn" onClick={() => { setLead('idle'); openSheet('lead') }}><Icon k="form" />השאירו פרטים</button>
+      <button type="button" className="cv-btn" onClick={toLead}><Icon k="form" />השאירו פרטים</button>
     </div>
   )
 
   return (
     <div ref={rootEl} className={over ? 'cv cv-over sr-sheet' : 'cv cv-doc'} role={over ? 'dialog' : undefined} aria-modal={over || undefined} aria-label={over ? car.name : undefined}>
       {over && <div ref={refs?.bg} className="cv-bg" aria-hidden="true" />}
+      {/* the bar, as the site's other pages: the way back at the start, the logo at the end */}
       <header className="cv-bar cv-rest">
         {over
-          ? <button type="button" className="cv-ic cv-close" aria-label="סגירה" onClick={onClose}><Icon k="close" /></button>
-          : <a href="/showroom/cars" className="cv-ic" aria-label="לכל הרכבים"><Icon k="back" /></a>}
+          ? <button type="button" className="cv-close" aria-label="סגירה" onClick={onClose}><Icon k="close" s={16} /></button>
+          : <a href="/showroom/cars" className="cv-back"><Icon k="back" s={18} />הרכבים</a>}
         {over
           // eslint-disable-next-line @next/next/no-img-element
-          ? <span className="cv-logo-a"><img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} /></span>
+          ? <img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} />
           // eslint-disable-next-line @next/next/no-img-element
-          : <a href="/showroom" className="cv-logo-a" aria-label="בוואריאן מוטורס"><img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} /></a>}
-        <div className="cv-bar-end">
-          <button type="button" className="cv-ic" aria-label="שיתוף" onClick={() => openSheet('share')}><Icon k="share" /></button>
-          <button type="button" className="cv-ic" aria-label="הדפסה" onClick={() => print()}><Icon k="print" /></button>
-        </div>
+          : <a href="/showroom" aria-label="בוואריאן מוטורס"><img className="cv-logo" src="/brand/logo-horizontal-dark.png" alt="בוואריאן מוטורס" width={1244} height={200} /></a>}
       </header>
 
       <main className="cv-page">
         {/* ── the gallery ── */}
         <section className="cv-gallery" aria-label="תמונות הרכב">
-          <div ref={refs?.photo} className="cv-photo">
+          <div ref={setPhoto} className="cv-photo" data-cover={cover || undefined}>
             <div ref={track} className="cv-track" onScroll={onTrack} onPointerDown={() => { touched.current = Date.now() }}>
-              {imgs.map((u, i) => (
-                <button key={u} type="button" className="cv-slide" aria-label={`תמונה ${i + 1} במסך מלא`} onClick={() => setFull(i)}>
+              {gal.map((u, i) => (
+                <button key={u} type="button" className="cv-slide" aria-label={`תמונה ${i + 1} במסך מלא`} onClick={() => setFull(cover && hero ? 0 : i + (hero ? 1 : 0))}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={srcOf(u, i)} alt={i === 0 ? car.name : ''} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" fetchPriority={i === 0 ? 'high' : undefined} draggable={false} />
+                  <img src={u} alt="" loading={i === 0 ? 'eager' : 'lazy'} decoding="async" draggable={false} />
                 </button>
               ))}
             </div>
-            {imgs.length > 1 && <span className="cv-count" dir="ltr">{at + 1} / {imgs.length}</span>}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {hero && <img className="cv-cover" src={heroSrc(hero)} alt={car.name} fetchPriority="high" decoding="async" draggable={false} onClick={() => setFull(0)} />}
+            {!cover && gal.length > 1 && <span className="cv-count" dir="ltr">{at + 1} / {gal.length}</span>}
           </div>
-          {imgs.length > 1 && (
+          {gal.length > 1 && (
             <div ref={thumbs} className="cv-thumbs cv-rest" role="tablist" aria-label="תמונות ממוזערות">
-              {imgs.map((u, i) => (
-                <button key={u} type="button" role="tab" aria-selected={i === at} aria-label={`תמונה ${i + 1}`} onClick={() => { touched.current = Date.now(); show(i) }}>
+              {gal.map((u, i) => (
+                <button key={u} type="button" role="tab" aria-selected={!cover && i === at} aria-label={`תמונה ${i + 1}`}
+                  onClick={() => { touched.current = Date.now(); setCover(false); show(i) }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={srcOf(u, i)} alt="" loading="lazy" decoding="async" draggable={false} />
+                  <img src={u} alt="" loading="lazy" decoding="async" draggable={false} />
                 </button>
               ))}
             </div>
@@ -378,7 +429,12 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
           {groups.map(([g, rows]) => (
             <div key={g} className="cv-group">
               <h3>{g}</h3>
-              <dl className="cv-rows">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><bdi>{v}</bdi></dd></div>)}</dl>
+              <dl className="cv-rows">{rows.map(([k, v]) => (
+                <div key={k}><dt>{k}</dt><dd>
+                  {k.startsWith('צבע') && dotsOf(v).map((d, i) => <i key={i} className="cv-dot" style={{ background: d }} aria-hidden="true" />)}
+                  <bdi>{v}</bdi>
+                </dd></div>
+              ))}</dl>
             </div>
           ))}
         </section>
@@ -390,9 +446,11 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
           </section>
         )}
 
-        {hasIdx && (
+        {/* shown always (DESIGN.md §8): the values, or plainly that there are none */}
+        {(
           <section className="cv-card" aria-labelledby="cv-idx-h">
             <h2 id="cv-idx-h">זיהום ובטיחות</h2>
+            {!hasIdx && <p className="cv-na">המידע על דרגת זיהום האוויר ורמת אבזור הבטיחות של הרכב אינו זמין כרגע.</p>}
             {car.pollution != null && <Scale label="דרגת זיהום אוויר" value={car.pollution} colors={POLLUTION} from={1} low="1 · מזהם פחות" high="15 · מזהם יותר" />}
             {car.safety != null && <Scale label="רמת אבזור בטיחותי" value={car.safety} colors={SAFETY} from={0} low="0 · נמוכה" high="8 · גבוהה" />}
           </section>
@@ -461,16 +519,40 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
       )}
 
       <section ref={el => { sheetEls.current.lead = el }} className="cv-sheet" data-open={sheet === 'lead' || undefined} aria-label="השארת פרטים" aria-hidden={sheet !== 'lead'}>
-        <SheetHead title="השאירו פרטים ונחזור אליכם" onClose={shut} drag={head} />
-        <div className="cv-sheet-in">
-          {lead === 'sent' ? <p className="cv-done">תודה! נחזור אליכם בהקדם.</p> : (
+        <SheetHead title={lead === 'sent' ? 'הפרטים התקבלו' : 'נשמח לחזור אליכם'} onClose={shut} drag={head} />
+        <div className="cv-sheet-in cv-lead">
+          {/* the car it is about, as on the page */}
+          <div className="cv-lead-car">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {hero && <img src={heroSrc(hero)} alt="" />}
+            <span>
+              <b dir="ltr">{car.name}</b>
+              <small>{[car.year, car.price ?? 'מחיר לפי בקשה'].filter(Boolean).join(' · ')} · מודעה {car.recNo}</small>
+            </span>
+          </div>
+          {lead === 'sent' ? (
+            <div className="cv-lead-done" role="status">
+              <i><Icon k="check" s={28} /></i>
+              <p>תודה! נציג מטעמנו יחזור אליכם בהקדם.</p>
+              <button type="button" className="cv-btn" onClick={shut}>סגירה</button>
+            </div>
+          ) : (
             <form className="cv-form" onSubmit={send}>
-              <p className="cv-form-car"><bdi dir="ltr">{car.name}</bdi> · מודעה {car.recNo}</p>
-              <label><span>שם מלא <small>(לא חובה)</small></span><input name="name" autoComplete="name" /></label>
-              <label>טלפון<input name="phone" type="tel" inputMode="tel" autoComplete="tel" required dir="ltr" /></label>
+              <p className="cv-lead-lead">השאירו שם וטלפון, ונציג יחזור אליכם עם כל הפרטים על הרכב.</p>
+              <div className="cv-fields">
+                <label><span>שם מלא</span><input name="name" autoComplete="name" placeholder="איך לפנות אליכם?" /></label>
+                <label><span>טלפון</span><input name="phone" type="tel" inputMode="tel" autoComplete="tel" required minLength={9} pattern="[0-9+\-\s]{9,}" placeholder="050-0000000" dir="ltr" /></label>
+              </div>
               <input name="website" tabIndex={-1} autoComplete="off" className="cv-hp" aria-hidden="true" />
-              <button type="submit" className="cv-btn cv-primary" disabled={lead === 'sending'}>{lead === 'sending' ? 'שולח…' : 'שליחה'}</button>
-              {lead === 'error' && <p className="cv-err">השליחה לא הצליחה. אפשר לנסות שוב או לכתוב לנו ב-WhatsApp.</p>}
+              <button type="submit" className="cv-btn cv-primary cv-send" disabled={lead === 'sending'}>
+                {lead === 'sending' ? 'שולח…' : <><Icon k="send" />שליחה</>}
+              </button>
+              {lead === 'error' && <p className="cv-err" role="alert">השליחה לא הצליחה. אפשר לנסות שוב, או לדבר איתנו עכשיו:</p>}
+              <div className="cv-lead-or">
+                <span>מעדיפים לדבר עכשיו?</span>
+                <a href={waHref} target="_blank" rel="noopener noreferrer"><Icon k="wa" s={18} />WhatsApp</a>
+                <a href={TEL}><Icon k="call" s={18} /><bdi dir="ltr">{PHONE}</bdi></a>
+              </div>
             </form>
           )}
         </div>
@@ -490,7 +572,7 @@ export default function CarView({ car, url, qr, mode = 'page', loading = false, 
         <div className="cv-full" role="dialog" aria-modal="true" aria-label="תמונות במסך מלא">
           <div ref={fullTrack} className="cv-full-track">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {imgs.map((u, i) => <img key={u} src={srcOf(u, i)} alt="" decoding="async" draggable={false} />)}
+            {allImgs.map(u => <img key={u} src={u} alt="" decoding="async" draggable={false} />)}
           </div>
           <button type="button" className="cv-ic cv-full-x" aria-label="סגירה" onClick={() => setFull(null)}><Icon k="close" /></button>
         </div>

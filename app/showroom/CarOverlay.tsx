@@ -20,7 +20,7 @@ const EASE_OUT = 'cubic-bezier(.22,1,.36,1)', EASE_IO = 'cubic-bezier(.77,0,.175
 
 function fromCard(final: DOMRect, card: Rect) {
   const k = card.w / final.width
-  return { transform: `translate(${card.x - final.left}px, ${card.y - final.top}px) scale(${k})`, borderRadius: `${card.r / k}px` }
+  return { transform: `translate(${card.x - final.left}px, ${card.y - final.top}px) scale(${k})` }
 }
 
 export default function CarOverlay({ quick, url, from, closing, onClosed, onClose }: {
@@ -38,13 +38,29 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches
   const root = () => host.current?.querySelector<HTMLElement>('.cv-over') ?? null
   const parts = () => Array.from(host.current?.querySelectorAll<HTMLElement>('.cv-rest') ?? [])
+  // in flight, the photo is the cover alone (the gallery under it stays put)
+  // and its own layer; nothing else in the page is rebuilt meanwhile
+  const flying = (on: boolean) => {
+    const ph = photo.current; if (!ph) return
+    ph.toggleAttribute('data-flying', on)
+    ph.style.willChange = on ? 'transform' : ''
+  }
+  const opened = useRef(performance.now())
+  const closingRef = useRef(closing)
+  closingRef.current = closing
 
   // the rest of the car
   useEffect(() => {
     const ac = new AbortController()
     fetch(`/api/cars/${quick.recNo}`, { signal: ac.signal })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d?.car) setFull({ car: d.car, qr: d.qr ?? '' }) })
+      // the rest of the page comes in once the opening has landed — a page
+      // rebuilt under a moving photo is what made it stutter
+      .then(d => {
+        if (!d?.car) return
+        const wait = Math.max(0, OPEN_MS + 60 - (performance.now() - opened.current))
+        setTimeout(() => { if (!closingRef.current) setFull({ car: d.car, qr: d.qr ?? '' }) }, wait)
+      })
       .catch(() => {})
     return () => ac.abort()
   }, [quick.recNo])
@@ -55,8 +71,9 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     if (still() || !ph || !card) {
       root()?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT })
     } else {
-      const fin = getComputedStyle(ph).borderRadius
-      ph.animate([fromCard(ph.getBoundingClientRect(), card), { transform: 'none', borderRadius: fin }], { duration: OPEN_MS, easing: EASE_OUT })
+      flying(true)
+      const a = ph.animate([fromCard(ph.getBoundingClientRect(), card), { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
+      a.onfinish = () => flying(false)
       bg.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: EASE_OUT })
       parts().forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
         { duration: 380, delay: 200 + i * 50, easing: EASE_OUT, fill: 'backwards' }))
@@ -72,7 +89,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     const end = () => { if (!done) { done = true; onClosed() } }
     // a close during the opening goes on from exactly where each piece is
     const now = (el: HTMLElement) => {
-      const cs = getComputedStyle(el), v = { opacity: cs.opacity, transform: cs.transform, borderRadius: cs.borderRadius }
+      const cs = getComputedStyle(el), v = { opacity: cs.opacity, transform: cs.transform }
       el.getAnimations().forEach(x => x.cancel())
       return v
     }
@@ -82,10 +99,10 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       if (a) a.onfinish = end; else end()
       return
     }
-    // back to the top and to the first photo — the one on the card
+    // back to the top, and the cover — the card's own photo — over the gallery
     r?.scrollTo({ top: 0 })
-    const tr = ph.querySelector<HTMLElement>('.cv-track')
-    if (tr) tr.scrollTo({ left: 0 })
+    ph.setAttribute('data-closing', '')
+    flying(true)
     const fade = [...parts(), ...Array.from(r?.querySelectorAll<HTMLElement>('.cv-page > :not(.cv-gallery):not(.cv-side), .cv-count') ?? [])]
     fade.forEach(el => {
       const v = now(el)
@@ -96,7 +113,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
       bg.current.animate([{ opacity: v.opacity }, { opacity: 0 }], { duration: 300, delay: 80, easing: EASE_OUT, fill: 'forwards' })
     }
     const pv = now(ph)
-    ph.animate([{ transform: pv.transform, borderRadius: pv.borderRadius }, fromCard(ph.getBoundingClientRect(), card)],
+    ph.animate([{ transform: pv.transform }, fromCard(ph.getBoundingClientRect(), card)],
       { duration: CLOSE_MS, easing: EASE_IO, fill: 'forwards' })
     // the last stretch fades onto the card (already back in its place), and
     // the layer goes only once it is invisible
@@ -116,7 +133,8 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     let y0 = 0, x0 = 0, t0 = 0, fromTop = true, side = false
     const start = (e: TouchEvent) => {
       y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; t0 = performance.now(); fromTop = el.scrollTop <= 0
-      side = !!(e.target as Element | null)?.closest?.('.cv-track, .cv-thumbs, .cv-sheet, .cv-full')
+      // (the photo and the strip too: a swipe down from the top closes from anywhere, as on a person)
+      side = !!(e.target as Element | null)?.closest?.('.cv-sheet, .cv-full')
     }
     const move = (e: TouchEvent) => {
       if (side) return
@@ -126,7 +144,8 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     const end = (e: TouchEvent) => {
       if (side || document.documentElement.hasAttribute('data-cv-lock')) return
       const dy = e.changedTouches[0].clientY - y0, dt = Math.max(1, performance.now() - t0)
-      if (fromTop && dy > 110 && dy / dt > 0.6) closeRef.current()
+      const dx = Math.abs(e.changedTouches[0].clientX - x0)
+      if (fromTop && dy > 110 && dy > dx * 1.5 && dy / dt > 0.6) closeRef.current()
     }
     el.addEventListener('touchstart', start, { passive: true })
     el.addEventListener('touchmove', move, { passive: false })

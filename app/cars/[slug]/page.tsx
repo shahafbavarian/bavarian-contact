@@ -59,7 +59,7 @@ function jsonLd(car: PublicCar) {
         enginePower: car.hp ? { '@type': 'QuantitativeValue', value: Number(car.hp), unitCode: 'BHP' } : undefined,
         engineDisplacement: n(car.engineCc) ? { '@type': 'QuantitativeValue', value: n(car.engineCc), unitCode: 'CMQ' } : undefined } : undefined,
       itemCondition: car.hand === 'חדש' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
-      image: car.images.slice(0, 6),
+      image: [car.hero, ...car.images].filter(Boolean).slice(0, 6),
       offers: car.priceN ? { '@type': 'Offer', url, price: car.priceN, priceCurrency: 'ILS',
         availability: car.status === 'stock' ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
         seller: { '@type': 'AutoDealer', name: 'בוואריאן מוטורס', telephone: '+972-9-9561906' } } : undefined,

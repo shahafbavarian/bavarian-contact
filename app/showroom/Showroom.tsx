@@ -53,7 +53,7 @@ function quickCar(c: Card): PublicCar {
     price: priceN ? `${priceN.toLocaleString('he-IL')} ₪` : null, priceN, finance: null,
     year: c.year || null, km: c.km || null, hand: c.yad || null, ownership: null, engineCc: null, hp: c.hp ? String(c.hp) : null,
     fuel: null, body: null, colorExt: null, colorInt: null, listPrice: null, description: null,
-    hero, images: hero ? [hero] : [], pollution: null, safety: null, videos: [], agent: null,
+    hero, images: [], pollution: null, safety: null, videos: [], agent: null,
   }
 }
 
