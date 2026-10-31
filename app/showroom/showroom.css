@@ -411,23 +411,23 @@ html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
 .sr-seg button[aria-pressed="true"] { background: var(--s-sel); color: var(--s-on); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
 /* the multi-picks: chips that wrap, each with its count */
 .sr-picks { display: flex; flex-wrap: wrap; gap: 8px; }
-/* the colours: a dot each, its name and count under it; chosen, a ring */
-.sr-dots { display: flex; flex-wrap: wrap; gap: 12px 4px; }
+/* the colours: just a dot each (the name and count are its label); one row
+   while they fit — a dot gives a little (30px down to 24px) before the row
+   wraps; chosen, a ring */
+.sr-dots { display: flex; flex-wrap: wrap; gap: 7px; padding-inline: 4px; }
 .sr-dot {
-  display: flex; flex-direction: column; align-items: center; gap: 5px; width: 54px; padding: 0; border: 0; background: none;
-  color: var(--s-ink); font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  position: relative; flex: 1 1 24px; min-width: 24px; max-width: 30px; aspect-ratio: 1; padding: 0; border: 0; border-radius: 50%;
+  background: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
+.sr-dot::after { content: ''; position: absolute; inset: -4px; }   /* a fingertip's room, the dot stays small */
 .sr-dot i {
-  display: block; width: 32px; height: 32px; border-radius: 50%; background: var(--dot);
+  display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--dot);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); transition: box-shadow 180ms ease, transform 140ms cubic-bezier(.23,1,.32,1);
 }
 .sr-dot[data-light] i { box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
-.sr-dot[aria-pressed="true"] i { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 2px var(--s-bg), 0 0 0 4px var(--s-sel); }
-.sr-dot:active:not(:disabled) i { transform: scale(.92); }
-.sr-dot span { font-size: 12px; font-weight: 500; line-height: 1; }
-.sr-dot small { font-size: 11px; line-height: 1; color: var(--s-mut); font-variant-numeric: tabular-nums; }
-.sr-dot[aria-pressed="true"] span { font-weight: 700; }
-.sr-dot:disabled { opacity: .3; cursor: default; }
+.sr-dot[aria-pressed="true"] i { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 2px var(--s-bg), 0 0 0 3.5px var(--s-sel); }
+.sr-dot:active:not(:disabled) i { transform: scale(.9); }
+.sr-dot:disabled { opacity: .25; cursor: default; }
 /* a range that comes with a pick (the electric range) eases in under it */
 .sr-f-in { animation: sr-cap-in 260ms cubic-bezier(.23,1,.32,1) both; }
 .sr-pick {

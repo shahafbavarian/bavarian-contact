@@ -1107,9 +1107,9 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                     <div className="sr-fh"><span>צבע חיצוני</span></div>
                     <div className="sr-dots" role="group" aria-label="צבע חיצוני">
                       {FAMILIES.filter(f => facets.paints.has(f.key)).map(f => { const n = counts.paint.get(f.key) ?? 0, on = paints.includes(f.key); return (
-                        <button key={f.key} type="button" className="sr-dot" aria-pressed={on} aria-label={`${f.label}, ${carsWord(n)}`} disabled={!n && !on}
+                        <button key={f.key} type="button" className="sr-dot" aria-pressed={on} aria-label={`${f.label}, ${carsWord(n)}`} title={`${f.label} · ${n}`} disabled={!n && !on}
                           data-light={f.key === 'white' || undefined} style={{ '--dot': f.dot } as React.CSSProperties} onClick={() => toggle(paints, setPaints, f.key)}>
-                          <i aria-hidden="true" /><span>{f.label}</span><small>{n}</small>
+                          <i aria-hidden="true" />
                         </button>
                       ) })}
                     </div>
