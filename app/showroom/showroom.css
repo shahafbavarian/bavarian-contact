@@ -358,6 +358,7 @@ html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
   --s-sel: #fff; --s-on: #0b0d11; --s-bar: rgba(255,255,255,.2); --s-bar-on: rgba(255,255,255,.62);
 }
 .sr[data-theme="light"] .sr-cap {
+  pointer-events: auto;   /* the foot's sheet is all a handle: up opens the filter */
   --s-ink: #14171A; --s-mut: #5A6169; --s-line: rgba(20,23,26,.1); --s-surf: rgba(20,23,26,.05);
   --s-sel: #14171A; --s-on: #fff; --s-bar: rgba(20,23,26,.1); --s-bar-on: rgba(20,23,26,.42);
 }
@@ -380,8 +381,11 @@ html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
 .sr-grab:focus-visible i { box-shadow: 0 0 0 3px var(--s-line); }
 .sr-adv { width: min(100%, 560px); height: 0; overflow: hidden; text-align: start; color: var(--s-ink); }
 .sr-adv-box { display: flex; flex-direction: column; height: calc(var(--sheet-h, 480px) - 7px); margin-top: 6px; border-top: 1px solid var(--s-line); }
+/* it scrolls up and down only: the sliders' handles reach a few pixels past
+   the edge at the ends of their tracks (their touch area), never a reason to
+   move sideways */
 .sr-adv-in {
-  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+  flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch;
   padding-inline: 2px; scrollbar-width: none;
 }
 .sr-adv-in::-webkit-scrollbar { display: none; }
@@ -401,6 +405,8 @@ html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
 .sr-seg button[aria-pressed="true"] { background: var(--s-sel); color: var(--s-on); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
 /* the multi-picks: chips that wrap, each with its count */
 .sr-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+/* a range that comes with a pick (the electric range) eases in under it */
+.sr-f-in { animation: sr-cap-in 260ms cubic-bezier(.23,1,.32,1) both; }
 .sr-pick {
   display: inline-flex; align-items: center; gap: 6px; height: 36px; padding-inline: 14px; border-radius: 999px;
   border: 1px solid var(--s-line); background: var(--s-surf); color: var(--s-ink);
@@ -413,10 +419,12 @@ html[data-sr-nostrip] .sr-safari-strip { display: none !important; }
 .sr-pick:disabled { opacity: .35; cursor: default; }
 .sr-pick:active:not(:disabled) { transform: scale(.96); }
 /* the range: the stock's spread over the track, the chosen span in ink */
-.sr-rg-hist { display: flex; align-items: flex-end; gap: 2px; height: 30px; margin-inline: 13px; direction: rtl; }
+/* (inset by half a handle's touch area: at either end the handle, its
+   shadow and its touch area all sit inside the sheet — nothing clipped) */
+.sr-rg-hist { display: flex; align-items: flex-end; gap: 2px; height: 30px; margin-inline: 22px; direction: rtl; }
 .sr-rg-hist i { flex: 1; border-radius: 2px 2px 0 0; background: var(--s-bar); transition: background-color 160ms ease; }
 .sr-rg-hist i[data-in] { background: var(--s-bar-on); }
-.sr-rg-track { position: relative; height: 34px; margin-inline: 13px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sr-rg-track { position: relative; height: 34px; margin-inline: 22px; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sr-rg-rail, .sr-rg-fill { position: absolute; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px; }
 .sr-rg-rail { inset-inline: 0; background: var(--s-line); }
 .sr-rg-fill { background: var(--s-ink); }

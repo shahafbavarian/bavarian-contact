@@ -10,6 +10,10 @@ import { HISTORY } from '../history'
 // request at run time. The real site will take it from its live data source
 import HANDS from '../hands.json'
 const handOf = (recNo: string) => { const h = (HANDS as Record<string, string>)[recNo] ?? ''; return /^\d+$/.test(h) ? h : '' }
+// and the same kind of snapshot of the specs the list lacks, for the advanced
+// filter: horsepower ("הספק") and electric range ("טווח נסיעה חשמלי")
+import EXTRAS from '../extras.json'
+const extra = (recNo: string) => (EXTRAS as Record<string, { hp?: number; ev?: number }>)[recNo] ?? {}
 import type { Card } from '../scene'
 
 export const revalidate = 300
@@ -66,6 +70,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
         images: [img(c.imageUrl)],
         make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || handOf(c.recNo),
         fuel: c.engine || '', body: c.carType || '', monthly: parseInt((c.monthlyPrice || '').replace(/\D/g, ''), 10) || 0, rec: parseInt(c.recNo, 10) || 0,
+        hp: extra(c.recNo).hp ?? 0, ev: extra(c.recNo).ev ?? 0,
       }
     })
   } catch {}

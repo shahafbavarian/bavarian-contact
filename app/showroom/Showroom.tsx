@@ -155,6 +155,8 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const [monthlyR, setMonthlyR] = useState<Range>(null)
   const [yearR, setYearR] = useState<Range>(null)
   const [kmR, setKmR] = useState<Range>(null)
+  const [hpR, setHpR] = useState<Range>(null)
+  const [evR, setEvR] = useState<Range>(null)
   const [hands, setHands] = useState<string[]>([])
   const [fuels, setFuels] = useState<string[]>([])
   const [bodies, setBodies] = useState<string[]>([])
@@ -167,18 +169,20 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     return {
       make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true,
       priceN: priceNum(c.price ?? '') ?? NaN, monthlyN: c.monthly || NaN, yearN: Number.isFinite(yr) ? yr : NaN, kmN: Number.isFinite(km) ? km : NaN,
+      hpN: c.hp || NaN, evN: c.ev || NaN,
       hand: handKey(c.yad ?? ''), fuel: c.fuel ?? '', body: c.body ?? '', rec: c.rec ?? 0,
     }
   }), [deck])
   // the advanced filter's bounds and choices, from the stock itself
   const facets = useMemo(() => {
-    const nums = (k: 'priceN' | 'monthlyN' | 'yearN' | 'kmN') => searchable.map(c => c[k]).filter(Number.isFinite) as number[]
+    const nums = (k: 'priceN' | 'monthlyN' | 'yearN' | 'kmN' | 'hpN' | 'evN') => searchable.map(c => c[k]).filter(Number.isFinite) as number[]
     const bounds = (a: number[], step: number) => a.length ? [Math.floor(Math.min(...a) / step) * step, Math.ceil(Math.max(...a) / step) * step] as [number, number] : [0, step] as [number, number]
     const count = (k: 'hand' | 'fuel' | 'body') => { const m = new Map<string, number>(); searchable.forEach(c => { if (c[k]) m.set(c[k], (m.get(c[k]) ?? 0) + 1) }); return m }
-    const p = nums('priceN'), mo = nums('monthlyN'), y = nums('yearN'), k = nums('kmN')
+    const p = nums('priceN'), mo = nums('monthlyN'), y = nums('yearN'), k = nums('kmN'), hp = nums('hpN'), ev = nums('evN')
     return {
       price: { data: p, b: bounds(p, 10_000) }, monthly: { data: mo, b: bounds(mo, 500) },
       year: { data: y, b: bounds(y, 1) }, km: { data: k, b: bounds(k, 5_000) },
+      hp: { data: hp, b: bounds(hp, 10) }, ev: { data: ev, b: bounds(ev, 5) },
       hands: count('hand'), fuels: count('fuel'),
       // ties by name: the deck's order is per visit, the page's markup is not
       bodies: Array.from(count('body')).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
@@ -261,16 +265,88 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     if (h > 0 && !open) setOpen(true)
     paintSheet(h)
   }
+  // where a released drag settles: a flick decides; else a third of the way
+  // is enough — down from open it shuts, up from shut it opens
+  const settle = (v: number, h0: number) => {
+    const max = sheetMax(), h = sheetH.current
+    sheetTo(v > 350 ? true : v < -350 ? false : h < h0 ? h > max * 0.7 : h > max * 0.3, v)
+  }
   const onGrabUp = () => {
     const g = grab.current; grab.current = null; if (!g) return
     if (!g.moved) { sheetTo(!open); return }   // a tap toggles
-    const max = sheetMax()
-    sheetTo(g.v > 350 ? true : g.v < -350 ? false : sheetH.current > max * 0.45, g.v)
+    settle(g.v, g.h0)
   }
+  const sheetFns = useRef({ paintSheet, sheetMax, settle })
+  sheetFns.current = { paintSheet, sheetMax, settle }
+  // The whole sheet drags, as an iPhone sheet: shut, up from anywhere on the
+  // foot (its row, its line of words, the sheet itself) to open; open, down
+  // from its row, its foot, the dimmed cards, or its content once that is
+  // scrolled to its top, to shut. A slider, the grabber (its own handler) and
+  // the sideways line of words keep their gestures. Touch events, not pointer
+  // ones: the content's own scroll must be stopped before it starts
+  useEffect(() => {
+    const els = [cap.current, dim.current].filter(Boolean) as HTMLElement[]
+    let g: { x0: number; y0: number; h0: number; y: number; t: number; v: number; sc: HTMLElement | null; side: boolean; mode: 0 | 1 | 2 } | null = null
+    let quiet = 0
+    const down = (e: TouchEvent) => {
+      const t = e.target as Element
+      if (e.touches.length !== 1 || setRef.current === 'team' || t.closest('.sr-grab, .sr-rg-track')) { g = null; return }
+      const p = e.touches[0]
+      g = { x0: p.clientX, y0: p.clientY, h0: 0, y: p.clientY, t: performance.now(), v: 0, sc: t.closest<HTMLElement>('.sr-adv-in'), side: !!t.closest('.sr-words'), mode: 0 }
+    }
+    const move = (e: TouchEvent) => {
+      if (!g || g.mode === 2) return
+      const p = e.touches[0], dx = p.clientX - g.x0, dy = p.clientY - g.y0
+      if (g.mode === 0) {
+        const shut = sheetH.current <= 1, top = !g.sc || g.sc.scrollTop <= 0
+        // (held while the direction is still unclear, so the content cannot start a scroll of its own)
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) { if (!shut && dy >= 0 && top && !g.side && e.cancelable) e.preventDefault(); return }
+        // shut: up opens; open: down shuts (the content only from its top),
+        // and up on the row or foot gives a little, as the grabber does
+        const take = Math.abs(dy) > Math.abs(dx) && (shut ? dy < 0 : dy > 0 ? top : !g.sc)
+        if (!take) { g.mode = 2; return }
+        g.mode = 1; cancelAnimationFrame(sheetAnim.current); sheetAnim.current = 0
+        g.y0 = g.y = p.clientY; g.h0 = sheetH.current; g.t = performance.now()
+        if (shut) { input.current?.blur(); setPanel(null); setOpen(true) }
+      }
+      if (e.cancelable) e.preventDefault()
+      const { sheetMax, paintSheet } = sheetFns.current, max = sheetMax()
+      let h = g.h0 - (p.clientY - g.y0)
+      if (h > max) h = max + Math.sqrt(h - max) * 4   // past open it gives a little
+      if (h < 0) h = 0
+      const now = performance.now(), dtm = Math.max(1, now - g.t)
+      g.v = g.v * 0.4 + ((g.y - p.clientY) / dtm) * 1000 * 0.6   // px/s, up is positive
+      g.y = p.clientY; g.t = now
+      paintSheet(h)
+    }
+    const up = () => {
+      if (g?.mode === 1) { quiet = performance.now(); sheetFns.current.settle(g.v, g.h0) }
+      g = null
+    }
+    // the press a drag began on is not pressed
+    const click = (e: MouseEvent) => { if (performance.now() - quiet < 400) { e.preventDefault(); e.stopPropagation() } }
+    for (const el of els) {
+      el.addEventListener('touchstart', down, { passive: true })
+      el.addEventListener('touchmove', move, { passive: false })
+      el.addEventListener('touchend', up); el.addEventListener('touchcancel', up)
+      el.addEventListener('click', click, true)
+    }
+    return () => {
+      for (const el of els) {
+        el.removeEventListener('touchstart', down); el.removeEventListener('touchmove', move)
+        el.removeEventListener('touchend', up); el.removeEventListener('touchcancel', up)
+        el.removeEventListener('click', click, true)
+      }
+    }
+  }, [])
   const listOpen = !panel && items.length > 0
-  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || hands.length > 0 || fuels.length > 0 || bodies.length > 0
+  // the electric range: only once an electric or plug-in engine is picked (and
+  // with it gone, its range goes too: no hidden filter left behind)
+  const evOn = fuels.includes('bev') || fuels.includes('phev')
+  useEffect(() => { if (!evOn) setEvR(null) }, [evOn])
+  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || !!hpR || !!evR || hands.length > 0 || fuels.length > 0 || bodies.length > 0
   const toggle = (list: string[], set: (v: string[]) => void, k: string) => set(list.includes(k) ? list.filter(x => x !== k) : [...list, k])
-  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHands([]); setFuels([]); setBodies([]) }
+  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHpR(null); setEvR(null); setHands([]); setFuels([]); setBodies([]) }
   // the cars the search, availability and the ranges leave
   const passed = useMemo(() => {
     const qn = norm(query)
@@ -284,9 +360,10 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       if (avail === 'stock' && !c.stock) return []
       if (avail === 'way' && c.stock) return []
       if (!inRange(c.priceN, priceR) || !inRange(c.monthlyN, monthlyR) || !inRange(c.yearN, yearR) || !inRange(c.kmN, kmR)) return []
+      if (!inRange(c.hpN, hpR) || !inRange(c.evN, evR)) return []
       return [i]
     })
-  }, [searchable, hays, make, model, term, query, avail, priceR, monthlyR, yearR, kmR])
+  }, [searchable, hays, make, model, term, query, avail, priceR, monthlyR, yearR, kmR, hpR, evR])
   // the picks (hand, engine, body): any of a group's picks, every group
   const picked = (i: number, skip?: 'hand' | 'fuel' | 'body') => {
     const c = searchable[i]
@@ -618,7 +695,8 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     const onWheel = (e: WheelEvent) => {
       if (inLine(e)) return
       e.preventDefault()
-      if (menuOpen.current) return
+      // the filter's sheet open: the hall behind it stays put (its content scrolls on its own)
+      if (menuOpen.current || sheetH.current > 1) return
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
         clearTimeout(wheelTimer); wheelTimer = window.setTimeout(() => { wheelLock = false }, 180)
         if (current < 0.05 && !wheelLock && Math.abs(e.deltaX) > 6) { wheelLock = true; handle.current?.step(e.deltaX > 0 ? -1 : 1) }
@@ -648,7 +726,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       if (e.target instanceof HTMLInputElement) return   // typing belongs to the field
       if (document.querySelector('.sr-sheet')) return     // a person is open over the hall
       if (e.key === 'Escape') { setMenu(false); setPanel(null); closeSheet.current(); return }
-      if (menuOpen.current) return
+      if (menuOpen.current || sheetH.current > 1) return
       const sc = scroller.current
       if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc) sc.scrollBy({ top: rowPx.current, behavior: 'smooth' }); else walkIn() }
       if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc && sc.scrollTop > 1) sc.scrollBy({ top: -rowPx.current, behavior: 'smooth' }); else go(0) }
@@ -962,6 +1040,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                 <RangeSlider label="תשלום חודשי (₪)" min={facets.monthly.b[0]} max={facets.monthly.b[1]} step={500} value={monthlyR} onChange={setMonthlyR} fmt={n => n.toLocaleString('en-US')} data={facets.monthly.data} />
                 <RangeSlider label="שנה" min={facets.year.b[0]} max={facets.year.b[1]} step={1} value={yearR} onChange={setYearR} fmt={String} data={facets.year.data} />
                 <RangeSlider label="קילומטראז׳" min={facets.km.b[0]} max={facets.km.b[1]} step={5_000} value={kmR} onChange={setKmR} fmt={kmText} scale="sq" data={facets.km.data} />
+                {facets.hp.data.length > 0 && <RangeSlider label="כוח סוס" min={facets.hp.b[0]} max={facets.hp.b[1]} step={10} value={hpR} onChange={setHpR} fmt={String} data={facets.hp.data} />}
                 <div className="sr-f">
                   <div className="sr-fh"><span>יד</span></div>
                   <div className="sr-picks" role="group" aria-label="יד">
@@ -978,6 +1057,11 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                     ) })}
                   </div>
                 </div>
+                {evOn && facets.ev.data.length > 0 && (
+                  <div className="sr-f-in">
+                    <RangeSlider label="טווח נסיעה חשמלי (ק״מ)" min={facets.ev.b[0]} max={facets.ev.b[1]} step={5} value={evR} onChange={setEvR} fmt={String} data={facets.ev.data} />
+                  </div>
+                )}
                 {facets.bodies.length > 0 && (
                   <div className="sr-f">
                     <div className="sr-fh"><span>סוג רכב</span></div>

@@ -62,6 +62,8 @@ export type Card = {
   make?: string; model?: string; year?: string; price?: string; stock?: boolean; km?: string; yad?: string
   /** for the advanced filter: fuel/engine (petrol, diesel, hev, phev, bev), body type, monthly payment, and the listing's number (newest = highest) */
   fuel?: string; body?: string; monthly?: number; rec?: number
+  /** horsepower and electric range in km (0: not known) */
+  hp?: number; ev?: number
   /** a member of the team, not a car: the face carries the name (title) and role (sub) */
   person?: boolean
   /** a person's sharp portrait for their page (the card carries the small copy) */
