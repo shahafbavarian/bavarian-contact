@@ -18,6 +18,12 @@ html:has(.sr) { overflow: auto; }
 html:has(.sr) body { min-height: calc(100vh + 2px); min-height: calc(100svh + 2px); }
 
 .sr {
+  /* no finger moves the page itself, by CSS: the browser knows it ahead and
+     never waits on the main thread (a window-wide non-passive touchmove that
+     did this held every native scroll — the list's — to the hall's frames).
+     The real scrollers declare their own direction: the list and the filter
+     sheet pan-y, the line of words pan-x */
+  touch-action: none;
   /* pure white, the logo's own colour, so the bar's mark and every text match */
   --ink: #ffffff;
   --muted: rgba(255, 255, 255, .62);

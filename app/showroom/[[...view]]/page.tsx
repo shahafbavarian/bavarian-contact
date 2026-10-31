@@ -9,7 +9,8 @@ import { HISTORY } from '../history'
 // each car's own page (the list does not carry it) — read at build time, no
 // request at run time. The real site will take it from its live data source
 import HANDS from '../hands.json'
-const handOf = (recNo: string) => { const h = (HANDS as Record<string, string>)[recNo] ?? ''; return /^\d+$/.test(h) ? h : '' }
+// a number, or new ("חדש" on the main site: no owner before) — anything else is unknown
+const handOf = (recNo: string) => { const h = ((HANDS as Record<string, string>)[recNo] ?? '').trim(); return /^\d+$/.test(h) ? h : /חדש/.test(h) ? 'חדש' : '' }
 // and the same kind of snapshot of the specs the list lacks, for the advanced
 // filter: horsepower ("הספק") and electric range ("טווח נסיעה חשמלי")
 import EXTRAS from '../extras.json'
@@ -31,10 +32,13 @@ const teamImg = (url: string) => (url.startsWith('/team/') ? url.replace('/team/
 // The gallery is the inventory: one card per car, in stock and on the way as
 // one list, shuffled afresh on every visit (client side). The caption carries
 // the car's own details: the maker large, the rest below
-// the kilometres as the cars page shows them: a number, or new
+// the kilometres as the main site writes them: a number (0 reads "חדש"), or
+// its own words ("רכב חדש") kept as they are — the filter counts those as 0
 const km = (mileage?: string) => {
-  if (!mileage) return ''
-  const n = parseInt(mileage.replace(/[^\d]/g, ''), 10)
+  const t = (mileage ?? '').trim()
+  if (!t) return ''
+  if (!/\d/.test(t)) return t
+  const n = parseInt(t.replace(/[^\d]/g, ''), 10)
   return !isNaN(n) && n > 0 ? n.toLocaleString('en-US') : 'חדש'
 }
 

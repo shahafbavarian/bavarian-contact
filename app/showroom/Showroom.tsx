@@ -165,7 +165,8 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   useEffect(() => { setActive(0); activeMoved.current = false }, [text, make, model])
   const searchable = useMemo(() => deck.map(c => {
     const yr = parseInt((c.year ?? '').match(/(\d{4})\s*$/)?.[1] ?? '', 10)
-    const km = c.km === 'חדש' ? 0 : parseInt((c.km ?? '').replace(/\D/g, ''), 10)
+    // a new car ("חדש", "רכב חדש" and the like) is 0 km for the filter
+    const km = /חדש|new/i.test(c.km ?? '') ? 0 : parseInt((c.km ?? '').replace(/\D/g, ''), 10)
     return {
       make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true,
       priceN: priceNum(c.price ?? '') ?? NaN, monthlyN: c.monthly || NaN, yearN: Number.isFinite(yr) ? yr : NaN, kmN: Number.isFinite(km) ? km : NaN,
@@ -300,7 +301,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       if (g.mode === 0) {
         const shut = sheetH.current <= 1, top = !g.sc || g.sc.scrollTop <= 0
         // (held while the direction is still unclear, so the content cannot start a scroll of its own)
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) { if (!shut && dy >= 0 && top && !g.side && e.cancelable) e.preventDefault(); return }
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) { if (!g.side && (shut ? dy <= 0 : dy >= 0 && top) && e.cancelable) e.preventDefault(); return }
         // shut: up opens; open: down shuts (the content only from its top),
         // and up on the row or foot gives a little, as the grabber does
         const take = Math.abs(dy) > Math.abs(dx) && (shut ? dy < 0 : dy > 0 ? top : !g.sc)
@@ -711,7 +712,6 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     // the line of words and the native list scroll on their own
     // (and a person opened over the hall: its gestures are its own)
     const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words, .sr-scroller, .sr-sheet, .sr-adv, .sr-grab')
-    const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current && !inLine(e)) e.preventDefault() }
     const onTouchEnd = (e: TouchEvent) => {
       if (menuOpen.current || inLine(e)) return
       const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx
@@ -796,7 +796,6 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     addEventListener('pointerdown', onDownOut)
     addEventListener('wheel', onWheel, { passive: false })
     addEventListener('touchstart', onTouchStart, { passive: true })
-    addEventListener('touchmove', onTouchMove, { passive: false })
     addEventListener('touchend', onTouchEnd)
     addEventListener('keydown', onKey)
     addEventListener('resize', onResize)
@@ -808,7 +807,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     raf = requestAnimationFrame(frame)
     return () => {
       alive = false; cancelAnimationFrame(raf)
-      removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart); removeEventListener('touchmove', onTouchMove)
+      removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart)
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut); removeEventListener('scroll', onWinScroll)

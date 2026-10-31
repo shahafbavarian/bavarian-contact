@@ -137,8 +137,8 @@ export const SORT_DEFAULT: Sort = { key: 'new', up: false }
 
 // The advanced filter (spec 3.3), only what the list really carries
 export const FUELS: [string, string][] = [['petrol', 'בנזין'], ['diesel', 'דיזל'], ['hev', 'היברידי'], ['phev', 'פלאג-אין'], ['bev', 'חשמלי']]
-export const HANDS: [string, string][] = [['1', 'יד 1'], ['2', 'יד 2'], ['3', 'יד 3'], ['4+', 'יד 4+']]
-export const handKey = (yad: string) => { const n = parseInt(yad, 10); return !n ? '' : n >= 4 ? '4+' : String(n) }
+export const HANDS: [string, string][] = [['new', 'חדש'], ['1', 'יד 1'], ['2', 'יד 2'], ['3', 'יד 3'], ['4+', 'יד 4+']]
+export const handKey = (yad: string) => { if (/חדש/.test(yad)) return 'new'; const n = parseInt(yad, 10); return !n ? '' : n >= 4 ? '4+' : String(n) }
 // a range is [low, high]; null = untouched (cars missing the value still count)
 export type Range = [number, number] | null
 // (a missing value is NaN: it counts only while the range is untouched)

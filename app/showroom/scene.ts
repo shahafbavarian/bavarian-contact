@@ -886,15 +886,19 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // next row's right) — middle and left rise, right sinks; none cross.
   // rel: the screen (0 middle, +1 left, -1 right); at: its place in the list
   const FLY = [{ rel: 0, at: 0, o: 0 }, { rel: 1, at: 1, o: 0.06 }, { rel: -1, at: 2, o: 0.12 }]
-  // the fold trial: the walk's own time (walkU) in three calm acts —
-  // 0→FOLD_IN the big screens close back onto the stand, then the walk,
-  // then from FOLD_OPEN the stand's screens give way and the grid opens
-  // where it stands, row by row (no flights)
+  // the fold trial: the walk's own time (walkU) as one continuous motion,
+  // nothing faded, only moved — 0→FOLD_IN the big screens close back onto
+  // the stand along the path they grew out on; you walk in; from FOLD_OPEN
+  // the three screens facing you glide on from the stand into the grid's
+  // first cells (turning over on the way), the rest of the grid rises from
+  // below as one block out from behind the foot's line, and the stand's other
+  // screens sink into it — all landing together
   const FOLD = opts.walk === 'fold'
-  const FOLD_IN = 0.38, FOLD_OPEN = 0.56   // the grid opens as the hall brightens, never after it (an empty beat)
+  const FOLD_IN = 0.38, FOLD_OPEN = 0.5
   const flightE = (rel: number) => {
     if (calm) return throwK > 0 ? 1 : 0
     const o = FLY.find(f => f.rel === rel)?.o ?? 0
+    if (FOLD) return easeInOut(fit(walkU, FOLD_OPEN + o * 0.5, 1))
     // the window ends at the very end: walking in they land together, and
     // walking out every one leaves the moment the walk turns
     return easeInOut(fit(throwK, o, 1))
@@ -1053,8 +1057,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     // the facts, the band's last line: icon + value, right to left
     const facts: { k: 'year' | 'km' | 'hand'; v: string }[] = []
     if (card.year) facts.push({ k: 'year', v: card.year })
-    if (card.km && !(card.km === 'חדש' && /חדש/.test(card.year ?? ''))) facts.push({ k: 'km', v: card.km === 'חדש' ? 'חדש' : card.km })
-    if (card.yad) facts.push({ k: 'hand', v: `יד ${card.yad}` })
+    // "new" once: not again for the km when the year or the hand already says so
+    const newHand = /חדש/.test(card.yad ?? '')
+    const newKm = /חדש/.test(card.km ?? '')
+    if (card.km && !(newKm && (/חדש/.test(card.year ?? '') || newHand))) facts.push({ k: 'km', v: card.km })
+    if (card.yad) facts.push({ k: 'hand', v: newHand ? 'חדש' : `יד ${card.yad}` })
     const GAP = 12, ICON = 11, IG = 4
     const factsW = (fs: number) => facts.reduce((a, f, n) => {
       c.direction = f.k === 'hand' ? 'rtl' : 'ltr'; c.font = `500 ${px(fs)}px ${font}`
@@ -1210,11 +1217,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       // step in. The ring on the plinth never shows once the twins are out —
       // it showed the very same cars behind the flying cards (the doubling)
       if (FOLD) {
-        // home on the stand they are the stand's own screens again; they give
-        // way only as the grid opens
-        u.uFade.value = 1 - smooth(fit(walkU, FOLD_OPEN, FOLD_OPEN + 0.12))
+        // home on the stand they are its own screens again: the three facing
+        // you set off from here into the grid, the rest sink into the stand
+        u.uFade.value = 1   // never a fade: everything here moves
+        const rel = relOfSlot(i), open = easeInOut(fit(walkU, FOLD_OPEN, 1))
+        const gone = rel !== null && flightE(rel) > 0
         sm.visible = on && g > 0.002
-        m.visible = (g <= 0.002 && u.uFade.value > 0.002) || (g <= 0 && p <= 0.02)
+        m.visible = (g <= 0.002 && !gone && open < 0.999) || (g <= 0 && p <= 0.02)
+        m.scale.setScalar(rel === null ? Math.max(1e-4, 1 - open) : 1)
         return
       }
       const rel = relOfSlot(i)
@@ -1438,7 +1448,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
       let flying = false, flyE = 1   // in flight (the scatter, the walk out), and how far along
       const fly = FLY.find(f => anchor + f.at === hd.i)
       const rel = fly ? fly.rel : 99
-      if (!FOLD && mapped && fly && throwK < 1) {
+      if (mapped && fly && (FOLD ? walkU < 1 : throwK < 1)) {
         // the scatter: the screen flies to its place, turning to you, and the
         // band opens under its photo as it lands
         const fe = flightE(rel), sl = slotOf(rel), sc0 = CW / cardW
@@ -1490,14 +1500,12 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         const ri = hd.i - anchor - FLY.length
         if (calm) a = throwK
         else if (FOLD && walkU < 1) {
-          // the grid opens where it stands, row by row from the top: each card
-          // rises a little into its cell and comes up — nothing crosses the hall
-          const row = Math.max(0, Math.min(4, hd.pr - scrollPos))
-          const o = FOLD_OPEN + 0.02 + row * 0.04
-          a = smooth(fit(walkU, o, o + 0.2))
-          sc = 0.94 + 0.06 * a
-          m.position.addScaledVector(tmpV2.set(0, -1, 0).applyQuaternion(camera.quaternion), (1 - a) * cardH * 0.08)
-          flying = a < 1; flyE = a
+          // the rest of the grid rises from below as one block, out from behind
+          // the foot's dividing line (cut there, so nothing ever fades), landing
+          // with the three screens
+          const e = easeInOut(fit(walkU, FOLD_OPEN, 1))
+          m.position.addScaledVector(tmpV2.set(0, -1, 0).applyQuaternion(camera.quaternion), (1 - e) * (zoneH + cardH + 0.1))
+          flying = e < 1; flyE = e
         }
         else if (mapped && throwK < 1 && ri >= 0) {
           // the rest of the stock is DEALT out of the main screen: each card
