@@ -161,7 +161,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
     const start = (e: TouchEvent) => {
       y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; t0 = performance.now(); fromTop = el.scrollTop <= 0
       // (the photo and the strip too: a swipe down from the top closes from anywhere, as on a person)
-      side = !!(e.target as Element | null)?.closest?.('.cv-sheet, .cv-full')
+      side = !!(e.target as Element | null)?.closest?.('.cv-sheet, .cv-full, .cv-vplayer')
     }
     const move = (e: TouchEvent) => {
       if (side) return
@@ -183,7 +183,7 @@ export default function CarOverlay({ quick, url, from, closing, onClosed, onClos
   // Escape closes — once nothing of the page's own (a sheet, the full screen) is open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || document.querySelector('.cv-sheet[data-open], .cv-full')) return
+      if (e.key !== 'Escape' || document.querySelector('.cv-sheet[data-open], .cv-full, .cv-vplayer')) return
       close()
     }
     addEventListener('keydown', onKey)

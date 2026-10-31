@@ -196,7 +196,8 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
   const [full, setFull] = useState<number | null>(null)
   const [at, setAt] = useState(0)
-  const [play, setPlay] = useState(false)
+  // the car's video (YouTube): opened over the page from the photo or the strip
+  const [vid, setVid] = useState(false)
   const track = useRef<HTMLDivElement>(null), fullTrack = useRef<HTMLDivElement>(null), thumbs = useRef<HTMLDivElement>(null)
   const touched = useRef(0)
   // the main photo is the cover the page opens on; the gallery that turns
@@ -233,6 +234,8 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
     : `שלום, אשמח לקבל מחיר עבור ${car.name}${car.year ? ` ${car.year}` : ''} (מודעה ${car.recNo}):\n${url}`
   const waHref = `https://wa.me/${WA}?text=${encodeURIComponent(waText)}`
   const video = car.videos.map(ytId).find(Boolean) ?? null
+  // a Short stands upright: its player too
+  const upright = !!video && car.videos.some(u => /shorts\//.test(u) && ytId(u) === video)
   const hasIdx = car.pollution != null || car.safety != null
   const statusWord = car.status === 'stock' ? 'במלאי' : 'בדרך לארץ'
 
@@ -251,7 +254,7 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
   useEffect(() => {
     if (!gal.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const t = setInterval(() => {
-      if (!seen.current || sheet || full !== null || document.hidden || Date.now() - touched.current < 8000) return
+      if (!seen.current || sheet || full !== null || vid || document.hidden || Date.now() - touched.current < 8000) return
       if (photoEl.current?.hasAttribute('data-flying')) return
       // the first turn: the gallery's first photo comes up from under the
       // cover — once it is there (never an empty frame)
@@ -265,7 +268,7 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
       show(next, next !== 0)
     }, AUTO_MS)
     return () => clearInterval(t)
-  }, [at, gal.length, sheet, full, cover])   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [at, gal.length, sheet, full, cover, vid])   // eslint-disable-line react-hooks/exhaustive-deps
   const onTrack = () => {
     const el = track.current; if (!el) return
     setAt(Math.round(Math.abs(el.scrollLeft) / el.clientWidth))
@@ -274,7 +277,7 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
   // the strip under the photo follows it — sideways only (scrollIntoView
   // moved the whole page up to it)
   useEffect(() => {
-    const s = thumbs.current, b = s?.children[at] as HTMLElement | undefined
+    const s = thumbs.current, b = s?.children[at + (video ? 1 : 0)] as HTMLElement | undefined
     if (!s || !b || cover) return
     const sr = s.getBoundingClientRect(), br = b.getBoundingClientRect()
     s.scrollBy({ left: br.left + br.width / 2 - (sr.left + sr.width / 2), behavior: 'smooth' })
@@ -293,14 +296,14 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [full])
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') shut() }
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { shut(); setVid(false) } }
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [])
   // nothing behind a sheet or the full screen scrolls
   useEffect(() => {
-    document.documentElement.toggleAttribute('data-cv-lock', !!sheet || full !== null)
+    document.documentElement.toggleAttribute('data-cv-lock', !!sheet || full !== null || vid)
     return () => document.documentElement.removeAttribute('data-cv-lock')
-  }, [sheet, full])
+  }, [sheet, full, vid])
 
   // ── the form ──
   const [lead, setLead] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
@@ -387,12 +390,23 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {hero && <img className="cv-cover" src={heroSrc(hero)} alt={car.name} fetchPriority="high" decoding="async" draggable={false} onClick={() => setFull(0)} />}
             {!cover && gal.length > 1 && <span className="cv-count" dir="ltr">{at + 1} / {gal.length}</span>}
+            {/* the video, in plain sight on the photo itself */}
+            {video && <button type="button" className="cv-vid-chip" onClick={() => setVid(true)}><Icon k="play" s={14} />צפו בסרטון</button>}
           </div>
           {/* the strip's place is held while the gallery is on its way: it
               never arrives late and pushes the page down */}
           {loading && <div className="cv-thumbs cv-rest" aria-hidden="true">{[0, 1, 2, 3, 4, 5].map(i => <span key={i} className="cv-thumb-ph" />)}</div>}
-          {!loading && gal.length > 1 && (
+          {!loading && (gal.length > 1 || (video && gal.length > 0)) && (
             <div ref={thumbs} className="cv-thumbs cv-rest" role="tablist" aria-label="תמונות ממוזערות">
+              {/* the video leads the strip: its frame with a play mark */}
+              {video && (
+                <button type="button" className="cv-thumb-vid" aria-label={`הפעלת הסרטון של ${car.name}`} onClick={() => setVid(true)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`https://i.ytimg.com/vi/${video}/mqdefault.jpg`} alt="" loading="lazy" decoding="async" draggable={false}
+                    ref={el => { if (el?.complete && el.naturalWidth) el.dataset.in = '' }} onLoad={e => { e.currentTarget.dataset.in = '' }} />
+                  <i><Icon k="play" s={14} /></i>
+                </button>
+              )}
               {gal.map((u, i) => (
                 <button key={u} type="button" role="tab" aria-selected={!cover && i === at} aria-label={`תמונה ${i + 1}`}
                   onClick={() => { touched.current = Date.now(); setCover(false); show(i) }}>
@@ -485,24 +499,6 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
                 {car.safety != null && <Scale label="אבזור בטיחותי" value={car.safety} colors={SAFETY} from={0} max={8} />}
               </div>
             )}
-          </section>
-        )}
-
-        {video && (
-          <section className="cv-card" aria-labelledby="cv-vid-h">
-            <h2 id="cv-vid-h">סרטון</h2>
-            <div className="cv-video">
-              {play ? (
-                <iframe src={`https://www.youtube-nocookie.com/embed/${video}?autoplay=1&playsinline=1&rel=0`} title={`סרטון ${car.name}`}
-                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
-              ) : (
-                <button type="button" className="cv-video-poster" onClick={() => setPlay(true)} aria-label={`הפעלת הסרטון של ${car.name}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`https://i.ytimg.com/vi/${video}/hqdefault.jpg`} alt="" loading="lazy" />
-                  <span className="cv-play"><Icon k="play" s={26} /></span>
-                </button>
-              )}
-            </div>
           </section>
         )}
 
@@ -600,6 +596,17 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
       </section>
 
       {/* ── the full-screen gallery, at the photo that was tapped ── */}
+      {/* ── the video, over the page: dark, the player in the middle ── */}
+      {vid && video && (
+        <div className="cv-vplayer" role="dialog" aria-modal="true" aria-label={`סרטון ${car.name}`} onClick={() => setVid(false)}>
+          <div className="cv-vframe" data-upright={upright || undefined} onClick={e => e.stopPropagation()}>
+            <iframe src={`https://www.youtube-nocookie.com/embed/${video}?autoplay=1&playsinline=1&rel=0&modestbranding=1`} title={`סרטון ${car.name}`}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+          </div>
+          <button type="button" className="cv-ic cv-full-x" aria-label="סגירת הסרטון" onClick={() => setVid(false)}><Icon k="close" /></button>
+        </div>
+      )}
+
       {full !== null && (
         <div className="cv-full" role="dialog" aria-modal="true" aria-label="תמונות במסך מלא">
           <div ref={fullTrack} className="cv-full-track">
