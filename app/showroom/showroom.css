@@ -11,7 +11,8 @@ html:has(.sr[data-theme="light"][data-bright]), html:has(.sr[data-theme="light"]
    paint — the page and the strips are born light, nothing starts black */
 html[data-sr-bright], html[data-sr-bright] body { background: #f5f6f7; }
 html[data-sr-bright] .sr-safari-strip { background: #f5f6f7; }
-html:has(.sr) { overflow: auto; }
+/* and never pulled down to refresh (its two pixels of scroll still answer the clock's tap) */
+html:has(.sr) { overflow: auto; overscroll-behavior-y: none; }
 /* two real pixels of page scroll, resting at one: the iPhone's tap on the
    clock pulls the page to zero — the one signal Safari gives — and the hall
    turns it into the list's own ride to the top */

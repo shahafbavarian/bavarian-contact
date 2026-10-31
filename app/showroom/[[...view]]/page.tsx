@@ -78,7 +78,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
         make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || handOf(c.recNo),
         fuel: c.engine || '', body: c.carType || '', monthly: parseInt((c.monthlyPrice || '').replace(/\D/g, ''), 10) || 0, rec: parseInt(c.recNo, 10) || 0,
         hp: extra(c.recNo).hp ?? 0, ev: extra(c.recNo).ev ?? 0,
-        color: extra(c.recNo).ext ?? '', colors: familiesOf(extra(c.recNo).ext),
+        color: extra(c.recNo).ext ?? '', colors: familiesOf(extra(c.recNo).ext), colorsIn: familiesOf(extra(c.recNo).int),
       }
     })
   } catch {}

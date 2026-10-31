@@ -64,8 +64,8 @@ export type Card = {
   fuel?: string; body?: string; monthly?: number; rec?: number
   /** horsepower and electric range in km (0: not known) */
   hp?: number; ev?: number
-  /** the outside colour as the site names it, and its families (the filter's dots) */
-  color?: string; colors?: string[]
+  /** the outside colour as the site names it, and its families (the filter's dots); the inside colour's families */
+  color?: string; colors?: string[]; colorsIn?: string[]
   /** a member of the team, not a car: the face carries the name (title) and role (sub) */
   person?: boolean
   /** a car's own page (/cars/<slug>): it opens over the hall, out of the card */
@@ -898,11 +898,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // settles onto the stand as you arrive — glued to the view, so its size only
   // ever changes one way — while the side screens tuck in behind it. 2) It
   // opens, from that one screen: it turns over to its car on its way to the
-  // middle row; from behind it the right screen rises to the top row and the
-  // left one sinks to the bottom row; and each of those has another screen
-  // behind it that slides out to its row's other cell. A card further down
-  // comes out from behind the one above it. Every card comes out of the screen
-  // you are looking at, a beat apart; no two paths cross; nothing comes in from
+  // first card's cell (top right, where reading starts), and the grid comes
+  // out from behind it as a wave in reading order — down the right column,
+  // each card from behind the one above it, and across each row, its left
+  // card from behind its right one. Every card comes out of the screen you
+  // are looking at, a beat apart; no two paths cross; nothing comes in from
   // the edges. Walking out plays it backwards, step for step.
   const FOLD = opts.walk === 'fold'
   const FOLD_CARRY = 0.4     // act 1: on the stand (the camera arrives ~0.44)
@@ -910,21 +910,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   const FOLD_LEN = 0.32      // each card's move (~1 s)
   const FOLD_NEXT = 0.1      // a card comes out from behind its parent once that one has turned
   const FOLD_TURN = [0.04, 0.24] as const   // the middle screen's turn to its car, early in its move
-  // k: the place from the first card in view. The middle screen becomes the
-  // middle row's right card (two columns) or the second card (one column)
-  const foldRoot = () => (gcols === 2 ? (N - anchor > 5 ? 2 : 0) : N - anchor >= 3 ? 1 : 0)
-  const foldParent = (k: number) => {
-    const r = foldRoot()
-    if (k === r) return -1
-    if (gcols === 2 && r === 2) return k < 6 ? (k === 1 ? 0 : k === 4 ? 5 : 2) : k - 2
-    if (gcols === 2) return k - 1   // (walking out from the very end of the list: one from behind the next)
-    return k < r ? k + 1 : k - 1
-  }
-  // the three out of the middle screen, in reading order: up, across, down
-  const foldSib = (k: number) => (gcols === 2 && foldRoot() === 2 ? (k === 3 ? 0.02 : k === 5 ? 0.04 : 0) : 0)
+  // k: the place from the first card in view; the middle screen is k 0. A
+  // row's left card comes out from behind its right one; a right card from
+  // behind the one above it (one column: each from behind the one above)
+  const foldRoot = () => 0
+  const foldParent = (k: number) => (k <= 0 ? -1 : gcols === 2 ? (k % 2 ? k - 1 : k - 2) : k - 1)
   const foldStart = (k: number, d = 0): number => {
     const par = foldParent(k)
-    return par < 0 || d > 12 ? FOLD_GO : Math.min(0.9, foldStart(par, d + 1) + FOLD_NEXT + foldSib(k))
+    return par < 0 || d > 12 ? FOLD_GO : Math.min(0.9, foldStart(par, d + 1) + FOLD_NEXT)
   }
   const foldDepth = (k: number, d = 0): number => { const par = foldParent(k); return par < 0 || d > 12 ? 0 : 1 + foldDepth(par, d + 1) }
   const foldE = (k: number) => { const t0 = foldStart(k); return smooth(fit(foldU, t0, Math.min(1, t0 + FOLD_LEN))) }

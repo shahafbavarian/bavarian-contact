@@ -184,6 +184,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const [fuels, setFuels] = useState<string[]>([])
   const [bodies, setBodies] = useState<string[]>([])
   const [paints, setPaints] = useState<string[]>([])
+  const [inners, setInners] = useState<string[]>([])
   const [sort, setSort] = useState<Sort>(SORT_DEFAULT)
   useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
   useEffect(() => { setActive(0); activeMoved.current = false }, [text, make, model])
@@ -194,7 +195,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     return {
       make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true,
       priceN: priceNum(c.price ?? '') ?? NaN, monthlyN: c.monthly || NaN, yearN: Number.isFinite(yr) ? yr : NaN, kmN: Number.isFinite(km) ? km : NaN,
-      hpN: c.hp || NaN, evN: c.ev || NaN, color: c.color ?? '', colors: c.colors ?? [],
+      hpN: c.hp || NaN, evN: c.ev || NaN, color: c.color ?? '', colors: c.colors ?? [], colorsIn: c.colorsIn ?? [],
       hand: handKey(c.yad ?? ''), fuel: c.fuel ?? '', body: c.body ?? '', rec: c.rec ?? 0,
     }
   }), [deck])
@@ -209,7 +210,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       year: { data: y, b: bounds(y, 1) }, km: { data: k, b: bounds(k, 5_000) },
       hp: { data: hp, b: bounds(hp, 10) }, ev: { data: ev, b: bounds(ev, 5) },
       hands: count('hand'), fuels: count('fuel'),
-      paints: new Set(searchable.flatMap(c => c.colors)),
+      paints: new Set(searchable.flatMap(c => c.colors)), inners: new Set(searchable.flatMap(c => c.colorsIn)),
       // ties by name: the deck's order is per visit, the page's markup is not
       bodies: Array.from(count('body')).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
     }
@@ -371,9 +372,9 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   // with it gone, its range goes too: no hidden filter left behind)
   const evOn = fuels.includes('bev') || fuels.includes('phev')
   useEffect(() => { if (!evOn) setEvR(null) }, [evOn])
-  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || !!hpR || !!evR || hands.length > 0 || fuels.length > 0 || bodies.length > 0 || paints.length > 0
+  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || !!hpR || !!evR || hands.length > 0 || fuels.length > 0 || bodies.length > 0 || paints.length > 0 || inners.length > 0
   const toggle = (list: string[], set: (v: string[]) => void, k: string) => set(list.includes(k) ? list.filter(x => x !== k) : [...list, k])
-  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHpR(null); setEvR(null); setHands([]); setFuels([]); setBodies([]); setPaints([]) }
+  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHpR(null); setEvR(null); setHands([]); setFuels([]); setBodies([]); setPaints([]); setInners([]) }
   // the cars the search, availability and the ranges leave
   const passed = useMemo(() => {
     const qn = norm(query)
@@ -392,17 +393,18 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     })
   }, [searchable, hays, make, model, term, query, avail, priceR, monthlyR, yearR, kmR, hpR, evR])
   // the picks (hand, engine, body): any of a group's picks, every group
-  const picked = (i: number, skip?: 'hand' | 'fuel' | 'body' | 'paint') => {
+  const picked = (i: number, skip?: 'hand' | 'fuel' | 'body' | 'paint' | 'inner') => {
     const c = searchable[i]
     return (skip === 'hand' || !hands.length || hands.includes(c.hand))
       && (skip === 'fuel' || !fuels.length || fuels.includes(c.fuel))
       && (skip === 'body' || !bodies.length || bodies.includes(c.body))
       && (skip === 'paint' || !paints.length || c.colors.some(k => paints.includes(k)))
+      && (skip === 'inner' || !inners.length || c.colorsIn.some(k => inners.includes(k)))
   }
   // each choice's count, live: the cars it would show with everything else
   // as it is (its own group's other picks aside: they add, not narrow)
   const counts = useMemo(() => {
-    const out = { hand: new Map<string, number>(), fuel: new Map<string, number>(), body: new Map<string, number>(), paint: new Map<string, number>() }
+    const out = { hand: new Map<string, number>(), fuel: new Map<string, number>(), body: new Map<string, number>(), paint: new Map<string, number>(), inner: new Map<string, number>() }
     for (const i of passed) {
       for (const g of ['hand', 'fuel', 'body'] as const) {
         const k = searchable[i][g]
@@ -410,10 +412,11 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       }
       // a two-tone car counts under each of its colours
       if (picked(i, 'paint')) for (const k of searchable[i].colors) out.paint.set(k, (out.paint.get(k) ?? 0) + 1)
+      if (picked(i, 'inner')) for (const k of searchable[i].colorsIn) out.inner.set(k, (out.inner.get(k) ?? 0) + 1)
     }
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passed, searchable, hands, fuels, bodies, paints])
+  }, [passed, searchable, hands, fuels, bodies, paints, inners])
   const found = useMemo(() => {
     const ids = passed.filter(i => picked(i))
     const pn = (i: number) => priceNum(searchable[i].price)
@@ -426,7 +429,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passed, searchable, hands, fuels, bodies, paints, sort])
+  }, [passed, searchable, hands, fuels, bodies, paints, inners, sort])
   // something narrows the stock (the count shows then)
   const filtering = !!make || !!norm(query) || !!term || filtersOn
   const view = set === 'team' && teamIds.length ? teamIds : found
@@ -572,6 +575,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     // (a phone opens its keyboard only for a tap: there the field waits, lit)
     let wasScOn = false
     let capIn = false, arrived = false, wasBright = false, lastK = -1, stripK = bornBright ? 1 : 0, prevK = bornBright ? 1 : 0, lastVb = -1
+    let guard = (on: boolean) => { void on }   // (set below, with the other gestures)
     const frame = (now: number) => {
       if (!alive) return
       raf = requestAnimationFrame(frame)
@@ -590,6 +594,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       if (!dur && Math.abs(current - target) < 1e-4 && Math.abs(vel) < 1e-3) { current = target; vel = 0 }
       handle.current?.setProgress(current)
       progress.current = current
+      guard(!cardsOut())
       const c = cap.current
       if (c) {
         const s = fit(current, 0.86, 0.93)
@@ -828,6 +833,17 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     addEventListener('wheel', onWheel, { passive: false })
     addEventListener('touchstart', onTouchStart, { passive: true })
     addEventListener('touchend', onTouchEnd)
+    // On the street (and on the way in) no finger moves the page: iOS takes
+    // no notice of the hall's touch-action there and pulled the page down to
+    // refresh. Inside, with the cards out, the listener is off — a window-wide
+    // non-passive touchmove held the list's native scroll to the hall's frames
+    const stopPull = (e: TouchEvent) => { if (!menuOpen.current && !inLine(e) && e.cancelable) e.preventDefault() }
+    let guarded = false
+    guard = (on: boolean) => {
+      if (on === guarded) return
+      guarded = on
+      if (on) addEventListener('touchmove', stopPull, { passive: false }); else removeEventListener('touchmove', stopPull)
+    }
     addEventListener('keydown', onKey)
     addEventListener('resize', onResize)
     addEventListener('orientationchange', onResize)
@@ -838,7 +854,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     raf = requestAnimationFrame(frame)
     return () => {
       alive = false; cancelAnimationFrame(raf)
-      removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart)
+      removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTouchStart); guard(false)
       removeEventListener('touchend', onTouchEnd); removeEventListener('keydown', onKey)
       removeEventListener('resize', onResize); removeEventListener('orientationchange', onResize); visualViewport?.removeEventListener('resize', onResize)
       removeEventListener('pointermove', onPointer); removeEventListener('pointerdown', onDownOut); removeEventListener('scroll', onWinScroll)
@@ -1102,19 +1118,20 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                     </div>
                   </div>
                 )}
-                {facets.paints.size > 0 && (
-                  <div className="sr-f">
-                    <div className="sr-fh"><span>צבע חיצוני</span></div>
-                    <div className="sr-dots" role="group" aria-label="צבע חיצוני">
-                      {FAMILIES.filter(f => facets.paints.has(f.key)).map(f => { const n = counts.paint.get(f.key) ?? 0, on = paints.includes(f.key); return (
+                {/* the colours, outside and in: a row of dots each */}
+                {([['צבע חיצוני', facets.paints, counts.paint, paints, setPaints], ['צבע פנים', facets.inners, counts.inner, inners, setInners]] as const).map(([label, present, cnt, sel, setSel]) => present.size > 0 && (
+                  <div key={label} className="sr-f">
+                    <div className="sr-fh"><span>{label}</span></div>
+                    <div className="sr-dots" role="group" aria-label={label}>
+                      {FAMILIES.filter(f => present.has(f.key)).map(f => { const n = cnt.get(f.key) ?? 0, on = sel.includes(f.key); return (
                         <button key={f.key} type="button" className="sr-dot" aria-pressed={on} aria-label={`${f.label}, ${carsWord(n)}`} title={`${f.label} · ${n}`} disabled={!n && !on}
-                          data-light={f.key === 'white' || undefined} style={{ '--dot': f.dot } as React.CSSProperties} onClick={() => toggle(paints, setPaints, f.key)}>
+                          data-light={f.key === 'white' || undefined} style={{ '--dot': f.dot } as React.CSSProperties} onClick={() => toggle(sel, setSel, f.key)}>
                           <i aria-hidden="true" />
                         </button>
                       ) })}
                     </div>
                   </div>
-                )}
+                ))}
               </div>
               <div className="sr-adv-foot">
                 <button type="button" className="sr-clr" onClick={clearFilters} disabled={!filtersOn}>ניקוי מסננים</button>
