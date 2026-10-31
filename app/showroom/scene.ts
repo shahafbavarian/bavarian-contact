@@ -1288,13 +1288,18 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         tmpV.copy(tuck ? foldMidP : ringP[i]).applyMatrix4(arrInv).applyMatrix4(camera.matrixWorld)
         tmpQ2.copy(camera.quaternion).multiply(tmpQ.copy(arrQi).multiply(tuck ? foldMidQ : ringQ[i]))
         if (tuck) tmpV.addScaledVector(fwd.set(0, 0, -1).applyQuaternion(camera.quaternion), 0.08)   // behind it
-        showP[i].lerp(tmpV, carry); showQ[i].slerp(tmpQ2, carry)
+        // the side screens tuck in at once, while the middle one is still large
+        // and covers them (drawn under it, a touch smaller): gone before it
+        // turns — they had stayed beside it, and showed through its turn
+        const k = tuck ? smooth(fit(carry, 0, 0.2)) : carry
+        showP[i].lerp(tmpV, k); showQ[i].slerp(tmpQ2, k)
         // it narrows early to pass through the doorway (3 m of screen, 2.4 m of
         // door) and keeps that size: on screen it only ever grows smaller, and
         // lands about the size of the card it becomes
         const s1 = (tuck ? 0.96 : 1) * FOLD_SHRINK
-        sm.scale.setScalar(sm.scale.x + (s1 - sm.scale.x) * smooth(fit(carry, 0, 0.3)))
-      }
+        sm.scale.setScalar(sm.scale.x + (s1 - sm.scale.x) * smooth(fit(carry, 0, tuck ? 0.2 : 0.3)))
+        sm.renderOrder = tuck ? -1 : 0
+      } else sm.renderOrder = 0
       sm.position.copy(showP[i]); sm.quaternion.copy(showQ[i])
       // ONE set of screens on show at any moment. On the street the big
       // twins are the screens; the three facing you each hand themselves to
@@ -1307,7 +1312,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
         // then on); the others — behind you — go as the walk starts
         const isMid = i === mid, tuck = !isMid && (i === sideA || i === sideB)
         u.uFade.value = isMid || tuck ? 1 : 1 - smooth(fit(foldU, 0, 0.2))
-        const gone = isMid ? foldU > FOLD_TURN[0] : tuck && carry > 0.97   // (the card takes over to turn)
+        const gone = isMid ? foldU > FOLD_TURN[0] : tuck && carry >= 0.2   // (the card takes over to turn; the side ones are tucked in)
         sm.visible = on && g > 0 && !gone && u.uFade.value > 0.002
         m.visible = g <= 0 && p <= 0.02
         return
@@ -1602,7 +1607,10 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           // face swapped at the zero crossing — a 3D turn of a near-full
           // screen smeared in perspective ("stretches, then straightens");
           // the flat flip reads clean at any distance, like iOS's own
-          const fl = smooth(fit(fe, 0.35, 0.65))
+          // (a side screen turns as it sets off, while it is still slow — on a
+          // phone still out of the frame: turning out at the frame's edge it
+          // showed only as a sliver that shrank and came back)
+          const fl = rel === 0 ? smooth(fit(fe, 0.35, 0.65)) : smooth(fit(fe, 0.04, 0.26))
           sx = Math.max(0.015, Math.abs(Math.cos(Math.PI * fl)))
           u.uFlip.value = fl < 0.5 ? 1 : 0
         } else u.uFlip.value = 0
