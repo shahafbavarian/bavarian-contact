@@ -12,9 +12,11 @@ import HANDS from '../hands.json'
 // a number, or new ("חדש" on the main site: no owner before) — anything else is unknown
 const handOf = (recNo: string) => { const h = ((HANDS as Record<string, string>)[recNo] ?? '').trim(); return /^\d+$/.test(h) ? h : /חדש/.test(h) ? 'חדש' : '' }
 // and the same kind of snapshot of the specs the list lacks, for the advanced
-// filter: horsepower ("הספק") and electric range ("טווח נסיעה חשמלי")
+// filter: horsepower ("הספק"), electric range ("טווח נסיעה חשמלי"), and the
+// colours as the site names them, outside and in ("צבע חיצוני", "צבע פנים")
 import EXTRAS from '../extras.json'
-const extra = (recNo: string) => (EXTRAS as Record<string, { hp?: number; ev?: number }>)[recNo] ?? {}
+import { familiesOf } from '../colors'
+const extra = (recNo: string) => (EXTRAS as Record<string, { hp?: number; ev?: number; ext?: string; int?: string }>)[recNo] ?? {}
 import type { Card } from '../scene'
 
 export const revalidate = 300
@@ -75,6 +77,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
         make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || handOf(c.recNo),
         fuel: c.engine || '', body: c.carType || '', monthly: parseInt((c.monthlyPrice || '').replace(/\D/g, ''), 10) || 0, rec: parseInt(c.recNo, 10) || 0,
         hp: extra(c.recNo).hp ?? 0, ev: extra(c.recNo).ev ?? 0,
+        color: extra(c.recNo).ext ?? '', colors: familiesOf(extra(c.recNo).ext),
       }
     })
   } catch {}
