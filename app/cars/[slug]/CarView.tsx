@@ -55,24 +55,16 @@ function Icon({ k, s = 20 }: { k: IconK; s?: number }) {
   }
 }
 
-// an index on its official scale: the value in its own colour, the scale's
-// steps under it with the car's step raised and marked, the ends named
-const inkOn = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
-  return l > 0.6 ? '#14171A' : '#fff'
-}
-function Scale({ label, value, colors, from, max, low, high }: { label: string; value: number; colors: string[]; from: number; max: number; low: string; high: string }) {
-  const c = colors[Math.min(colors.length - 1, Math.max(0, value - from))]
+// an index on its official scale, in one compact line: its name and value,
+// the scale's steps under it, the car's step in full colour and raised (in
+// its own place: nothing overlaps its neighbours)
+function Scale({ label, value, colors, from, max }: { label: string; value: number; colors: string[]; from: number; max: number }) {
   return (
     <div className="cv-scale">
-      <div className="cv-scale-h">
-        <span className="cv-scale-v" style={{ background: c, color: inkOn(c) }} dir="ltr">{value}</span>
-        <span className="cv-scale-t"><b>{label}</b><small>{value} מתוך {max}</small></span>
-      </div>
+      <div className="cv-scale-h"><span>{label}</span><b dir="ltr">{value}<small>/{max}</small></b></div>
       <div className="cv-scale-bar" dir="ltr" role="img" aria-label={`${label}: ${value} מתוך ${max}`}>
-        {colors.map((col, i) => <i key={i} style={{ background: col }} data-on={i + from === value ? '' : undefined} />)}
+        {colors.map((col, k) => <i key={k} style={{ background: col }} data-on={k + from === value ? '' : undefined} />)}
       </div>
-      <div className="cv-scale-ends" dir="ltr"><small>{low}</small><small>{high}</small></div>
     </div>
   )
 }
@@ -480,8 +472,8 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
             {!hasIdx && <p className="cv-na">המידע על דרגת זיהום האוויר ורמת אבזור הבטיחות של הרכב אינו זמין כרגע.</p>}
             {hasIdx && (
               <div className="cv-scales">
-                {car.pollution != null && <Scale label="דרגת זיהום אוויר" value={car.pollution} colors={POLLUTION} from={1} max={15} low="מזהם פחות" high="מזהם יותר" />}
-                {car.safety != null && <Scale label="רמת אבזור בטיחותי" value={car.safety} colors={SAFETY} from={0} max={8} low="נמוכה" high="גבוהה" />}
+                {car.pollution != null && <Scale label="זיהום אוויר" value={car.pollution} colors={POLLUTION} from={1} max={15} />}
+                {car.safety != null && <Scale label="אבזור בטיחותי" value={car.safety} colors={SAFETY} from={0} max={8} />}
               </div>
             )}
           </section>

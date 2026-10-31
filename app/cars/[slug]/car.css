@@ -25,11 +25,14 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 /* what arrives after the opening (the car's full details) comes up softly */
 .cv-over .cv-page > :not(.cv-gallery):not(.cv-side), .cv-over .cv-monthly { animation: cv-in 380ms var(--ease) both; }
 @keyframes cv-in { from { opacity: 0; transform: translateY(14px); } }
-/* the close: every detail goes at once, before the photo flies home */
+/* the close: every detail goes in the very frame of the tap, before the
+   photo flies home. No fade: on the iPhone a fade of these runs on the main
+   thread, which the hall keeps busy while the photo flies — it froze there,
+   the title card left over the hall */
 .cv-over[data-leaving] .cv-rest,
 .cv-over[data-leaving] .cv-page > :not(.cv-gallery):not(.cv-side),
 .cv-over[data-leaving] .cv-count {
-  opacity: 0 !important; animation: none !important; transition: opacity 160ms ease-out !important; pointer-events: none;
+  opacity: 0 !important; animation: none !important; transition: none !important; pointer-events: none;
 }
 
 .cv {
@@ -217,27 +220,16 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 .cv-about { font-size: 15px; white-space: pre-line; color: #2A2F34; }
 
 /* the indices */
-/* each index a panel of its own: the value as a coloured badge, the scale's
-   steps in full colour (softened), the car's step raised and ringed */
-.cv-scales { display: grid; gap: 12px; }
-.cv-scale { padding: 16px; border-radius: 14px; background: var(--canvas); }
-.cv-scale-h { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.cv-scale-v {
-  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
-  font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums;
-  box-shadow: inset 0 0 0 1px rgba(20,23,26,.08);
-}
-.cv-scale-t { display: grid; gap: 1px; }
-.cv-scale-t b { font-size: 15.5px; font-weight: 600; }
-.cv-scale-t small { font-size: 13px; color: var(--muted); }
-.cv-scale-bar { display: flex; align-items: center; gap: 3px; height: 22px; }
-.cv-scale-bar i { flex: 1; height: 10px; border-radius: 3px; opacity: .32; }
-.cv-scale-bar i[data-on] {
-  height: 22px; border-radius: 5px; opacity: 1; flex: 1.6;
-  box-shadow: 0 0 0 2px var(--canvas), 0 0 0 3.5px var(--ink);
-}
-.cv-scale-ends { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: var(--muted); }
-@media (min-width: 600px) { .cv-scales { grid-template-columns: 1fr 1fr; } }
+/* the two indices side by side, each one line and a thin scale */
+.cv-scales { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.cv-scale-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: var(--muted); }
+.cv-scale-h b { font-size: 17px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cv-scale-h b small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.cv-scale-bar { display: flex; align-items: center; gap: 2px; height: 14px; }
+.cv-scale-bar i { flex: 1 1 0; min-width: 0; height: 6px; border-radius: 2px; opacity: .25; }
+.cv-scale-bar i:first-child { border-radius: 3px 2px 2px 3px; }
+.cv-scale-bar i:last-child { border-radius: 2px 3px 3px 2px; }
+.cv-scale-bar i[data-on] { height: 14px; border-radius: 3px; opacity: 1; }
 
 /* the video */
 .cv-video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
