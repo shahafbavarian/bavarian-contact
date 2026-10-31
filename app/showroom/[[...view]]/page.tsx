@@ -65,6 +65,7 @@ export default async function ShowroomPage({ params }: { params: { view?: string
         href: `/car/${c.recNo}`,
         images: [img(c.imageUrl)],
         make, model, year: c.year ?? '', price: c.price ?? '', stock, km: km(c.mileage), yad: c.yad || handOf(c.recNo),
+        fuel: c.engine || '', body: c.carType || '', monthly: parseInt((c.monthlyPrice || '').replace(/\D/g, ''), 10) || 0, rec: parseInt(c.recNo, 10) || 0,
       }
     })
   } catch {}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Card, SceneHandle } from './scene'
@@ -10,7 +10,8 @@ import PersonOverlay from './PersonOverlay'
 // parallel with hydration — not only once the effect runs
 const scenePromise = typeof window !== 'undefined' ? import('./scene') : null
 import { INSTAGRAM_URL } from '@/lib/agent-format'
-import { AVAIL, PRICES, SORTS, carsWord, haystack, lineOf, makesOf, matches, modelsOf, norm, priceNum, rank, type Avail, type Option, type Ranked, type Sort } from './search'
+import { AVAIL, FUELS, HANDS, SORTS, SORT_DEFAULT, carsWord, handKey, haystack, inRange, kmText, lineOf, makesOf, matches, modelsOf, money, norm, priceNum, rank, type Avail, type Option, type Range, type Ranked, type Sort } from './search'
+import RangeSlider from './Range'
 
 const WHATSAPP = 'https://wa.me/97299561906'
 // the hall's Facebook page, as linked from the main site
@@ -149,11 +150,40 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const [active, setActive] = useState(0)
   const [panel, setPanel] = useState<'filter' | 'sort' | null>(null)
   const [avail, setAvail] = useState<Avail>('all')
-  const [price, setPrice] = useState(-1)
-  const [sort, setSort] = useState<Sort>({ key: 'mix', up: false })
+  // the advanced filter (spec 3.3): ranges (null = untouched) and multi-picks
+  const [priceR, setPriceR] = useState<Range>(null)
+  const [monthlyR, setMonthlyR] = useState<Range>(null)
+  const [yearR, setYearR] = useState<Range>(null)
+  const [kmR, setKmR] = useState<Range>(null)
+  const [hands, setHands] = useState<string[]>([])
+  const [fuels, setFuels] = useState<string[]>([])
+  const [bodies, setBodies] = useState<string[]>([])
+  const [sort, setSort] = useState<Sort>(SORT_DEFAULT)
   useEffect(() => { const t = setTimeout(() => setQuery(text), 140); return () => clearTimeout(t) }, [text])
   useEffect(() => { setActive(0); activeMoved.current = false }, [text, make, model])
-  const searchable = useMemo(() => deck.map(c => ({ make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true })), [deck])
+  const searchable = useMemo(() => deck.map(c => {
+    const yr = parseInt((c.year ?? '').match(/(\d{4})\s*$/)?.[1] ?? '', 10)
+    const km = c.km === 'חדש' ? 0 : parseInt((c.km ?? '').replace(/\D/g, ''), 10)
+    return {
+      make: c.make ?? c.title, model: c.model ?? '', year: c.year ?? '', price: c.price ?? '', stock: c.stock ?? true,
+      priceN: priceNum(c.price ?? '') ?? NaN, monthlyN: c.monthly || NaN, yearN: Number.isFinite(yr) ? yr : NaN, kmN: Number.isFinite(km) ? km : NaN,
+      hand: handKey(c.yad ?? ''), fuel: c.fuel ?? '', body: c.body ?? '', rec: c.rec ?? 0,
+    }
+  }), [deck])
+  // the advanced filter's bounds and choices, from the stock itself
+  const facets = useMemo(() => {
+    const nums = (k: 'priceN' | 'monthlyN' | 'yearN' | 'kmN') => searchable.map(c => c[k]).filter(Number.isFinite) as number[]
+    const bounds = (a: number[], step: number) => a.length ? [Math.floor(Math.min(...a) / step) * step, Math.ceil(Math.max(...a) / step) * step] as [number, number] : [0, step] as [number, number]
+    const count = (k: 'hand' | 'fuel' | 'body') => { const m = new Map<string, number>(); searchable.forEach(c => { if (c[k]) m.set(c[k], (m.get(c[k]) ?? 0) + 1) }); return m }
+    const p = nums('priceN'), mo = nums('monthlyN'), y = nums('yearN'), k = nums('kmN')
+    return {
+      price: { data: p, b: bounds(p, 10_000) }, monthly: { data: mo, b: bounds(mo, 500) },
+      year: { data: y, b: bounds(y, 1) }, km: { data: k, b: bounds(k, 5_000) },
+      hands: count('hand'), fuels: count('fuel'),
+      // ties by name: the deck's order is per visit, the page's markup is not
+      bodies: Array.from(count('body')).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
+    }
+  }, [searchable])
   const hays = useMemo(() => searchable.map(haystack), [searchable])
   const makes = useMemo(() => makesOf(searchable), [searchable])
   const models = useMemo(() => (make ? modelsOf(searchable, make) : []), [searchable, make])
@@ -164,32 +194,133 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     const all: Option = { key: '', label: 'כל הדגמים', count: models.reduce((a, o) => a + o.count, 0), he: [], extra: '' }
     return stage === 'model' && !text.trim() ? [{ opt: all, hit: null }, ...r] : r
   }, [stage, makes, models, text])
+  // The sheet: drag its grabber up (or press the filter button) and the
+  // advanced filter opens under the search row, the cards dimmed behind; it
+  // follows the finger, and settles open or shut by the release's speed on a
+  // spring. Its height lives in the DOM (no re-render per frame)
+  const adv = useRef<HTMLDivElement>(null)
+  const dim = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const sheetH = useRef(0), sheetAnim = useRef(0)
+  const grab = useRef<{ y0: number; h0: number; t: number; y: number; v: number; moved: boolean } | null>(null)
+  const sheetMax = () => {
+    const n = nav.current, c = cap.current, a = adv.current
+    if (!c || !a) return 420
+    const top = n ? n.offsetTop + n.offsetHeight : 64
+    // open, the row (and its line of words) rides on top of the sheet, a
+    // breath under the top bar
+    return Math.max(240, Math.min(640, c.offsetTop + c.offsetHeight - a.offsetTop - top - 36))
+  }
+  const paintSheet = (h: number) => {
+    sheetH.current = h
+    const max = sheetMax()
+    if (adv.current) { adv.current.style.height = `${Math.max(0, h)}px`; adv.current.style.setProperty('--sheet-h', `${max}px`) }
+    const k = Math.min(1, Math.max(0, h / max))
+    if (dim.current) { dim.current.style.opacity = String(k); dim.current.style.pointerEvents = k > 0.02 ? 'auto' : 'none' }
+  }
+  const sheetTo = (to: boolean, v0 = 0) => {
+    cancelAnimationFrame(sheetAnim.current)
+    setOpen(to)
+    if (to) { input.current?.blur(); setPanel(null) }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { sheetAnim.current = 0; paintSheet(to ? sheetMax() : 0); return }
+    let h = sheetH.current, v = v0, last = performance.now()
+    const step = (now: number) => {
+      // (the open height read each frame: the line of words may change on the way)
+      const target = to ? sheetMax() : 0
+      const dt = Math.min(0.032, (now - last) / 1000); last = now
+      const w = 21, a = -w * w * (h - target) - 2 * w * v   // critically damped
+      v += a * dt; h += v * dt
+      if (Math.abs(h - target) < 0.5 && Math.abs(v) < 8) { sheetAnim.current = 0; paintSheet(target); return }
+      paintSheet(h); sheetAnim.current = requestAnimationFrame(step)
+    }
+    sheetAnim.current = requestAnimationFrame(step)
+  }
+  // shut, nothing in it takes a tab or a tap
+  useEffect(() => { adv.current?.toggleAttribute('inert', !open) }, [open])
+  // open and at rest, it keeps the row where it is when the line of words
+  // under it changes (the order, "no cars found"): the sheet takes up the
+  // difference, before the frame is painted
+  useLayoutEffect(() => { if (open && !grab.current && !sheetAnim.current) paintSheet(sheetMax()) })
+  const closeSheet = useRef(() => {})
+  closeSheet.current = () => { cancelAnimationFrame(sheetAnim.current); sheetAnim.current = 0; paintSheet(0); setOpen(false) }
+  const onGrabDown = (e: React.PointerEvent) => {
+    cancelAnimationFrame(sheetAnim.current); sheetAnim.current = 0; input.current?.blur(); setPanel(null)
+    grab.current = { y0: e.clientY, h0: sheetH.current, t: performance.now(), y: e.clientY, v: 0, moved: false }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  const onGrabMove = (e: React.PointerEvent) => {
+    const g = grab.current; if (!g) return
+    const max = sheetMax()
+    let h = g.h0 + (g.y0 - e.clientY)
+    if (h > max) h = max + Math.sqrt(h - max) * 4   // past open it gives a little
+    if (h < 0) h = 0
+    const now = performance.now(), dtm = Math.max(1, now - g.t)
+    g.v = g.v * 0.4 + ((g.y - e.clientY) / dtm) * 1000 * 0.6   // px/s, up is positive
+    g.y = e.clientY; g.t = now
+    if (Math.abs(g.y0 - e.clientY) > 4) g.moved = true
+    if (h > 0 && !open) setOpen(true)
+    paintSheet(h)
+  }
+  const onGrabUp = () => {
+    const g = grab.current; grab.current = null; if (!g) return
+    if (!g.moved) { sheetTo(!open); return }   // a tap toggles
+    const max = sheetMax()
+    sheetTo(g.v > 350 ? true : g.v < -350 ? false : sheetH.current > max * 0.45, g.v)
+  }
   const listOpen = !panel && items.length > 0
-  const filtersOn = avail !== 'all' || price >= 0
-  const found = useMemo(() => {
+  const filtersOn = avail !== 'all' || !!priceR || !!monthlyR || !!yearR || !!kmR || hands.length > 0 || fuels.length > 0 || bodies.length > 0
+  const toggle = (list: string[], set: (v: string[]) => void, k: string) => set(list.includes(k) ? list.filter(x => x !== k) : [...list, k])
+  const clearFilters = () => { setAvail('all'); setPriceR(null); setMonthlyR(null); setYearR(null); setKmR(null); setHands([]); setFuels([]); setBodies([]) }
+  // the cars the search, availability and the ranges leave
+  const passed = useMemo(() => {
     const qn = norm(query)
-    if (!make && !qn && !term && !filtersOn && sort.key === 'mix') return null
     // free text: every typed word must be found somewhere on the car —
     // maker, model and trim, year, price, availability, Hebrew names too
-    const ids = searchable.flatMap((c, i) => {
+    return searchable.flatMap((c, i) => {
       if (make && norm(c.make) !== norm(make)) return []
       if (model && lineOf(c.model) !== model) return []
       if (qn && !matches(hays[i], query)) return []
       if (term && !matches(hays[i], term)) return []
       if (avail === 'stock' && !c.stock) return []
       if (avail === 'way' && c.stock) return []
-      if (price >= 0) { const n = priceNum(c.price); if (n === null || n < PRICES[price].min || n >= PRICES[price].max) return [] }
+      if (!inRange(c.priceN, priceR) || !inRange(c.monthlyN, monthlyR) || !inRange(c.yearN, yearR) || !inRange(c.kmN, kmR)) return []
       return [i]
     })
+  }, [searchable, hays, make, model, term, query, avail, priceR, monthlyR, yearR, kmR])
+  // the picks (hand, engine, body): any of a group's picks, every group
+  const picked = (i: number, skip?: 'hand' | 'fuel' | 'body') => {
+    const c = searchable[i]
+    return (skip === 'hand' || !hands.length || hands.includes(c.hand))
+      && (skip === 'fuel' || !fuels.length || fuels.includes(c.fuel))
+      && (skip === 'body' || !bodies.length || bodies.includes(c.body))
+  }
+  // each choice's count, live: the cars it would show with everything else
+  // as it is (its own group's other picks aside: they add, not narrow)
+  const counts = useMemo(() => {
+    const out = { hand: new Map<string, number>(), fuel: new Map<string, number>(), body: new Map<string, number>() }
+    for (const i of passed) for (const g of ['hand', 'fuel', 'body'] as const) {
+      const k = searchable[i][g]
+      if (k && picked(i, g)) out[g].set(k, (out[g].get(k) ?? 0) + 1)
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passed, searchable, hands, fuels, bodies])
+  const found = useMemo(() => {
+    const ids = passed.filter(i => picked(i))
     const pn = (i: number) => priceNum(searchable[i].price)
-    const yr = (i: number) => parseInt(searchable[i].year, 10) || 0
+    const yr = (i: number) => searchable[i].yearN || 0
     const sg = sort.up ? 1 : -1   // up: smallest first
+    // the default (spec 3.4): the newest listings first
+    if (sort.key === 'new') ids.sort((a, b) => searchable[b].rec - searchable[a].rec)
     if (sort.key === 'year') ids.sort((a, b) => sg * (yr(a) - yr(b)))
     // cars with no price go last, either way
     if (sort.key === 'price') ids.sort((a, b) => { const x = pn(a), y = pn(b); return x === null ? 1 : y === null ? -1 : sg * (x - y) })
     return ids
-  }, [searchable, hays, make, model, term, query, avail, price, sort, filtersOn])
-  const view = set === 'team' && teamIds.length ? teamIds : (found ?? carIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passed, searchable, hands, fuels, bodies, sort])
+  // something narrows the stock (the count shows then)
+  const filtering = !!make || !!norm(query) || !!term || filtersOn
+  const view = set === 'team' && teamIds.length ? teamIds : found
   const viewRef = useRef<number[] | null>(null)
   // on the street the set changes at once (the screens show the history, and
   // the walk must map the new set's cards); inside, as a change of channel
@@ -201,8 +332,8 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     if (s === 'team' && !teamIds.length) { router.push('/team'); return }
     setRef.current = s; setSet(s); setMenu(false)
     try { sessionStorage.setItem('sr-set', s) } catch {}
-    if (s === 'team') { input.current?.blur(); setPanel(null) }
-    const v = s === 'team' ? teamIds : (found ?? carIds)
+    if (s === 'team') { input.current?.blur(); setPanel(null); closeSheet.current() }
+    const v = s === 'team' ? teamIds : found
     viewRef.current = v
     handle.current?.setView(v, progress.current < 0.02)   // before the first step maps the cards
     // from the street, the walk sets off once the first faces of the set are
@@ -230,7 +361,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
   const fine = () => matchMedia('(pointer: fine)').matches
   const dropMake = () => { setMake(null); setModel(null); setText(''); if (fine()) input.current?.focus() }
   const dropModel = () => { setModel(null); setText(''); if (fine()) input.current?.focus() }
-  const clearAll = () => { setMake(null); setModel(null); setTerm(null); setText(''); setQuery(''); setAvail('all'); setPrice(-1); setSort({ key: 'mix', up: false }) }
+  const clearAll = () => { setMake(null); setModel(null); setTerm(null); setText(''); setQuery(''); clearFilters(); setSort(SORT_DEFAULT) }
   // the typed search becomes the balloon (a fresh one replaces it)
   const commit = () => { const t = text.trim(); if (t) { setTerm(t); setText(''); setQuery('') } }
   const onFieldKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -297,7 +428,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
       from = target; to = dest; t0 = performance.now(); dur = DUR * Math.abs(dest - target)
       // walking out: the keyboard, the panels and the menu close first — the
       // street has no menu (left open, it darkened the street and stuck)
-      if (dest === 0) { if (document.activeElement === input.current) input.current?.blur(); setPanel(null); setMenu(false) }
+      if (dest === 0) { if (document.activeElement === input.current) input.current?.blur(); setPanel(null); setMenu(false); closeSheet.current() }
       try { sessionStorage.setItem('sr-view', dest === 1 ? 'in' : 'out') } catch {}
       syncRef.current(dest === 1)
     }
@@ -455,11 +586,13 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     const insets = () => {
       const n = nav.current, c = cap.current
       // the cards are cut exactly at the dividing lines: the bar's bottom edge
-      // above, the search sheet's top edge below (it rises 12px over the row)
+      // above, the search sheet's top edge below (it rises 24px over the row:
+      // room for the grabber)
       const top = n ? n.offsetTop + n.offsetHeight : 64
       // from the screen's bottom edge to the foot's top, plus a breath: the
-      // same line for the stock and the team (the team's foot keeps its sheet)
-      const bottom = !c ? 150 : cv.clientHeight - c.offsetTop + (light ? 12 : 0)
+      // same line for the stock and the team (the team's foot keeps its sheet);
+      // the advanced filter's sheet opens over the cards, never moves them
+      const bottom = !c ? 150 : cv.clientHeight - (c.offsetTop + (adv.current?.offsetHeight ?? 0)) + (light ? 24 : 0)
       gridMid = (top + cv.clientHeight - bottom) / 2
       handle.current?.setInsets(top, bottom, 16)
       if (pull.current) pull.current.style.top = `${top}px`
@@ -499,7 +632,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     // the line of words scrolls sideways on its own
     // the line of words and the native list scroll on their own
     // (and a person opened over the hall: its gestures are its own)
-    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words, .sr-scroller, .sr-sheet')
+    const inLine = (e: Event) => !!(e.target as Element | null)?.closest?.('.sr-words, .sr-scroller, .sr-sheet, .sr-adv, .sr-grab')
     const onTouchMove = (e: TouchEvent) => { if (!menuOpen.current && !inLine(e)) e.preventDefault() }
     const onTouchEnd = (e: TouchEvent) => {
       if (menuOpen.current || inLine(e)) return
@@ -514,7 +647,7 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return   // typing belongs to the field
       if (document.querySelector('.sr-sheet')) return     // a person is open over the hall
-      if (e.key === 'Escape') { setMenu(false); setPanel(null); return }
+      if (e.key === 'Escape') { setMenu(false); setPanel(null); closeSheet.current(); return }
       if (menuOpen.current) return
       const sc = scroller.current
       if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (cardsOut() && sc) sc.scrollBy({ top: rowPx.current, behavior: 'smooth' }); else walkIn() }
@@ -724,7 +857,13 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
             <div ref={scrollFill} />
           </div>
 
-          <div ref={cap} className="sr-cap">
+          {/* behind the open sheet: the cards dimmed; a press here closes it */}
+          <div ref={dim} className="sr-dim" aria-hidden="true" onClick={() => sheetTo(false)} />
+          <div ref={cap} className="sr-cap" data-open={open || undefined}>
+            {/* the grabber: drag up to open the advanced filter, down to close; a tap toggles */}
+            <div className="sr-grab" role="button" tabIndex={0} aria-label={open ? 'סגירת הסינון המתקדם' : 'פתיחת הסינון המתקדם'} aria-expanded={open}
+              onPointerDown={onGrabDown} onPointerMove={onGrabMove} onPointerUp={onGrabUp} onPointerCancel={onGrabUp}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sheetTo(!open) } }}><i /></div>
             <div className="sr-row">
               {/* the field: what has been picked sits in it as chips, then the next step */}
               <form className="sr-find" role="search" data-picked={make ? '' : undefined} data-done={stage === 'done' ? '' : undefined}
@@ -757,19 +896,19 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                     placeholder={stage === 'make' ? 'חיפוש: יצרן, דגם, גימור…' : stage === 'model' ? 'דגם, גימור או כל דבר' : undefined}
                     aria-label={stage === 'make' ? 'חיפוש לפי יצרן' : 'חיפוש לפי דגם'} aria-expanded={listOpen} aria-autocomplete="list"
                     value={text} onChange={e => { if (model) setModel(null); setText(e.target.value) }}
-                    onFocus={() => { setFocus(true); setPanel(null) }} onBlur={() => { setFocus(false); commit(); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
+                    onFocus={() => { setFocus(true); setPanel(null); if (sheetH.current > 0 && !grab.current) sheetTo(false) }} onBlur={() => { setFocus(false); commit(); requestAnimationFrame(() => { if (document.activeElement !== input.current) window.scrollTo(0, 1) }) }} onKeyDown={onFieldKey} />
                   {/* empty and waiting: a lit caret says the field is open for typing */}
                   {stage !== 'done' && <span className="sr-caret" aria-hidden="true" />}
                 </span>
-                {found && <span className="sr-n" aria-live="polite">{carsWord(found.length)}</span>}
+                {filtering && <span className="sr-n" aria-live="polite">{carsWord(found.length)}</span>}
               </form>
-              <button type="button" className="sr-tool" aria-label="סינון" aria-expanded={panel === 'filter'} data-on={filtersOn || undefined}
-                onClick={() => { input.current?.blur(); setPanel(p => (p === 'filter' ? null : 'filter')) }}>
+              <button type="button" className="sr-tool" aria-label="סינון מתקדם" aria-expanded={open} data-on={filtersOn || undefined}
+                onClick={() => sheetTo(!open)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
                   <path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" />
                 </svg>
               </button>
-              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort.key !== 'mix' || undefined}
+              <button type="button" className="sr-tool" aria-label="מיון" aria-expanded={panel === 'sort'} data-on={sort.key !== 'new' || undefined}
                 onClick={() => { input.current?.blur(); setPanel(p => (p === 'sort' ? null : 'sort')) }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M8 5v14M8 19l-3-3M8 19l3-3M16 19V5M16 5l-3 3M16 5l3 3" />
@@ -783,17 +922,6 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                     style={{ '--i': Math.min(i, 10) } as React.CSSProperties} onMouseDown={onPd} onClick={() => pick(r.opt)}>
                     <bdi>{mark(r)}</bdi><small>{r.opt.count}</small>
                   </button>
-                ))}
-              </div>
-            ) : panel === 'filter' ? (
-              <div className="sr-words" role="group" aria-label="סינון">
-                {AVAIL.map(([k, l], i) => (
-                  <button key={k} type="button" className="sr-word" aria-pressed={avail === k} style={{ '--i': i } as React.CSSProperties} onClick={() => setAvail(k)}>{l}</button>
-                ))}
-                <span className="sr-words-gap" aria-hidden="true" />
-                <button type="button" className="sr-word" aria-pressed={price < 0} style={{ '--i': 3 } as React.CSSProperties} onClick={() => setPrice(-1)}>כל המחירים</button>
-                {PRICES.map((b, i) => (
-                  <button key={b.label} type="button" className="sr-word" aria-pressed={price === i} style={{ '--i': 4 + i } as React.CSSProperties} onClick={() => setPrice(i)}>{b.label}</button>
                 ))}
               </div>
             ) : panel === 'sort' ? (
@@ -814,12 +942,59 @@ export default function Showroom({ cards, team = NO_TEAM, street, start = 'cars'
                   )
                 })}
               </div>
-            ) : found && found.length === 0 ? (
+            ) : found.length === 0 ? (
               <div className="sr-words" role="status">
                 <span className="sr-word sr-word-note">לא נמצאו רכבים</span>
                 <button type="button" className="sr-word" onClick={clearAll}>נקה חיפוש</button>
               </div>
             ) : null}
+            {/* the advanced filter: it opens under the search row as the sheet rises */}
+            <div ref={adv} className="sr-adv" aria-hidden={!open}>
+              <div className="sr-adv-box">
+              <div className="sr-adv-in">
+                <div className="sr-f">
+                  <div className="sr-fh"><span>זמינות</span></div>
+                  <div className="sr-seg" role="group" aria-label="זמינות">
+                    {AVAIL.map(([k, l]) => <button key={k} type="button" aria-pressed={avail === k} onClick={() => setAvail(k)}>{l}</button>)}
+                  </div>
+                </div>
+                <RangeSlider label="מחיר (₪)" min={facets.price.b[0]} max={facets.price.b[1]} step={10_000} value={priceR} onChange={setPriceR} fmt={money} scale="sq" data={facets.price.data} />
+                <RangeSlider label="תשלום חודשי (₪)" min={facets.monthly.b[0]} max={facets.monthly.b[1]} step={500} value={monthlyR} onChange={setMonthlyR} fmt={n => n.toLocaleString('en-US')} data={facets.monthly.data} />
+                <RangeSlider label="שנה" min={facets.year.b[0]} max={facets.year.b[1]} step={1} value={yearR} onChange={setYearR} fmt={String} data={facets.year.data} />
+                <RangeSlider label="קילומטראז׳" min={facets.km.b[0]} max={facets.km.b[1]} step={5_000} value={kmR} onChange={setKmR} fmt={kmText} scale="sq" data={facets.km.data} />
+                <div className="sr-f">
+                  <div className="sr-fh"><span>יד</span></div>
+                  <div className="sr-picks" role="group" aria-label="יד">
+                    {HANDS.filter(([k]) => facets.hands.has(k)).map(([k, l]) => { const n = counts.hand.get(k) ?? 0; return (
+                      <button key={k} type="button" className="sr-pick" aria-pressed={hands.includes(k)} disabled={!n && !hands.includes(k)} onClick={() => toggle(hands, setHands, k)}>{l}<small>{n}</small></button>
+                    ) })}
+                  </div>
+                </div>
+                <div className="sr-f">
+                  <div className="sr-fh"><span>מנוע</span></div>
+                  <div className="sr-picks" role="group" aria-label="מנוע">
+                    {FUELS.filter(([k]) => facets.fuels.has(k)).map(([k, l]) => { const n = counts.fuel.get(k) ?? 0; return (
+                      <button key={k} type="button" className="sr-pick" aria-pressed={fuels.includes(k)} disabled={!n && !fuels.includes(k)} onClick={() => toggle(fuels, setFuels, k)}>{l}<small>{n}</small></button>
+                    ) })}
+                  </div>
+                </div>
+                {facets.bodies.length > 0 && (
+                  <div className="sr-f">
+                    <div className="sr-fh"><span>סוג רכב</span></div>
+                    <div className="sr-picks" role="group" aria-label="סוג רכב">
+                      {facets.bodies.map(([k]) => { const n = counts.body.get(k) ?? 0; return (
+                        <button key={k} type="button" className="sr-pick" aria-pressed={bodies.includes(k)} disabled={!n && !bodies.includes(k)} onClick={() => toggle(bodies, setBodies, k)}><bdi>{k}</bdi><small>{n}</small></button>
+                      ) })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="sr-adv-foot">
+                <button type="button" className="sr-clr" onClick={clearFilters} disabled={!filtersOn}>ניקוי מסננים</button>
+                <button type="button" className="sr-go" onClick={() => sheetTo(false)}>{found.length ? `הצג ${carsWord(found.length)}` : 'לא נמצאו רכבים'}</button>
+              </div>
+              </div>
+            </div>
           </div>
 
           {/* for screen readers: the cars on show, as plain links (client only: the order is per visit) */}

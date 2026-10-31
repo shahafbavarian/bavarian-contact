@@ -123,15 +123,28 @@ export const PRICES: { label: string; min: number; max: number }[] = [
   { label: '600 אלף–מיליון', min: 600_000, max: 1_000_000 },
   { label: 'מעל מיליון', min: 1_000_000, max: Infinity },
 ]
-// The order: mixed, by year or by price. The first press on year or price
-// orders it the usual way (newest first; cheapest first), the next press
-// turns it round
-export type SortKey = 'mix' | 'year' | 'price'
+// The order (spec 3.4): the newest listings first by default; by price or by
+// year, each both ways — the first press orders the usual way (cheapest
+// first; newest year first), the next press turns it round
+export type SortKey = 'new' | 'year' | 'price'
 export type Sort = { key: SortKey; up: boolean }
 export const SORTS: { key: SortKey; label: string; first: boolean; dir?: [string, string] }[] = [
-  { key: 'mix', label: 'מעורב', first: false },
-  { key: 'year', label: 'שנה', first: false, dir: ['מהישן לחדש', 'מהחדש לישן'] },
+  { key: 'new', label: 'החדשים ביותר', first: false },
   { key: 'price', label: 'מחיר', first: true, dir: ['מהזול ליקר', 'מהיקר לזול'] },
+  { key: 'year', label: 'שנה', first: false, dir: ['מהישן לחדש', 'מהחדש לישן'] },
 ]
+export const SORT_DEFAULT: Sort = { key: 'new', up: false }
+
+// The advanced filter (spec 3.3), only what the list really carries
+export const FUELS: [string, string][] = [['petrol', 'בנזין'], ['diesel', 'דיזל'], ['hev', 'היברידי'], ['phev', 'פלאג-אין'], ['bev', 'חשמלי']]
+export const HANDS: [string, string][] = [['1', 'יד 1'], ['2', 'יד 2'], ['3', 'יד 3'], ['4+', 'יד 4+']]
+export const handKey = (yad: string) => { const n = parseInt(yad, 10); return !n ? '' : n >= 4 ? '4+' : String(n) }
+// a range is [low, high]; null = untouched (cars missing the value still count)
+export type Range = [number, number] | null
+// (a missing value is NaN: it counts only while the range is untouched)
+export const inRange = (v: number, r: Range) => !r || (Number.isFinite(v) && v >= r[0] && v <= r[1])
+// compact Hebrew money: 450 אלף, 1.2 מיליון
+export const money = (n: number) => n >= 1_000_000 ? `${(Math.round(n / 100_000) / 10).toString()} מיליון` : `${Math.round(n / 1000)} אלף`
+export const kmText = (n: number) => n >= 1000 ? `${Math.round(n / 1000)} אלף` : String(n)
 
 export const carsWord = (n: number) => (n === 1 ? 'רכב אחד' : `${n} רכבים`)
