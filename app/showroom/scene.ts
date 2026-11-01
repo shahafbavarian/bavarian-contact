@@ -1221,6 +1221,8 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // The cards are laid out on the screen like the cars page: two a row, in
   // the room between the bar above and the search below, the first row at
   // the top; the rows run on down, curving away a little at the edges
+  const MIN_CARD = 300
+  const colsFit = () => mobile ? 2 : Math.max(2, Math.min(4, Math.floor(((viewW || canvas.clientWidth) - 2 * insetSide + 12) / (MIN_CARD + 12))))
   const layout = () => {
     const w = viewW || canvas.clientWidth, h = viewH || canvas.clientHeight
     if (!w || !h) return
@@ -1233,13 +1235,14 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     const gap = 12 * mpp
     // the cards' sizes: two a row as wide as half the view, one a row (a
     // handful of cars) as wide as the view — one design, the compact band
-    const W = gcols === 1 ? Math.min(availW, 430 * mpp) : Math.min((availW - gap) / 2, 420 * mpp)
+    const W = gcols === 1 ? Math.min(availW, 430 * mpp) : Math.min((availW - gap * (gcols - 1)) / gcols, 420 * mpp)
     const css = W / mpp, wide = false
     // a wide card (one a row) holds its name on one line: a lower band, no gap
     const strip = (gcols === 1 ? BAND_WIDE : BAND_CSS) / css
     const redraw = Math.abs(css - cardCss) / cardCss > 0.08 || Math.abs(strip - STRIP) > 0.01 || wide !== wideFace
     STRIP = strip; cardCss = css; wideFace = wide
-    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : (W + gap) / 2
+    // colX: one column's step (the row is centred: see gridPlace)
+    cardW = W; cardH = W * (2 / 3 + STRIP); pitch = cardH + gap; colX = gcols === 1 ? 0 : W + gap
     // a small breath inside the zone: a card at rest never meets the fade
     const PADV = 10 * mpp
     gridTop = top - PADV; pitchPx = pitch / mpp
@@ -1257,7 +1260,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   // moving only up and down — no drum, no lean at the top and bottom
   const gridPlace = (r: number, col: number, s: number, outP: THREE.Vector3, outQ: THREE.Quaternion) => {
     const yFlat = gridTop - cardH / 2 - (r - s) * pitch
-    outP.set(colX * (1 - 2 * col), yFlat, -WALL_R).applyMatrix4(camera.matrixWorld)
+    outP.set(colX * ((gcols - 1) / 2 - col), yFlat, -WALL_R).applyMatrix4(camera.matrixWorld)
     outQ.copy(camera.quaternion)
   }
   // in rows: how far the list can move before its last row sits on the bottom of the view
@@ -1522,7 +1525,9 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
     if (Math.abs(hideK - (hideT ? 1 : 0)) < 2e-3) hideK = hideT ? 1 : 0
     if (hideK !== hk) dirty = true
     // the column count follows the stock on show
-    const wc = N <= 5 ? 1 : 2
+    // (a phone and a tablet two a row; a computer as many as fit at a
+    // comfortable card size, up to four)
+    const wc = N <= 5 ? 1 : colsFit()
     if (wc !== gcols) { gcols = wc; layout() }
     // the native scroller's length follows the list
     const key = `${N}|${gcols}|${pitchPx.toFixed(1)}|${maxScroll().toFixed(3)}`

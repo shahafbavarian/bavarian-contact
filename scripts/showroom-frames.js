@@ -6,6 +6,7 @@
 // It also reports `born`: faces created DURING each walk (must be 0 — a face
 // born mid-walk is a visible hitch on the phone).
 // Usage: npx next build && npx next start -p 3200, then: node scripts/showroom-frames.js
+// (DESK=1 node scripts/showroom-frames.js for a computer's window)
 // A 60 fps FRAME clock: every real frame advances the page's time by exactly
 // 16.67 ms, however slow the software renderer is — the animation is sampled
 // precisely as on a device. __pause freezes it for a screenshot.
@@ -14,7 +15,10 @@ const sharp = require('sharp');
 require('fs').mkdirSync('qa', { recursive: true });
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: devices['iPhone 15 Pro'].userAgent });
+  // DESK=1: a computer's window (1440×900, or DESK_W×DESK_H; a mouse) instead of the phone
+  const ctx = process.env.DESK
+    ? await b.newContext({ viewport: { width: +(process.env.DESK_W || 1440), height: +(process.env.DESK_H || 900) } })
+    : await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: devices['iPhone 15 Pro'].userAgent });
   await ctx.addInitScript(() => {
     window.__t = 0; window.__pause = false; let lastTs = -1;
     const o = window.requestAnimationFrame.bind(window);
