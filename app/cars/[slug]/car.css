@@ -220,7 +220,15 @@ html[data-cv-lock] .cv-over { overflow: hidden; }
 
 /* the spec, in its groups */
 .cv-group + .cv-group { margin-top: 18px; }
-.cv-group h3 { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; margin-bottom: 4px; }
+.cv-group h3 { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; margin-bottom: 2px; }
+/* the spec, compact: two to a row, each its name small over its value; a
+   long value spans the row; a hairline between the rows */
+.cv-specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+.cv-spec { min-width: 0; padding: 9px 0; border-top: 1px solid var(--line); }
+.cv-spec[data-wide] { grid-column: 1 / -1; }
+.cv-spec dt { font-size: 12.5px; color: var(--muted); line-height: 1.3; }
+.cv-spec dd { margin-top: 2px; font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+@media (min-width: 1000px) { .cv-specs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .cv-rows > div {
   display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 10px 0;
   border-bottom: 1px solid var(--line); font-size: 15px;

@@ -472,8 +472,10 @@ function CarView({ car, url, qr, mode = 'page', loading = false, onClose, refs }
           {groups.map(([g, rows]) => (
             <div key={g} className="cv-group">
               <h3>{g}</h3>
-              <dl className="cv-rows">{rows.map(([k, v]) => (
-                <div key={k}><dt>{k}</dt><dd>
+              {/* two to a row (three on a computer), each its name over its value;
+                  a long value takes the row to itself */}
+              <dl className="cv-specs">{rows.map(([k, v]) => (
+                <div key={k} className="cv-spec" data-wide={v.length + (k.startsWith('צבע') ? dotsOf(v).length * 2 : 0) > 18 || undefined}><dt>{k}</dt><dd>
                   {k.startsWith('צבע') && dotsOf(v).map((d, i) => <i key={i} className="cv-dot" style={{ background: d }} aria-hidden="true" />)}
                   <bdi>{v}</bdi>
                 </dd></div>
