@@ -180,7 +180,15 @@ const TiltShift = {
 
 export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHandle {
   const { mobile } = opts
-  const dpr = opts.dpr ?? Math.min(window.devicePixelRatio || 1, 2)
+  // A phone draws at its own density (up to 2). A computer's screen is far
+  // larger: at density 2 a 1440 Retina window is 5.2 million pixels a frame,
+  // each through 4x MSAA, the bloom and the tilt-shift — a laptop's GPU choked
+  // (the hall felt stuck). There the frame is held near 2.6 million pixels
+  // (density 1.42 at 1440×900; never below 1); the MSAA keeps the edges clean
+  const DESK_PX = 2.6e6
+  const dpr = opts.dpr ?? (mobile
+    ? Math.min(window.devicePixelRatio || 1, 2)
+    : Math.max(1, Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(DESK_PX / Math.max(1, innerWidth * innerHeight)))))
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', precision: 'highp', preserveDrawingBuffer: !!opts.manual })
   // the shader error checks read the GPU's logs, which makes the browser wait
@@ -1754,6 +1762,11 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
   if (!mobile) composer.addPass(tilt)
   const wallPass = new RenderPass(wallScene, camera)
   wallPass.clear = false
+  // On a computer the tilt-shift runs just before: its full-screen pass
+  // leaves the buffer's depth meaningless here, and the street's big screens
+  // (they test depth, unlike the hall's cards) failed it and were never drawn.
+  // They stand in front of everything, so the depth starts clean for them
+  wallPass.clearDepth = !mobile
   composer.addPass(wallPass)
   composer.addPass(new OutputPass())
   // Every shader the walk draws with, prepared on the street ahead of time.
