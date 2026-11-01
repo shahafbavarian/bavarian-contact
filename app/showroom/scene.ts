@@ -1669,6 +1669,7 @@ export function createShowroom(canvas: HTMLCanvasElement, opts: Opts): SceneHand
           strip = fit(fe, 0.75, 1)   // the band unfolds on landing, as on the screens
           a = smooth(fit(fe, 0, 0.18))
           flying = true; flyE = fe
+          if (fe < 1) order = -1   // out from behind the main screen, never over it
         } else if (throwK < 1) {
           // not in flight and not fully inside: never shown. The walk out's
           // last frame unmaps the scene while cards are still fading, and
